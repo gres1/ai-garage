@@ -142,6 +142,9 @@
     box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--cat) 22%, transparent); }
   .catb .ic{ width:13px; height:13px; }
   .catb .dot{ width:6px; height:6px; border-radius:50%; flex:0 0 auto; background:var(--cat); }
+  .guard{ display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; color:var(--red); margin-left:8px; letter-spacing:.01em; }
+  .guard .ic{ width:12px; height:12px; }
+  .card.disc.guarded{ border-color:rgba(255,69,58,.45); }
   .tag{ display:inline-flex; align-items:center; gap:4px; } .tag .ic{ width:11px; height:11px; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } .card:hover{ transform:none; } }
   /* акцент-кнопка (Public link, Preview) — мягкая заливка, БЕЗ рамки */
@@ -277,7 +280,7 @@ const DICT={
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
    discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Save",keepAlive:"Keep alive",kaOn:"Staying on",
-   whatIs:"What is it?",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",
+   whatIs:"What is it?",protected:"protected — don't touch",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",
    tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link (cloudflared) — open this service from your phone or share it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
@@ -287,7 +290,7 @@ const DICT={
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
    discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"Сохранить",keepAlive:"Держать включённым",kaOn:"Держится",
-   whatIs:"что это?",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",
+   whatIs:"что это?",protected:"защищён — не трогай",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",
    tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку (cloudflared) — открыть сервис с телефона или поделиться"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
@@ -441,6 +444,7 @@ const ICONS={
  bot:'<rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="9" cy="14" r="1" fill="var(--ic,currentColor)" stroke="none"/><circle cx="15" cy="14" r="1" fill="var(--ic,currentColor)" stroke="none"/>',
  cloud:'<path d="M17.5 19a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.6-1.5A4 4 0 0 0 6.5 19z"/>',
  monitor:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/>',
+ shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
  warn:'<path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".7" fill="var(--ic,currentColor)" stroke="none"/>'
 };
 const icon=(n,cls='',sw=2)=>`<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="var(--ic,currentColor)" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`;
@@ -521,45 +525,56 @@ async function saveService(){
   if(j.ok){ toast('✅ '+(j.note||'')); closeForm(); ['f-name','f-port','f-url','f-host','f-start','f-stop','f-cwd','f-note'].forEach(i=>$(i).value=''); lastSig=''; load(); }
   else toast('⛔️ '+(j.error||'')); }
 
+/* одна toggle-кнопка: показывает действие, которое произойдёт при клике (Стоп если работает, Старт если выключено) */
+const toggleBtn=s=>`<button class="btn tgl ${s.up?'btn-soft':'btn-primary'}" ${s.up?'style="--ic:var(--ic-stop)"':''} onclick="act('${esc(s.name)}','${s.up?'stop':'start'}')">${icon(s.up?'stop':'play')} ${s.up?t('stop'):t('start')}</button>`;
 function card(s){ const cls=s.up?'up':'down';
-  const ctrls=s.hasControls?`<div class="row" style="margin-top:4px">
-      <button class="btn btn-primary" onclick="act('${esc(s.name)}','start')">${icon('play')} ${t('start')}</button>
-      <button class="btn btn-soft" style="--ic:var(--ic-stop)" onclick="act('${esc(s.name)}','stop')">${icon('stop')} ${t('stop')}</button>
-      <button class="btn btn-soft" onclick="act('${esc(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>
-      <button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" onclick="toggleKeepAlive('${esc(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>
+  const restart=`<button class="btn btn-soft" onclick="act('${esc(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>`;
+  const ka=`<button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" onclick="toggleKeepAlive('${esc(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>`;
+  const ctrls = s.control
+    ? `<div class="row" style="margin-top:4px">${toggleBtn(s)}${restart}</div>`
+    : s.hasControls
+    ? `<div class="row" style="margin-top:4px">${toggleBtn(s)}${restart}${ka}
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
       <button class="btn btn-accent" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`
-    :`<div class="row" style="margin-top:4px"><span class="note" style="margin:0">${t('managed')}</span>
+    : `<div class="row" style="margin-top:4px"><span class="note" style="margin:0">${t('managed')}</span>
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
       <button class="btn btn-accent" style="margin-left:auto" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`;
   const tunnel=s.tunnel?`<div class="urlrow"><span class="tag">${icon('phone')} ${t('phone')}</span>
       <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a><button class="icbtn" onclick="copy('${esc(s.tunnel)}')">${icon('copy')}</button></div>`:'';
-  return `<div class="card ${cls}" data-name="${esc(s.name)}">
+  const urls = s.control ? '' : `<div class="urls"><div class="urlrow"><span class="badge">:${s.port||'—'}</span>
+        <a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a><button class="icbtn" onclick="copy('${esc(s.url)}')">${icon('copy')}</button></div>
+      ${tunnel}</div>`;
+  return `<div class="card ${cls}${s.control?' ctrl':''}" data-name="${esc(s.name)}">
     <div class="top"><span class="pulse ${cls}"></span><span class="name">${esc(s.name)}</span>
       <span class="hostb">${icon(/vps|впс|server|серв|cloud/i.test(s.host||'')?'cloud':'monitor')} ${esc(s.host||'Mac')}</span>
       <span class="state ${cls}" style="margin-left:auto">${s.up?t('working'):t('stopped')}</span>
       <button class="kebab" aria-label="меню" onclick="toggleMenu(event,'${esc(s.name)}')">${icon('more')}</button></div>
     <div class="menu" data-menu="${esc(s.name)}">
-      ${s.port?`<button onclick="killPort(${s.port})">${icon('zap')} ${t('freePort')} :${s.port}</button>`:''}
+      ${(s.port&&!s.control)?`<button onclick="killPort(${s.port})">${icon('zap')} ${t('freePort')} :${s.port}</button>`:''}
       <button class="del" onclick="delService('${esc(s.name)}')">${icon('trash')} ${t('remove')}</button></div>
     ${s.note?`<div class="note">${esc(s.note)}</div>`:'<div style="height:5px"></div>'}
-    <div class="urls"><div class="urlrow"><span class="badge">:${s.port||'—'}</span>
-        <a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a><button class="icbtn" onclick="copy('${esc(s.url)}')">${icon('copy')}</button></div>
-      ${tunnel}</div>
+    ${urls}
     ${ctrls}<div class="prevwrap" data-prev="${esc(s.name)}"></div></div>`; }
 
 const catColor=c=>({system:'#8a8a8e',db:'#e8503a',app:'#0a84ff',dev:'#30b14a',agent:'#a06bff',unknown:'#8a8a8e'}[c]||'#8a8a8e');
 function askAI(cmd,port){ copy(`Что за процесс «${cmd}» слушает порт ${port} на моём Mac? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.`); toast('Промпт скопирован — вставь своему ИИ'); }
-function dcard(d){ const col=catColor(d.cat); return `<div class="card disc">
+function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const mk='disc'+d.port;
+  const phone=d.tunnel?`<div class="urlrow" style="margin:0 0 9px"><span class="tag">${icon('phone')} ${t('phone')}</span>
+      <a href="${safeUrl(d.tunnel)}" target="_blank" rel="noopener">${esc(d.tunnel)}</a><button class="icbtn" onclick="copy('${esc(d.tunnel)}')">${icon('copy')}</button></div>`:'';
+  return `<div class="card disc${unsafe?' guarded':''}">
     <div class="top"><span class="pulse up"></span><span class="cmd">${esc(d.command)}</span>
-      <span class="hostb" style="margin-left:auto">:${d.port}</span></div>
-    <div style="margin:7px 0 3px"><span class="catb" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)"><span class="dot"></span>${icon(catIcon(d.cat))} ${esc(d.label||d.cat||'')}</span></div>
+      <span class="hostb">:${d.port}</span>
+      <button class="kebab" aria-label="меню" onclick="toggleMenu(event,'${mk}')">${icon('more')}</button></div>
+    <div class="menu" data-menu="${mk}">
+      ${(!unsafe&&!d.tunnelManaged)?`<button title="${esc(t('tunnelHint'))}" onclick="closeMenus();tunnelStart(${d.port})">${icon('link')} ${t('tunnelStart')}</button>`:''}
+      <button class="${unsafe?'del':''}" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')} :${d.port}</button></div>
+    <div style="margin:7px 0 3px"><span class="catb" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)"><span class="dot"></span>${icon(catIcon(d.cat))} ${esc(d.label||d.cat||'')}</span>${unsafe?`<span class="guard">${icon('shield')} ${t('protected')}</span>`:''}</div>
     <div class="pid" style="margin:2px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
+    ${phone}
     <div class="row">
-      <button class="btn btn-soft" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>
+      <button class="btn btn-primary" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">${icon('plus')} ${t('saveBtn')}</button>
       <button class="btn btn-soft" onclick="askAI('${esc(d.command)}',${d.port})">${icon('help')} ${t('whatIs')}</button>
-      ${tunnelBtn(d.port,d.tunnelManaged,d.tunnel,d.tunnelError)}
-      <button class="btn btn-accent" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">${icon('plus')} ${t('saveBtn')}</button></div></div>`; }
+      ${d.tunnelManaged?tunnelBtn(d.port,d.tunnelManaged,d.tunnel,d.tunnelError):''}</div></div>`; }
 function renderDiscovered(list){ const w=$('disc-wrap');
   if(!list||!list.length){ w.style.display='none'; return; }
   w.style.display='block'; $('disc-n').textContent=list.length; $('disc-grid').innerHTML=list.map(dcard).join(''); }
@@ -572,7 +587,9 @@ function render(){ $('grid').innerHTML=visible().map(card).join(''); updateHeade
 function patch(){ visible().forEach(s=>{ const c=document.querySelector(`.card[data-name="${CSS.escape(s.name)}"]`); if(!c)return;
     const cls=s.up?'up':'down'; c.classList.toggle('up',s.up); c.classList.toggle('down',!s.up);
     c.querySelector('.pulse').className='pulse '+cls;
-    const st=c.querySelector('.state'); st.className='state '+cls; st.style.marginLeft='auto'; st.textContent=s.up?t('working'):t('stopped'); }); updateHeader(); }
+    const st=c.querySelector('.state'); st.className='state '+cls; st.style.marginLeft='auto'; st.textContent=s.up?t('working'):t('stopped');
+    const tg=c.querySelector('.tgl'); if(tg){ tg.className='btn tgl '+(s.up?'btn-soft':'btn-primary'); tg.style.cssText=s.up?'--ic:var(--ic-stop)':'';
+      tg.innerHTML=icon(s.up?'stop':'play')+' '+(s.up?t('stop'):t('start')); tg.onclick=()=>act(s.name,s.up?'stop':'start'); } }); updateHeader(); }
 function updateHeader(){ const up=DATA.filter(s=>s.up).length,tot=DATA.length;
   $('upn').textContent=up; $('totn').textContent=tot; $('upc').textContent=up; $('downc').textContent=tot-up;
   const C=214; $('arc').style.strokeDashoffset=tot?C-(C*up/tot):C; }
