@@ -244,4 +244,4 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(404); res.end("not found");
 });
 
-server.listen(PORT, "127.0.0.1", () => console.log(`Localhost Control → http://localhost:${PORT}`));
+server.listen(PORT, "127.0.0.1", () => console.log(`AI Garage → http://localhost:${PORT}`));

@@ -1,0 +1,21 @@
+[
+  {
+    "name": "My Vite app",
+    "type": "local",
+    "port": 5173,
+    "url": "http://localhost:5173",
+    "host": "Mac",
+    "cwd": "~/projects/my-app",
+    "startCmd": "npm run dev",
+    "stopCmd": "lsof -ti:5173 | xargs kill",
+    "note": "dev server (example)"
+  },
+  {
+    "name": "Some dashboard",
+    "type": "link",
+    "port": 8080,
+    "url": "http://localhost:8080/",
+    "host": "Mac",
+    "note": "status + link only (managed elsewhere)"
+  }
+]
