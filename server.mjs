@@ -201,7 +201,7 @@ async function startTunnel(port, provider = "cloudflared") {
   let fd, child;
   try { fd = openSync(log, "w"); } catch { return { ok: false, error: "не открыть лог-файл" }; }
   try {
-    child = spawn("cloudflared", ["tunnel", "--url", `http://localhost:${p}`, "--no-autoupdate"], { stdio: ["ignore", fd, fd], detached: true });
+    child = spawn("cloudflared", ["tunnel", "--url", `http://localhost:${p}`, "--http-host-header", `localhost:${p}`, "--no-autoupdate"], { stdio: ["ignore", fd, fd], detached: true });
   } catch { return { ok: false, error: "cloudflared не запустился — установлен? brew install cloudflared" }; }
   child.on("error", () => {});
   child.unref();

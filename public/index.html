@@ -4,28 +4,40 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>AI Garage</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff5a1f'/%3E%3Cpath d='M9 21a7 7 0 1 1 14 0' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3Cline x1='16' y1='16' x2='20.5' y2='11.5' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E"/>
 <style>
   :root{
-    --bg:#f5f5f7; --bg2:#ececed; --card:#ffffff; --txt:#1d1d1f; --mut:#5b5b60; --faint:#76767b;
-    --line:#e3e3e6; --blue:#0071e3; --blue-d:#0060c0; --green:#34c759; --red:#ff3b30;
-    --ic-start:#34c759; --ic-stop:#ff3b30; --ic-restart:#0a84ff; --ic-link:#5e5ce6; --ic-preview:#0071e3;
-    --ic-zap:#ff9f0a; --ic-keepalive:#30b0c7; --ic-help:#0071e3; --ic-save:#1a7f37; --ic-trash:#ff3b30;
-    --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
-    --shadow-h:0 6px 14px rgba(0,0,0,.08), 0 20px 48px rgba(0,0,0,.12);
-    --r:18px;
+    --bg:#eef0f5; --bg2:#e7e9f0; --card:#ffffff; --txt:#16161a; --mut:#5c5c66; --faint:#8a8a93;
+    --line:rgba(20,20,40,.08); --blue:#0a84ff; --blue-d:#0070e0; --green:#30d158; --red:#ff453a;
+    --accent:#ff5a1f; --accent-d:#ec4608;
+    --glass:rgba(255,255,255,.58); --glass-strong:rgba(255,255,255,.72); --glass-brd:rgba(255,255,255,.72);
+    --ic-stop:#ff453a;
+    --shadow:0 1px 1px rgba(20,20,45,.04), 0 12px 34px -14px rgba(25,25,60,.22);
+    --shadow-h:0 2px 4px rgba(20,20,45,.06), 0 30px 60px -18px rgba(25,25,70,.34);
+    --r:20px;
   }
   *{ box-sizing:border-box; }
   html,body{ margin:0; }
   body{
+    min-height:100vh; position:relative;
     background:
-      radial-gradient(1200px 600px at 80% -10%, #eaf2ff 0%, rgba(234,242,255,0) 55%),
-      radial-gradient(1000px 500px at -5% 10%, #f3ecff 0%, rgba(243,236,255,0) 50%), var(--bg);
-    color:var(--txt); padding:30px 26px 70px;
+      radial-gradient(820px 560px at 9% 3%, rgba(255,120,60,.13), transparent 55%),
+      radial-gradient(820px 560px at 93% 1%, rgba(10,132,255,.12), transparent 55%),
+      radial-gradient(900px 720px at 78% 110%, rgba(120,86,255,.10), transparent 55%),
+      linear-gradient(180deg,#f5f6fa,#e8eaf1);
+    background-attachment:fixed;
+    color:var(--txt); padding:30px 26px 80px;
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
     -webkit-font-smoothing:antialiased;
   }
+  /* живой ambient-glow за курсором (как pletor) */
+  body::before{ content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:radial-gradient(440px circle at var(--gx,50%) var(--gy,-10%), rgba(255,90,31,.07), transparent 62%); }
+  header, .grid, #disc-wrap, #platwarn{ position:relative; z-index:1; }
   .rounded{ font-family:ui-rounded,-apple-system,"SF Pro Rounded",sans-serif; }
-  header{ max-width:1180px; margin:0 auto 22px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+  header{ max-width:1180px; margin:0 auto 24px; display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+    background:var(--glass-strong); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%);
+    border:1px solid var(--glass-brd); border-radius:24px; padding:18px 22px; box-shadow:var(--shadow); }
   h1{ font-size:28px; letter-spacing:-.022em; margin:0; font-weight:700; line-height:1.1; }
   .sub{ color:var(--faint); font-size:13px; margin-top:3px; }
   .ring{ position:relative; width:80px; height:80px; flex:0 0 auto; }
@@ -40,28 +52,34 @@
   .ctl{ display:flex; align-items:center; gap:8px; }
   .field{ border:1px solid var(--line); background:rgba(255,255,255,.75); backdrop-filter:blur(8px);
     border-radius:980px; padding:9px 14px; font-size:14px; color:var(--txt); outline:none; transition:.2s; font-family:inherit; }
-  .field:focus{ border-color:var(--blue); box-shadow:0 0 0 4px rgba(0,113,227,.12); }
+  .field:focus{ border-color:var(--accent); box-shadow:0 0 0 4px rgba(255,90,31,.14); }
   .search{ position:relative; }
   .search input{ padding-left:36px; width:210px; }
   .search input:focus{ width:240px; }
   .search svg{ position:absolute; left:13px; top:50%; transform:translateY(-50%); opacity:.4; }
   select.field{ cursor:pointer; padding-right:30px; }
-  .btn-add{ background:var(--blue); color:#fff; border:none; border-radius:980px; padding:10px 16px;
-    font-size:14px; font-weight:550; cursor:pointer; box-shadow:0 1px 6px rgba(0,113,227,.3); font-family:inherit; transition:.15s; }
-  .btn-add:hover{ background:var(--blue-d); }
-  .pausebtn{ border:1px solid var(--line); background:rgba(255,255,255,.7); border-radius:980px;
+  .btn-add{ background:var(--accent); color:#fff; border:none; border-radius:980px; padding:10px 16px;
+    font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 2px 10px rgba(255,90,31,.32); font-family:inherit; transition:.15s; }
+  .btn-add:hover{ background:var(--accent-d); transform:translateY(-1px); }
+  .pausebtn{ border:1px solid var(--line); background:rgba(255,255,255,.6); border-radius:980px;
     padding:9px 14px; font-size:13px; cursor:pointer; color:var(--mut); font-family:inherit; }
-  .pausebtn:hover{ border-color:var(--blue); color:var(--blue); }
+  .pausebtn:hover{ border-color:var(--accent); color:var(--accent); }
 
-  .grid{ max-width:1180px; margin:0 auto; display:grid; gap:18px; align-items:start;   /* авто-высота */
-         grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); }
-  .card{ position:relative; background:var(--card); border:1px solid rgba(0,0,0,.05); border-radius:var(--r);
-    padding:16px 16px 14px; box-shadow:var(--shadow); overflow:hidden;
-    transition:transform .26s cubic-bezier(.2,.7,.2,1), box-shadow .26s ease; }
-  .card:hover{ transform:translateY(-5px) scale(1.012); box-shadow:var(--shadow-h); }
-  .card::before{ content:""; position:absolute; left:0; top:0; right:0; height:4px; background:var(--faint); opacity:.5; }
-  .card.up::before{ background:linear-gradient(90deg,var(--green),#7be39a); }
-  .card.down::before{ background:linear-gradient(90deg,var(--red),#ff8a80); }
+  .grid{ max-width:1180px; margin:0 auto; display:grid; gap:20px; align-items:start;   /* авто-высота */
+         grid-template-columns:repeat(auto-fill,minmax(335px,1fr)); }
+  .card{ position:relative; z-index:1; background:var(--glass); backdrop-filter:blur(22px) saturate(185%);
+    -webkit-backdrop-filter:blur(22px) saturate(185%); border:1px solid var(--glass-brd); border-radius:var(--r);
+    padding:17px 17px 15px; box-shadow:var(--shadow); overflow:hidden;
+    transition:transform .3s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease; }
+  .card:hover{ transform:translateY(-5px); box-shadow:var(--shadow-h); }
+  /* спотлайт-блик, следующий за курсором (живой эффект, как pletor) */
+  .card::after{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0; transition:opacity .35s;
+    background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%), rgba(255,90,31,.13), transparent 46%); }
+  .card:hover::after{ opacity:1; }
+  .card>*{ position:relative; z-index:1; }
+  .card::before{ content:""; position:absolute; left:0; top:0; right:0; height:3px; background:var(--faint); opacity:.35; z-index:2; }
+  .card.up::before{ background:linear-gradient(90deg,var(--green),#7be39a); opacity:.9; }
+  .card.down::before{ background:linear-gradient(90deg,var(--red),#ff8a80); opacity:.9; }
   .top{ display:flex; align-items:center; gap:10px; }
   .pulse{ width:12px; height:12px; border-radius:50%; flex:0 0 auto; background:#c7c7cc; position:relative; }
   .pulse.up{ background:var(--green); }
@@ -97,17 +115,17 @@
   .urlrow a:hover{ text-decoration:underline; }
   .badge{ font-size:11px; font-weight:600; color:var(--mut); background:var(--bg2); padding:3px 8px; border-radius:980px; flex:0 0 auto; }
   .tag{ font-size:10px; padding:2px 7px; border-radius:6px; background:var(--bg2); color:var(--faint); flex:0 0 auto; }
-  .icbtn{ border:none; background:var(--bg2); border-radius:8px; width:28px; height:26px; cursor:pointer;
+  .icbtn{ border:none; background:rgba(20,20,45,.06); border-radius:8px; width:28px; height:26px; cursor:pointer;
     font-size:12px; color:var(--mut); flex:0 0 auto; transition:.15s; }
-  .icbtn:hover{ background:var(--blue); color:#fff; }
+  .icbtn:hover{ background:var(--accent); color:#fff; }
   .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .btn{ border:none; border-radius:980px; padding:8px 15px; font-size:13px; font-weight:550; cursor:pointer;
     transition:transform .12s ease, background .2s; font-family:inherit; }
   .btn:active{ transform:scale(.95); }
-  .btn-primary{ background:var(--blue); color:#fff; box-shadow:0 1px 6px rgba(0,113,227,.3); }
-  .btn-primary:hover{ background:var(--blue-d); }
-  .btn-soft{ background:var(--bg2); color:var(--txt); } .btn-soft:hover{ background:#e2e2e5; }
-  .btn-danger{ background:rgba(255,59,48,.1); color:var(--red); } .btn-danger:hover{ background:rgba(255,59,48,.18); }
+  .btn-primary{ background:var(--accent); color:#fff; box-shadow:0 2px 10px rgba(255,90,31,.32); }
+  .btn-primary:hover{ background:var(--accent-d); }
+  .btn-soft{ background:rgba(20,20,45,.06); color:var(--txt); } .btn-soft:hover{ background:rgba(20,20,45,.11); }
+  .btn-danger{ background:rgba(255,69,58,.12); color:var(--red); } .btn-danger:hover{ background:rgba(255,69,58,.2); }
   .btn-ghost{ background:transparent; color:var(--mut); padding:8px 12px; } .btn-ghost:hover{ color:var(--blue); background:var(--bg2); }
   /* система иконок (SVG, не эмодзи) */
   .ic{ width:15px; height:15px; flex:0 0 auto; display:inline-block; vertical-align:-2px; }
@@ -127,11 +145,11 @@
   .tag{ display:inline-flex; align-items:center; gap:4px; } .tag .ic{ width:11px; height:11px; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } .card:hover{ transform:none; } }
   /* акцент-кнопка (Public link, Preview) — мягкая заливка, БЕЗ рамки */
-  .btn-accent{ background:rgba(0,113,227,.10); color:var(--blue); }
-  .btn-accent:hover{ background:rgba(0,113,227,.17); }
+  .btn-accent{ background:rgba(10,132,255,.11); color:var(--blue); }
+  .btn-accent:hover{ background:rgba(10,132,255,.18); }
   .btn .ic{ opacity:.92; }
-  /* :port — технический идентификатор, моноширинный с лёгким тинтом */
-  .badge{ font-family:ui-monospace,"SF Mono",Menlo,monospace; background:rgba(0,113,227,.07); color:#0060c0; }
+  /* :port — технический идентификатор, моноширинный, нейтральный */
+  .badge{ font-family:ui-monospace,"SF Mono",Menlo,monospace; background:rgba(20,20,45,.06); color:var(--mut); letter-spacing:-.02em; }
   .prevwrap{ margin-top:11px; border-radius:14px; overflow:hidden; border:1px solid var(--line);
     background:var(--bg2); height:0; opacity:0; transition:height .3s ease, opacity .3s ease; }
   .prevwrap.open{ height:188px; opacity:1; }
@@ -260,7 +278,7 @@ const DICT={
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
    discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Save",keepAlive:"Keep alive",kaOn:"Staying on",
    whatIs:"What is it?",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",
-   tunnelStart:"Public link",tunnelStop:"Stop link",tunnelUp:"link is coming up…"},
+   tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link (cloudflared) — open this service from your phone or share it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
    copied:"Скопировано",expand:"кликни — крупнее",blocked:"Встроенный просмотр запрещён — открой в новой вкладке",
@@ -270,7 +288,7 @@ const DICT={
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
    discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"Сохранить",keepAlive:"Держать включённым",kaOn:"Держится",
    whatIs:"что это?",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",
-   tunnelStart:"Ссылка",tunnelStop:"Стоп ссылку",tunnelUp:"ссылка поднимается…"},
+   tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку (cloudflared) — открыть сервис с телефона или поделиться"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
    copied:"Copiado",expand:"clic para ampliar",blocked:"No permite incrustar — abre en pestaña nueva",
@@ -464,7 +482,7 @@ function tunnelBtn(port,managed,url,err){ if(!port) return '';
   if(err) return `<span class="note" style="margin:0;color:var(--red)">${esc(err)}</span>`;
   if(managed&&!url) return `<button class="btn btn-soft" onclick="tunnelStop(${port})">${icon('spin','spin')} ${t('tunnelUp')}</button>`;
   if(managed) return `<button class="btn btn-soft" style="--ic:var(--ic-stop)" onclick="tunnelStop(${port})">${icon('x')} ${t('tunnelStop')}</button>`;
-  return `<button class="btn btn-accent" onclick="tunnelStart(${port})">${icon('link')} ${t('tunnelStart')}</button>`; }
+  return `<button class="btn btn-accent" title="${esc(t('tunnelHint'))}" onclick="tunnelStart(${port})">${icon('link')} ${t('tunnelStart')}</button>`; }
 async function delService(name){ if(!confirm(t('confirmDel')))return; const j=await api('/api/service-remove',{name}); toast(j.ok?'✅':'⛔️'); lastSig=''; load(); }
 
 /* меню на карточке */
@@ -538,7 +556,7 @@ function dcard(d){ const col=catColor(d.cat); return `<div class="card disc">
     <div style="margin:7px 0 3px"><span class="catb" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)"><span class="dot"></span>${icon(catIcon(d.cat))} ${esc(d.label||d.cat||'')}</span></div>
     <div class="pid" style="margin:2px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
     <div class="row">
-      <button class="btn ${d.safe===false?'btn-danger':'btn-soft'}" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>
+      <button class="btn btn-soft" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>
       <button class="btn btn-soft" onclick="askAI('${esc(d.command)}',${d.port})">${icon('help')} ${t('whatIs')}</button>
       ${tunnelBtn(d.port,d.tunnelManaged,d.tunnel,d.tunnelError)}
       <button class="btn btn-accent" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">${icon('plus')} ${t('saveBtn')}</button></div></div>`; }
@@ -567,6 +585,15 @@ async function load(){ if(paused||document.hidden)return;
     renderDiscovered(j.discovered||[]);
     $('platwarn').style.display=(j.platform&&j.platform!=='darwin')?'block':'none';
   }catch(e){ $('ts').textContent='—'; } }
+
+/* живой эффект: спотлайт за курсором на карточках + ambient-glow всей страницы */
+let _raf=0,_e=null;
+addEventListener('pointermove',e=>{ _e=e; if(_raf)return; _raf=requestAnimationFrame(()=>{ _raf=0; const ev=_e;
+  document.documentElement.style.setProperty('--gx',(ev.clientX/innerWidth*100).toFixed(1)+'%');
+  document.documentElement.style.setProperty('--gy',(ev.clientY/innerHeight*100).toFixed(1)+'%');
+  const c=ev.target.closest&&ev.target.closest('.card'); if(c){ const r=c.getBoundingClientRect();
+    c.style.setProperty('--mx',((ev.clientX-r.left)/r.width*100).toFixed(1)+'%');
+    c.style.setProperty('--my',((ev.clientY-r.top)/r.height*100).toFixed(1)+'%'); } }); },{passive:true});
 
 $('pause').innerHTML=icon('pause'); fillLangs(); applyI18n(); toggleCmd(); load(); setInterval(load,3000);
 </script>
