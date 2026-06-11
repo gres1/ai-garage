@@ -26,7 +26,7 @@
   }
   .rounded{ font-family:ui-rounded,-apple-system,"SF Pro Rounded",sans-serif; }
   header{ max-width:1180px; margin:0 auto 22px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
-  h1{ font-size:25px; letter-spacing:-.02em; margin:0; font-weight:700; }
+  h1{ font-size:28px; letter-spacing:-.022em; margin:0; font-weight:700; line-height:1.1; }
   .sub{ color:var(--faint); font-size:13px; margin-top:3px; }
   .ring{ position:relative; width:80px; height:80px; flex:0 0 auto; }
   .ring svg{ transform:rotate(-90deg); }
@@ -56,8 +56,8 @@
   .grid{ max-width:1180px; margin:0 auto; display:grid; gap:18px; align-items:start;   /* авто-высота */
          grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); }
   .card{ position:relative; background:var(--card); border:1px solid rgba(0,0,0,.05); border-radius:var(--r);
-    padding:17px 18px 15px; box-shadow:var(--shadow); overflow:hidden;
-    transition:transform .28s cubic-bezier(.2,.7,.2,1), box-shadow .28s ease; }
+    padding:16px 16px 14px; box-shadow:var(--shadow); overflow:hidden;
+    transition:transform .26s cubic-bezier(.2,.7,.2,1), box-shadow .26s ease; }
   .card:hover{ transform:translateY(-5px) scale(1.012); box-shadow:var(--shadow-h); }
   .card::before{ content:""; position:absolute; left:0; top:0; right:0; height:4px; background:var(--faint); opacity:.5; }
   .card.up::before{ background:linear-gradient(90deg,var(--green),#7be39a); }
@@ -90,7 +90,7 @@
     border-radius:8px; font-size:13px; cursor:pointer; color:var(--txt); font-family:inherit; }
   .menu button:hover{ background:var(--bg2); }
   .menu button.del{ color:var(--red); }
-  .note{ color:var(--mut); font-size:12.5px; margin:9px 0 10px; line-height:1.4; }
+  .note{ color:#48484a; font-size:12.5px; margin:8px 0; line-height:1.5; }
   .urls{ display:flex; flex-direction:column; gap:6px; margin-bottom:11px; }
   .urlrow{ display:flex; align-items:center; gap:6px; }
   .urlrow a{ color:var(--blue); text-decoration:none; font-size:13px; word-break:break-all; flex:1; }
@@ -126,27 +126,12 @@
   .catb .dot{ width:6px; height:6px; border-radius:50%; flex:0 0 auto; background:var(--cat); }
   .tag{ display:inline-flex; align-items:center; gap:4px; } .tag .ic{ width:11px; height:11px; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } .card:hover{ transform:none; } }
-  /* цветные тинт-кнопки (иконка наследует цвет → не плоско) */
-  .bt-blue{ background:rgba(0,113,227,.10); color:var(--blue); } .bt-blue:hover{ background:rgba(0,113,227,.18); }
-  .bt-purple{ background:rgba(124,77,255,.12); color:#7c4dff; } .bt-purple:hover{ background:rgba(124,77,255,.20); }
-  .bt-green{ background:rgba(52,199,89,.16); color:#1a7f37; } .bt-green:hover{ background:rgba(52,199,89,.26); }
-  .bt-indigo{ background:rgba(91,108,255,.12); color:#4b5cff; } .bt-indigo:hover{ background:rgba(91,108,255,.20); }
-  .bt-orange{ background:rgba(255,149,0,.16); color:#c46a00; } .bt-orange:hover{ background:rgba(255,149,0,.26); }
-  /* выделенные ключевые действия (Public link, Preview): tinted-fill с цветом действия */
-  .btn-tint{ background:var(--tint-bg); color:var(--tint-fg); --ic:var(--tint-fg); font-weight:600;
-    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--tint-fg) 20%, transparent); }
-  .btn-tint:hover{ background:color-mix(in srgb, var(--tint-fg) 16%, transparent); }
-  .btn-link{ --tint-bg:rgba(94,92,230,.12); --tint-fg:#5e5ce6; }
-  .btn-preview{ --tint-bg:rgba(0,113,227,.10); --tint-fg:#0071e3; }
-  /* иконка реагирует на hover (смысловая микро-анимация) */
-  .btn .ic{ opacity:.95; transition:transform .2s cubic-bezier(.2,.7,.2,1); }
-  .btn:hover .ic{ transform:scale(1.12); }
-  .btn-restart:hover .ic{ transform:rotate(-65deg); }
-  /* появление карточек со stagger */
-  @keyframes cardIn{ from{ opacity:0; transform:translateY(8px) } to{ opacity:1; transform:none } }
-  .card{ animation:cardIn .35s cubic-bezier(.2,.7,.2,1) both; }
+  /* акцент-кнопка (Public link, Preview) — мягкая заливка, БЕЗ рамки */
+  .btn-accent{ background:rgba(0,113,227,.10); color:var(--blue); }
+  .btn-accent:hover{ background:rgba(0,113,227,.17); }
+  .btn .ic{ opacity:.92; }
   /* :port — технический идентификатор, моноширинный с лёгким тинтом */
-  .badge{ font-family:ui-monospace,"SF Mono",Menlo,monospace; background:rgba(0,113,227,.08); color:#0060c0; }
+  .badge{ font-family:ui-monospace,"SF Mono",Menlo,monospace; background:rgba(0,113,227,.07); color:#0060c0; }
   .prevwrap{ margin-top:11px; border-radius:14px; overflow:hidden; border:1px solid var(--line);
     background:var(--bg2); height:0; opacity:0; transition:height .3s ease, opacity .3s ease; }
   .prevwrap.open{ height:188px; opacity:1; }
@@ -479,7 +464,7 @@ function tunnelBtn(port,managed,url,err){ if(!port) return '';
   if(err) return `<span class="note" style="margin:0;color:var(--red)">${esc(err)}</span>`;
   if(managed&&!url) return `<button class="btn btn-soft" onclick="tunnelStop(${port})">${icon('spin','spin')} ${t('tunnelUp')}</button>`;
   if(managed) return `<button class="btn btn-soft" style="--ic:var(--ic-stop)" onclick="tunnelStop(${port})">${icon('x')} ${t('tunnelStop')}</button>`;
-  return `<button class="btn btn-tint btn-link" onclick="tunnelStart(${port})">${icon('link')} ${t('tunnelStart')}</button>`; }
+  return `<button class="btn btn-accent" onclick="tunnelStart(${port})">${icon('link')} ${t('tunnelStart')}</button>`; }
 async function delService(name){ if(!confirm(t('confirmDel')))return; const j=await api('/api/service-remove',{name}); toast(j.ok?'✅':'⛔️'); lastSig=''; load(); }
 
 /* меню на карточке */
@@ -522,13 +507,13 @@ function card(s){ const cls=s.up?'up':'down';
   const ctrls=s.hasControls?`<div class="row" style="margin-top:4px">
       <button class="btn btn-primary" onclick="act('${esc(s.name)}','start')">${icon('play')} ${t('start')}</button>
       <button class="btn btn-soft" style="--ic:var(--ic-stop)" onclick="act('${esc(s.name)}','stop')">${icon('stop')} ${t('stop')}</button>
-      <button class="btn btn-soft btn-restart" style="--ic:var(--ic-restart)" onclick="act('${esc(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>
-      <button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" style="${s.keepAlive?'':'--ic:var(--ic-keepalive)'}" onclick="toggleKeepAlive('${esc(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>
+      <button class="btn btn-soft" onclick="act('${esc(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>
+      <button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" onclick="toggleKeepAlive('${esc(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
-      <button class="btn btn-tint btn-preview" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`
+      <button class="btn btn-accent" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`
     :`<div class="row" style="margin-top:4px"><span class="note" style="margin:0">${t('managed')}</span>
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
-      <button class="btn btn-tint btn-preview" style="margin-left:auto" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`;
+      <button class="btn btn-accent" style="margin-left:auto" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`;
   const tunnel=s.tunnel?`<div class="urlrow"><span class="tag">${icon('phone')} ${t('phone')}</span>
       <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a><button class="icbtn" onclick="copy('${esc(s.tunnel)}')">${icon('copy')}</button></div>`:'';
   return `<div class="card ${cls}" data-name="${esc(s.name)}">
@@ -553,10 +538,10 @@ function dcard(d){ const col=catColor(d.cat); return `<div class="card disc">
     <div style="margin:7px 0 3px"><span class="catb" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)"><span class="dot"></span>${icon(catIcon(d.cat))} ${esc(d.label||d.cat||'')}</span></div>
     <div class="pid" style="margin:2px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
     <div class="row">
-      <button class="btn ${d.safe===false?'btn-danger':'btn-soft'}" style="${d.safe===false?'':'--ic:var(--ic-zap)'}" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>
-      <button class="btn btn-soft" style="--ic:var(--ic-help)" onclick="askAI('${esc(d.command)}',${d.port})">${icon('help')} ${t('whatIs')}</button>
+      <button class="btn ${d.safe===false?'btn-danger':'btn-soft'}" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>
+      <button class="btn btn-soft" onclick="askAI('${esc(d.command)}',${d.port})">${icon('help')} ${t('whatIs')}</button>
       ${tunnelBtn(d.port,d.tunnelManaged,d.tunnel,d.tunnelError)}
-      <button class="btn btn-soft" style="--ic:var(--ic-save)" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">${icon('plus')} ${t('saveBtn')}</button></div></div>`; }
+      <button class="btn btn-accent" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">${icon('plus')} ${t('saveBtn')}</button></div></div>`; }
 function renderDiscovered(list){ const w=$('disc-wrap');
   if(!list||!list.length){ w.style.display='none'; return; }
   w.style.display='block'; $('disc-n').textContent=list.length; $('disc-grid').innerHTML=list.map(dcard).join(''); }

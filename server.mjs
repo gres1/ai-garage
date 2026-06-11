@@ -4,6 +4,7 @@
 import http from "node:http";
 import { exec, execFile, spawn } from "node:child_process";
 import { readFile, writeFile, mkdir, unlink, stat, rename } from "node:fs/promises";
+import { openSync, readFileSync } from "node:fs";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -180,35 +181,42 @@ async function keepAliveSet(svc, enable) {
   }
 }
 
-// ── Туннель-менеджер: публичная ссылка на localhost (cloudflared; задел под ngrok/ssh) ──
-const tunnels = new Map(); // port -> { provider, child, url, error }
+// ── Туннель-менеджер: публичная ссылка (cloudflared), ПЕРЕЖИВАЕТ рестарт панели ──
+// cloudflared запускается detached + состояние в файле + лог → панель перезапустилась, туннель жив.
+const TUN_STATE = join(CFG_DIR, "tunnels.json");
 const TUNNEL_RE = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/;
-function startTunnel(port, provider = "cloudflared") {
+const tunLog = (p) => `/tmp/aigarage-tunnel-${p}.log`;
+const procAlive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+async function loadTun() { try { return JSON.parse(await readFile(TUN_STATE, "utf8")); } catch { return {}; } }
+async function saveTun(st) { await mkdir(CFG_DIR, { recursive: true }); await writeFile(TUN_STATE, JSON.stringify(st, null, 2)); }
+const readTunUrl = (log) => { try { const m = readFileSync(log, "utf8").match(TUNNEL_RE); return m ? m[0] : null; } catch { return null; } };
+
+async function startTunnel(port, provider = "cloudflared") {
   const p = toPort(port);
   if (!p) return { ok: false, error: "некорректный порт" };
-  if (tunnels.has(p)) return { ok: true, note: "туннель уже поднят" };
-  let child;
-  if (provider !== "cloudflared") return { ok: false, error: "провайдер пока не поддержан (есть cloudflared)" };
+  if (provider !== "cloudflared") return { ok: false, error: "провайдер пока не поддержан (cloudflared)" };
+  const st = await loadTun();
+  if (st[p] && procAlive(st[p].pid)) return { ok: true, note: "туннель уже поднят" };
+  const log = tunLog(p);
+  let fd, child;
+  try { fd = openSync(log, "w"); } catch { return { ok: false, error: "не открыть лог-файл" }; }
   try {
-    child = spawn("cloudflared", ["tunnel", "--url", `http://localhost:${p}`, "--no-autoupdate"], { stdio: ["ignore", "pipe", "pipe"] });
-  } catch { return { ok: false, error: "не удалось запустить cloudflared" }; }
-  const rec = { provider, child, url: null, error: null };
-  tunnels.set(p, rec);
-  const onData = (buf) => { const m = String(buf).match(TUNNEL_RE); if (m && !rec.url) rec.url = m[0]; };
-  child.stdout?.on("data", onData);
-  child.stderr?.on("data", onData);
-  child.on("error", (e) => { rec.error = e.code === "ENOENT" ? "cloudflared не установлен — brew install cloudflared" : e.message; });
-  child.on("exit", () => { tunnels.delete(p); });
+    child = spawn("cloudflared", ["tunnel", "--url", `http://localhost:${p}`, "--no-autoupdate"], { stdio: ["ignore", fd, fd], detached: true });
+  } catch { return { ok: false, error: "cloudflared не запустился — установлен? brew install cloudflared" }; }
+  child.on("error", () => {});
+  child.unref();
+  st[p] = { provider, log, pid: child.pid };
+  await saveTun(st);
   return { ok: true, note: "туннель поднимается…" };
 }
-function stopTunnel(port) {
-  const rec = tunnels.get(toPort(port));
-  if (!rec) return { ok: true, note: "туннеля нет" };
-  try { rec.child.kill("SIGTERM"); } catch {}
-  tunnels.delete(toPort(port));
+async function stopTunnel(port) {
+  const p = toPort(port);
+  const st = await loadTun();
+  if (st[p]) { try { process.kill(st[p].pid, "SIGTERM"); } catch {} delete st[p]; await saveTun(st); }
   return { ok: true, note: "туннель остановлен" };
 }
-const tunnelInfo = (port) => { const r = tunnels.get(toPort(port)); return r ? { url: r.url, provider: r.provider, error: r.error, managed: true } : null; };
+// синхронный info по заранее загруженному состоянию (для /api/status)
+const tunnelInfoFrom = (st, port) => { const r = st[toPort(port)]; return r ? { url: readTunUrl(r.log), provider: r.provider, managed: true } : null; };
 
 function sendJson(res, code, obj) {
   res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
@@ -275,8 +283,12 @@ const server = http.createServer(async (req, res) => {
     const services = await loadServices();
     const all = await discoverPorts();                       // один lsof на весь запрос
     const listening = new Set(all.map((d) => d.port));
+    const tun = await loadTun();                             // активные туннели (переживают рестарт)
+    let tunChanged = false;
+    for (const k of Object.keys(tun)) { if (!procAlive(tun[k].pid)) { delete tun[k]; tunChanged = true; } }
+    if (tunChanged) await saveTun(tun);
     const rows = await Promise.all(services.map(async (s) => {
-      const ti = tunnelInfo(s.port);
+      const ti = tunnelInfoFrom(tun, s.port);
       return {
         name: s.name, type: s.type, port: s.port, url: s.url, note: s.note || "", host: s.host || "mac",
         up: !!s.port && listening.has(toPort(s.port)), tunnel: ti?.url || await tunnelUrl(s),
@@ -287,7 +299,7 @@ const server = http.createServer(async (req, res) => {
     }));
     const registeredPorts = new Set(services.map((s) => s.port).filter(Boolean));
     const discovered = all.filter((d) => !registeredPorts.has(d.port) && d.port !== PORT)
-      .map((d) => { const ti = tunnelInfo(d.port); return { ...d, ...classifyProcess(d.command, d.port), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
+      .map((d) => { const ti = tunnelInfoFrom(tun, d.port); return { ...d, ...classifyProcess(d.command, d.port), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
     return sendJson(res, 200, { services: rows, discovered, platform: process.platform, ts: Date.now(), authOn: !!cfg.token });
   }
 
@@ -310,12 +322,12 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "POST" && url.pathname === "/api/tunnel-start") {
     const { port, provider } = await readBody(req);
-    return sendJson(res, 200, startTunnel(port, provider || "cloudflared"));
+    return sendJson(res, 200, await startTunnel(port, provider || "cloudflared"));
   }
 
   if (req.method === "POST" && url.pathname === "/api/tunnel-stop") {
     const { port } = await readBody(req);
-    return sendJson(res, 200, stopTunnel(port));
+    return sendJson(res, 200, await stopTunnel(port));
   }
 
   if (req.method === "POST" && url.pathname === "/api/keepalive") {
