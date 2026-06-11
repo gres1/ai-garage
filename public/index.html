@@ -6,11 +6,13 @@
 <title>AI Garage</title>
 <style>
   :root{
-    --bg:#f5f5f7; --bg2:#ececed; --card:#ffffff; --txt:#1d1d1f; --mut:#6e6e73; --faint:#86868b;
+    --bg:#f5f5f7; --bg2:#ececed; --card:#ffffff; --txt:#1d1d1f; --mut:#5b5b60; --faint:#76767b;
     --line:#e3e3e6; --blue:#0071e3; --blue-d:#0060c0; --green:#34c759; --red:#ff3b30;
+    --ic-start:#34c759; --ic-stop:#ff3b30; --ic-restart:#0a84ff; --ic-link:#5e5ce6; --ic-preview:#0071e3;
+    --ic-zap:#ff9f0a; --ic-keepalive:#30b0c7; --ic-help:#0071e3; --ic-save:#1a7f37; --ic-trash:#ff3b30;
     --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
     --shadow-h:0 6px 14px rgba(0,0,0,.08), 0 20px 48px rgba(0,0,0,.12);
-    --r:22px;
+    --r:18px;
   }
   *{ box-sizing:border-box; }
   html,body{ margin:0; }
@@ -117,11 +119,34 @@
   /* a11y: видимый фокус */
   button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible{ outline:2px solid var(--blue); outline-offset:2px; }
   /* профессиональный бейдж категории: точка + иконка + подпись */
-  .catb{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; padding:3px 9px 3px 7px; border-radius:980px; }
+  .catb{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; padding:4px 10px 4px 8px; border-radius:980px;
+    background:var(--cat-bg); color:color-mix(in srgb, var(--cat) 72%, #1d1d1f); --ic:var(--cat);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--cat) 22%, transparent); }
   .catb .ic{ width:13px; height:13px; }
-  .catb .dot{ width:6px; height:6px; border-radius:50%; flex:0 0 auto; }
+  .catb .dot{ width:6px; height:6px; border-radius:50%; flex:0 0 auto; background:var(--cat); }
   .tag{ display:inline-flex; align-items:center; gap:4px; } .tag .ic{ width:11px; height:11px; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } .card:hover{ transform:none; } }
+  /* цветные тинт-кнопки (иконка наследует цвет → не плоско) */
+  .bt-blue{ background:rgba(0,113,227,.10); color:var(--blue); } .bt-blue:hover{ background:rgba(0,113,227,.18); }
+  .bt-purple{ background:rgba(124,77,255,.12); color:#7c4dff; } .bt-purple:hover{ background:rgba(124,77,255,.20); }
+  .bt-green{ background:rgba(52,199,89,.16); color:#1a7f37; } .bt-green:hover{ background:rgba(52,199,89,.26); }
+  .bt-indigo{ background:rgba(91,108,255,.12); color:#4b5cff; } .bt-indigo:hover{ background:rgba(91,108,255,.20); }
+  .bt-orange{ background:rgba(255,149,0,.16); color:#c46a00; } .bt-orange:hover{ background:rgba(255,149,0,.26); }
+  /* выделенные ключевые действия (Public link, Preview): tinted-fill с цветом действия */
+  .btn-tint{ background:var(--tint-bg); color:var(--tint-fg); --ic:var(--tint-fg); font-weight:600;
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--tint-fg) 20%, transparent); }
+  .btn-tint:hover{ background:color-mix(in srgb, var(--tint-fg) 16%, transparent); }
+  .btn-link{ --tint-bg:rgba(94,92,230,.12); --tint-fg:#5e5ce6; }
+  .btn-preview{ --tint-bg:rgba(0,113,227,.10); --tint-fg:#0071e3; }
+  /* иконка реагирует на hover (смысловая микро-анимация) */
+  .btn .ic{ opacity:.95; transition:transform .2s cubic-bezier(.2,.7,.2,1); }
+  .btn:hover .ic{ transform:scale(1.12); }
+  .btn-restart:hover .ic{ transform:rotate(-65deg); }
+  /* появление карточек со stagger */
+  @keyframes cardIn{ from{ opacity:0; transform:translateY(8px) } to{ opacity:1; transform:none } }
+  .card{ animation:cardIn .35s cubic-bezier(.2,.7,.2,1) both; }
+  /* :port — технический идентификатор, моноширинный с лёгким тинтом */
+  .badge{ font-family:ui-monospace,"SF Mono",Menlo,monospace; background:rgba(0,113,227,.08); color:#0060c0; }
   .prevwrap{ margin-top:11px; border-radius:14px; overflow:hidden; border:1px solid var(--line);
     background:var(--bg2); height:0; opacity:0; transition:height .3s ease, opacity .3s ease; }
   .prevwrap.open{ height:188px; opacity:1; }
@@ -164,7 +189,7 @@
     </div>
     <div>
       <h1 class="rounded" data-i="title">Localhost Control</h1>
-      <div class="sub">🔄 3s · <span id="ts"></span></div>
+      <div class="sub"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.5;vertical-align:-2px"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> 3s · <span id="ts"></span></div>
       <div class="legend">
         <div><span class="ld" style="background:var(--green)"></span> <span id="upc">0</span> <span data-i="working">работает</span></div>
         <div><span class="ld" style="background:var(--red)"></span> <span id="downc">0</span> <span data-i="stopped">выключено</span></div>
@@ -182,12 +207,12 @@
     </div>
   </header>
 
-  <div id="platwarn" style="display:none;max-width:1180px;margin:0 auto 16px;background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.3);border-radius:14px;padding:12px 16px;font-size:13px;color:#9a6a00">⚠️ <span data-i="macOnly">AI Garage рассчитан на macOS.</span></div>
+  <div id="platwarn" style="display:none;max-width:1180px;margin:0 auto 16px;background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.3);border-radius:14px;padding:12px 16px;font-size:13px;color:#9a6a00"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg> <span data-i="macOnly">AI Garage рассчитан на macOS.</span></div>
 
   <div class="grid" id="grid"></div>
 
   <div id="disc-wrap" style="max-width:1180px;margin:26px auto 0;display:none">
-    <div style="font-size:14px;color:var(--mut);margin:0 0 12px 2px">🔍 <span data-i="discovered">Обнаружено</span> · <span id="disc-n"></span> <span style="color:var(--faint)" data-i="discHint">(запущено, но не сохранено)</span></div>
+    <div style="font-size:14px;color:var(--mut);margin:0 0 12px 2px"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.6;vertical-align:-2px"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg> <span data-i="discovered">Обнаружено</span> · <span id="disc-n"></span> <span style="color:var(--faint)" data-i="discHint">(запущено, но не сохранено)</span></div>
     <div class="grid" id="disc-grid"></div>
   </div>
 
@@ -390,32 +415,32 @@ const $=id=>document.getElementById(id);
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl=u=>{try{const p=new URL(u,location.origin);return ['http:','https:'].includes(p.protocol)?p.href:'#';}catch{return '#';}};
 const ICONS={
- play:'<path d="M7 4v16l13-8z" fill="currentColor" stroke="none"/>',
- stop:'<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>',
+ play:'<path d="M7 4v16l13-8z" fill="var(--ic,currentColor)" stroke="none"/>',
+ stop:'<rect x="6" y="6" width="12" height="12" rx="2" fill="var(--ic,currentColor)" stroke="none"/>',
  restart:'<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>',
  keepalive:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
- zap:'<path d="M13 2L3 14h7l-1 8 10-12h-7z" fill="currentColor" stroke="none"/>',
- help:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".7" fill="currentColor" stroke="none"/>',
+ zap:'<path d="M13 2L3 14h7l-1 8 10-12h-7z" fill="var(--ic,currentColor)" stroke="none"/>',
+ help:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".7" fill="var(--ic,currentColor)" stroke="none"/>',
  plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
  link:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
  x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
  spin:'<path d="M21 12a9 9 0 1 1-6.2-8.6"/>',
  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
- more:'<circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none"/>',
+ more:'<circle cx="12" cy="5" r="1.5" fill="var(--ic,currentColor)" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="var(--ic,currentColor)" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="var(--ic,currentColor)" stroke="none"/>',
  trash:'<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6"/>',
  phone:'<rect x="7" y="2" width="10" height="20" rx="2.5"/><line x1="11" y1="18" x2="13" y2="18"/>',
- pause:'<rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/>',
+ pause:'<rect x="6" y="4" width="4" height="16" rx="1" fill="var(--ic,currentColor)" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="var(--ic,currentColor)" stroke="none"/>',
  cpu:'<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/>',
  database:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
  box:'<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/>',
  wrench:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.8 2.8-2.1-2.1 2.8-2.8z"/>',
- bot:'<rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="9" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1" fill="currentColor" stroke="none"/>',
+ bot:'<rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="9" cy="14" r="1" fill="var(--ic,currentColor)" stroke="none"/><circle cx="15" cy="14" r="1" fill="var(--ic,currentColor)" stroke="none"/>',
  cloud:'<path d="M17.5 19a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.6-1.5A4 4 0 0 0 6.5 19z"/>',
  monitor:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/>',
- warn:'<path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".7" fill="currentColor" stroke="none"/>'
+ warn:'<path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".7" fill="var(--ic,currentColor)" stroke="none"/>'
 };
-const icon=(n,cls='')=>`<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`;
+const icon=(n,cls='',sw=2)=>`<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="var(--ic,currentColor)" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`;
 const catIcon=c=>({system:'cpu',db:'database',app:'box',dev:'wrench',agent:'bot',unknown:'help'}[c]||'help');
 const toast=m=>{const e=$('toast');e.textContent=m;e.classList.add('show');clearTimeout(e._);e._=setTimeout(()=>e.classList.remove('show'),2200);};
 const copy=v=>navigator.clipboard.writeText(v).then(()=>toast(t('copied')+': '+v));
@@ -453,8 +478,8 @@ async function tunnelStop(port){ const j=await api('/api/tunnel-stop',{port}); t
 function tunnelBtn(port,managed,url,err){ if(!port) return '';
   if(err) return `<span class="note" style="margin:0;color:var(--red)">${esc(err)}</span>`;
   if(managed&&!url) return `<button class="btn btn-soft" onclick="tunnelStop(${port})">${icon('spin','spin')} ${t('tunnelUp')}</button>`;
-  if(managed) return `<button class="btn btn-soft" onclick="tunnelStop(${port})">${icon('x')} ${t('tunnelStop')}</button>`;
-  return `<button class="btn btn-ghost" onclick="tunnelStart(${port})">${icon('link')} ${t('tunnelStart')}</button>`; }
+  if(managed) return `<button class="btn btn-soft" style="--ic:var(--ic-stop)" onclick="tunnelStop(${port})">${icon('x')} ${t('tunnelStop')}</button>`;
+  return `<button class="btn btn-tint btn-link" onclick="tunnelStart(${port})">${icon('link')} ${t('tunnelStart')}</button>`; }
 async function delService(name){ if(!confirm(t('confirmDel')))return; const j=await api('/api/service-remove',{name}); toast(j.ok?'✅':'⛔️'); lastSig=''; load(); }
 
 /* меню на карточке */
@@ -496,14 +521,14 @@ async function saveService(){
 function card(s){ const cls=s.up?'up':'down';
   const ctrls=s.hasControls?`<div class="row" style="margin-top:4px">
       <button class="btn btn-primary" onclick="act('${esc(s.name)}','start')">${icon('play')} ${t('start')}</button>
-      <button class="btn btn-danger" onclick="act('${esc(s.name)}','stop')">${icon('stop')} ${t('stop')}</button>
-      <button class="btn btn-soft" onclick="act('${esc(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>
-      <button class="btn ${s.keepAlive?'btn-primary':'btn-ghost'}" onclick="toggleKeepAlive('${esc(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>
+      <button class="btn btn-soft" style="--ic:var(--ic-stop)" onclick="act('${esc(s.name)}','stop')">${icon('stop')} ${t('stop')}</button>
+      <button class="btn btn-soft btn-restart" style="--ic:var(--ic-restart)" onclick="act('${esc(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>
+      <button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" style="${s.keepAlive?'':'--ic:var(--ic-keepalive)'}" onclick="toggleKeepAlive('${esc(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
-      <button class="btn btn-ghost" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`
+      <button class="btn btn-tint btn-preview" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`
     :`<div class="row" style="margin-top:4px"><span class="note" style="margin:0">${t('managed')}</span>
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
-      <button class="btn btn-ghost" style="margin-left:auto" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`;
+      <button class="btn btn-tint btn-preview" style="margin-left:auto" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`;
   const tunnel=s.tunnel?`<div class="urlrow"><span class="tag">${icon('phone')} ${t('phone')}</span>
       <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a><button class="icbtn" onclick="copy('${esc(s.tunnel)}')">${icon('copy')}</button></div>`:'';
   return `<div class="card ${cls}" data-name="${esc(s.name)}">
@@ -520,19 +545,18 @@ function card(s){ const cls=s.up?'up':'down';
       ${tunnel}</div>
     ${ctrls}<div class="prevwrap" data-prev="${esc(s.name)}"></div></div>`; }
 
-const catColor=c=>({system:'#8e8e93',db:'#ff3b30',app:'#0071e3',dev:'#34c759',agent:'#a06bff',unknown:'#8e8e93'}[c]||'#8e8e93');
-const catEmoji=c=>({system:'⚙️',db:'🗄',app:'📦',dev:'🛠',agent:'🤖',unknown:'❓'}[c]||'❓');
+const catColor=c=>({system:'#8a8a8e',db:'#e8503a',app:'#0a84ff',dev:'#30b14a',agent:'#a06bff',unknown:'#8a8a8e'}[c]||'#8a8a8e');
 function askAI(cmd,port){ copy(`Что за процесс «${cmd}» слушает порт ${port} на моём Mac? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.`); toast('Промпт скопирован — вставь своему ИИ'); }
 function dcard(d){ const col=catColor(d.cat); return `<div class="card disc">
     <div class="top"><span class="pulse up"></span><span class="cmd">${esc(d.command)}</span>
       <span class="hostb" style="margin-left:auto">:${d.port}</span></div>
-    <div style="margin:7px 0 3px"><span class="catb" style="background:${col}1f;color:${col}">${icon(catIcon(d.cat))} ${esc(d.label||d.cat||'')}</span></div>
+    <div style="margin:7px 0 3px"><span class="catb" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)"><span class="dot"></span>${icon(catIcon(d.cat))} ${esc(d.label||d.cat||'')}</span></div>
     <div class="pid" style="margin:2px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
     <div class="row">
-      <button class="btn ${d.safe===false?'btn-danger':'btn-soft'}" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>
-      <button class="btn btn-ghost" onclick="askAI('${esc(d.command)}',${d.port})">${icon('help')} ${t('whatIs')}</button>
+      <button class="btn ${d.safe===false?'btn-danger':'btn-soft'}" style="${d.safe===false?'':'--ic:var(--ic-zap)'}" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>
+      <button class="btn btn-soft" style="--ic:var(--ic-help)" onclick="askAI('${esc(d.command)}',${d.port})">${icon('help')} ${t('whatIs')}</button>
       ${tunnelBtn(d.port,d.tunnelManaged,d.tunnel,d.tunnelError)}
-      <button class="btn btn-ghost" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">${icon('plus')} ${t('saveBtn')}</button></div></div>`; }
+      <button class="btn btn-soft" style="--ic:var(--ic-save)" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">${icon('plus')} ${t('saveBtn')}</button></div></div>`; }
 function renderDiscovered(list){ const w=$('disc-wrap');
   if(!list||!list.length){ w.style.display='none'; return; }
   w.style.display='block'; $('disc-n').textContent=list.length; $('disc-grid').innerHTML=list.map(dcard).join(''); }
