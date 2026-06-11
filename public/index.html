@@ -233,7 +233,8 @@ const DICT={
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
    discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Save",keepAlive:"Keep alive",kaOn:"Staying on",
-   whatIs:"What is it?",macOnly:"AI Garage is built for macOS — some features may be limited on this system."},
+   whatIs:"What is it?",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",
+   tunnelStart:"Public link",tunnelStop:"Stop link",tunnelUp:"link is coming up…"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
    copied:"Скопировано",expand:"кликни — крупнее",blocked:"Встроенный просмотр запрещён — открой в новой вкладке",
@@ -242,7 +243,8 @@ const DICT={
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
    discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"Сохранить",keepAlive:"Держать включённым",kaOn:"Держится",
-   whatIs:"что это?",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно."},
+   whatIs:"что это?",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",
+   tunnelStart:"Ссылка",tunnelStop:"Стоп ссылку",tunnelUp:"ссылка поднимается…"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
    copied:"Copiado",expand:"clic para ampliar",blocked:"No permite incrustar — abre en pestaña nueva",
@@ -402,6 +404,13 @@ async function killPort(port){
     : `Освободить порт ${port}? Процесс будет остановлен.`;
   if(!confirm(msg)) { closeMenus(); return; }
   const j=await api('/api/kill-port',{port}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); setTimeout(load,800); }
+async function tunnelStart(port){ toast('Поднимаю туннель…'); const j=await api('/api/tunnel-start',{port}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; setTimeout(load,1500); }
+async function tunnelStop(port){ const j=await api('/api/tunnel-stop',{port}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; setTimeout(load,600); }
+function tunnelBtn(port,managed,url,err){ if(!port) return '';
+  if(err) return `<span class="note" style="margin:0;color:var(--red)">${esc(err)}</span>`;
+  if(managed&&!url) return `<button class="btn btn-soft" onclick="tunnelStop(${port})">⏳ ${t('tunnelUp')}</button>`;
+  if(managed) return `<button class="btn btn-soft" onclick="tunnelStop(${port})">⏹ ${t('tunnelStop')}</button>`;
+  return `<button class="btn btn-ghost" onclick="tunnelStart(${port})">🔗 ${t('tunnelStart')}</button>`; }
 async function delService(name){ if(!confirm(t('confirmDel')))return; const j=await api('/api/service-remove',{name}); toast(j.ok?'✅':'⛔️'); lastSig=''; load(); }
 
 /* меню на карточке */
@@ -446,8 +455,10 @@ function card(s){ const cls=s.up?'up':'down';
       <button class="btn btn-danger" onclick="act('${esc(s.name)}','stop')">■ ${t('stop')}</button>
       <button class="btn btn-soft" onclick="act('${esc(s.name)}','restart')">⟳ ${t('restart')}</button>
       <button class="btn ${s.keepAlive?'btn-primary':'btn-ghost'}" onclick="toggleKeepAlive('${esc(s.name)}',${!s.keepAlive})">🔁 ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>
+      ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
       <button class="btn btn-ghost" onclick="togglePreview('${esc(s.name)}')">👁 ${t('preview')}</button></div>`
     :`<div class="row" style="margin-top:4px"><span class="note" style="margin:0">${t('managed')}</span>
+      ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
       <button class="btn btn-ghost" style="margin-left:auto" onclick="togglePreview('${esc(s.name)}')">👁 ${t('preview')}</button></div>`;
   const tunnel=s.tunnel?`<div class="urlrow"><span class="tag">📱 ${t('phone')}</span>
       <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a><button class="icbtn" onclick="copy('${esc(s.tunnel)}')">⧉</button></div>`:'';
@@ -476,6 +487,7 @@ function dcard(d){ const col=catColor(d.cat); return `<div class="card disc">
     <div class="row">
       <button class="btn ${d.safe===false?'btn-danger':'btn-soft'}" onclick="killPort(${d.port})">🧹 ${t('freePort')}</button>
       <button class="btn btn-ghost" onclick="askAI('${esc(d.command)}',${d.port})">🤔 ${t('whatIs')}</button>
+      ${tunnelBtn(d.port,d.tunnelManaged,d.tunnel,d.tunnelError)}
       <button class="btn btn-ghost" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">＋ ${t('saveBtn')}</button></div></div>`; }
 function renderDiscovered(list){ const w=$('disc-wrap');
   if(!list||!list.length){ w.style.display='none'; return; }
@@ -497,7 +509,7 @@ function updateHeader(){ const up=DATA.filter(s=>s.up).length,tot=DATA.length;
 async function load(){ if(paused||document.hidden)return;
   try{ const r=await fetch('/api/status'); const j=await r.json(); DATA=j.services; authOn=j.authOn;
     $('ts').textContent=new Date(j.ts).toLocaleTimeString();
-    const sig=DATA.map(s=>s.name+s.hasControls).join('|')+'#'+$('q').value;
+    const sig=DATA.map(s=>s.name+s.hasControls+(s.tunnelManaged?1:0)+(s.tunnel||'')+(s.keepAlive?1:0)).join('|')+'#'+$('q').value;
     if(sig!==lastSig){ lastSig=sig; render(); } else patch();
     renderDiscovered(j.discovered||[]);
     $('platwarn').style.display=(j.platform&&j.platform!=='darwin')?'block':'none';
