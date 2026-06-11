@@ -1,0 +1,83 @@
+# 🎛 Localhost Control
+
+Простая визуальная панель управления локальными сервисами — без терминала. Для тех, кто гоняет проекты на localhost (dev-серверы, туннели, боты) и не хочет лезть в консоль.
+
+**Открыть:** http://localhost:7777 (поднимается сама через launchd).
+
+## Установка
+```bash
+# запустить без установки:
+npx localhost-control
+# или поставить глобально:
+npm i -g localhost-control && localhost-control
+```
+Открой http://localhost:7777. Лицензия — **MIT** (бесплатно, можно форкать и использовать, в т.ч. коммерчески). Без зависимостей (нужен только Node ≥18).
+
+![screenshot](docs/screenshot.png)
+
+## Возможности
+- 🟢/🔴 **Статус** каждого сервиса (проверка порта), автообновление каждые 3 сек.
+- ▶ ■ ⟳ **Старт / Стоп / Рестарт** в один клик (Apple-стиль).
+- 🌍 **12 языков** (EN, RU, ES, PT, FR, DE, IT, ZH, JA, KO, TR, UK) — переключатель в шапке.
+- 👁 **Живое превью** страницы прямо в карточке + крупный просмотр в модалке (без открытия вкладки).
+- 📱 **Ссылка туннеля** (cloudflared) парсится из лога, кнопка «Копировать».
+- ➕ **Добавить сервис из UI** — форма, без ручного редактирования JSON.
+- 🧹 **Освободить порт** — убить процесс, висящий на порту («port already in use»).
+- 🔎 Поиск, пауза автообновления, кольцо-сводка «сколько работает».
+
+## Как устроено
+- `server.mjs` — Node-сервер без зависимостей (только встроенные модули). Слушает **только `127.0.0.1:7777`**.
+- `public/index.html` — UI (vanilla, i18n).
+- Реестр сервисов: `~/.config/localhost-control/services.json`.
+- Конфиг (опц.): `~/.config/localhost-control/config.json`.
+
+### API
+| Метод | Путь | Что делает |
+|---|---|---|
+| GET | `/api/status` | статус всех сервисов + ссылки туннелей |
+| POST | `/api/start \| /stop \| /restart` | `{name}` |
+| POST | `/api/kill-port` | `{port}` — освободить порт |
+| POST | `/api/service-add` | `{service}` — добавить в реестр |
+| POST | `/api/service-remove` | `{name}` — удалить из реестра |
+
+### services.json
+```json
+{
+  "name": "My App",
+  "type": "local | link",
+  "port": 3000,
+  "url": "http://localhost:3000",
+  "cwd": "~/projects/app",
+  "startCmd": "npm run dev",
+  "stopCmd": "lsof -ti:3000 | xargs kill",
+  "tunnelLog": "/tmp/cf-tunnel.log",
+  "tunnelRegex": "https://[a-z0-9-]+\\.trycloudflare\\.com",
+  "note": "что это"
+}
+```
+- `local` — с кнопками Старт/Стоп (нужны `startCmd`/`stopCmd`/`cwd`).
+- `link` — только статус по порту + ссылка (сервис управляется снаружи: launchd-туннель, VPS).
+
+## Безопасность
+- Сервер слушает **только loopback** (`127.0.0.1`) — из внешней сети недоступен по умолчанию.
+- ⚠️ Панель умеет запускать процессы — **не выставляй порт 7777 наружу** без защиты.
+- **Опциональный токен:** создай `~/.config/localhost-control/config.json`:
+  ```json
+  { "token": "длинная-случайная-строка" }
+  ```
+  Тогда все операции (старт/стоп/добавление) требуют этот токен — UI спросит его один раз и запомнит. Статус-просмотр остаётся открытым.
+
+## Управление панелью (launchd)
+```bash
+launchctl load -w ~/Library/LaunchAgents/com.jiga.localhost-control.plist     # включить
+launchctl unload ~/Library/LaunchAgents/com.jiga.localhost-control.plist      # выключить
+launchctl kickstart -k gui/$(id -u)/com.jiga.localhost-control                # перезапустить
+```
+Логи: `~/Library/Logs/localhost-control.log`.
+
+## Roadmap (Фаза 2)
+- **Менеджер туннелей из UI** — создавать cloudflared / `ssh -L` туннели кнопкой (сейчас — только как заранее заданные сервисы).
+- **Авторизация для шеринга** — токен + опц. basic-auth, инструкция по безопасной раздаче.
+- **Menubar-приложение (Tauri)** — нативная иконка в строке меню со сводным статусом, попап с карточками; webview переиспользует этот `index.html`, бэкенд-логику в Rust-команды.
+- **Публикация на GitHub** — лицензия MIT, EN+RU README, `services.example.json`, install-скрипт (`launchctl load`), GIF-демо, contributing для новых языков.
+- Уведомления при падении сервиса, иконки-favicon сервисов, перетаскивание карточек, «запустить всё».
