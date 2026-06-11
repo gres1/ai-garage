@@ -42,6 +42,7 @@
   .sub{ color:var(--faint); font-size:13px; margin-top:3px; }
   .ring{ position:relative; width:80px; height:80px; flex:0 0 auto; }
   .ring svg{ transform:rotate(-90deg); }
+  #arc{ transition:stroke-dashoffset .7s cubic-bezier(.2,.7,.2,1); }
   .ring .num{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
   .ring .num b{ font-size:21px; line-height:1; letter-spacing:-.03em; }
   .ring .num span{ font-size:10px; color:var(--mut); margin-top:2px; }
@@ -66,12 +67,13 @@
   .pausebtn:hover{ border-color:var(--accent); color:var(--accent); }
 
   .grid{ max-width:1180px; margin:0 auto; display:grid; gap:20px; align-items:start;   /* авто-высота */
-         grid-template-columns:repeat(auto-fill,minmax(335px,1fr)); }
+         grid-template-columns:repeat(auto-fill,minmax(335px,1fr)); perspective:1400px; }
   .card{ position:relative; z-index:1; background:var(--glass); backdrop-filter:blur(22px) saturate(185%);
     -webkit-backdrop-filter:blur(22px) saturate(185%); border:1px solid var(--glass-brd); border-radius:var(--r);
-    padding:17px 17px 15px; box-shadow:var(--shadow); overflow:hidden;
-    transition:transform .3s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease; }
-  .card:hover{ transform:translateY(-5px); box-shadow:var(--shadow-h); }
+    padding:17px 17px 15px; box-shadow:var(--shadow); overflow:hidden; transform-style:preserve-3d;
+    transform:translateY(var(--lift,0)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+    transition:transform .2s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease; }
+  .card:hover{ --lift:-6px; box-shadow:var(--shadow-h); }
   /* спотлайт-блик, следующий за курсором (живой эффект, как pletor) */
   .card::after{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0; transition:opacity .35s;
     background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%), rgba(255,90,31,.13), transparent 46%); }
@@ -94,7 +96,7 @@
   .hostb{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:3px 8px; border-radius:980px; background:var(--bg2); color:var(--mut); flex:0 0 auto; }
   .hostb .ic{ width:12px; height:12px; }
   .card.disc{ border-style:dashed; box-shadow:none; padding:14px 16px; }
-  .card.disc:hover{ transform:translateY(-3px); box-shadow:var(--shadow); }
+  .card.disc:hover{ --lift:-3px; box-shadow:var(--shadow); }
   .card.disc .cmd{ font-weight:600; font-size:14px; } .card.disc .pid{ color:var(--faint); font-size:11px; }
   .thumb .reload{ position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,.6); color:#fff; border:none;
     font-size:13px; width:26px; height:26px; border-radius:7px; cursor:pointer; }
@@ -590,8 +592,11 @@ function patch(){ visible().forEach(s=>{ const c=document.querySelector(`.card[d
     const st=c.querySelector('.state'); st.className='state '+cls; st.style.marginLeft='auto'; st.textContent=s.up?t('working'):t('stopped');
     const tg=c.querySelector('.tgl'); if(tg){ tg.className='btn tgl '+(s.up?'btn-soft':'btn-primary'); tg.style.cssText=s.up?'--ic:var(--ic-stop)':'';
       tg.innerHTML=icon(s.up?'stop':'play')+' '+(s.up?t('stop'):t('start')); tg.onclick=()=>act(s.name,s.up?'stop':'start'); } }); updateHeader(); }
+function animNum(el,to){ const from=+el.textContent||0; if(from===to)return; const d=600,t0=performance.now();
+  const step=now=>{ const k=Math.min(1,(now-t0)/d); const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    el.textContent=Math.round(from+(to-from)*e); if(k<1)requestAnimationFrame(step); }; requestAnimationFrame(step); }
 function updateHeader(){ const up=DATA.filter(s=>s.up).length,tot=DATA.length;
-  $('upn').textContent=up; $('totn').textContent=tot; $('upc').textContent=up; $('downc').textContent=tot-up;
+  animNum($('upn'),up); $('totn').textContent=tot; $('upc').textContent=up; $('downc').textContent=tot-up;
   const C=214; $('arc').style.strokeDashoffset=tot?C-(C*up/tot):C; }
 
 async function load(){ if(paused||document.hidden)return;
@@ -604,13 +609,15 @@ async function load(){ if(paused||document.hidden)return;
   }catch(e){ $('ts').textContent='—'; } }
 
 /* живой эффект: спотлайт за курсором на карточках + ambient-glow всей страницы */
-let _raf=0,_e=null;
+let _raf=0,_e=null,_tilt=null;
 addEventListener('pointermove',e=>{ _e=e; if(_raf)return; _raf=requestAnimationFrame(()=>{ _raf=0; const ev=_e;
   document.documentElement.style.setProperty('--gx',(ev.clientX/innerWidth*100).toFixed(1)+'%');
   document.documentElement.style.setProperty('--gy',(ev.clientY/innerHeight*100).toFixed(1)+'%');
-  const c=ev.target.closest&&ev.target.closest('.card'); if(c){ const r=c.getBoundingClientRect();
-    c.style.setProperty('--mx',((ev.clientX-r.left)/r.width*100).toFixed(1)+'%');
-    c.style.setProperty('--my',((ev.clientY-r.top)/r.height*100).toFixed(1)+'%'); } }); },{passive:true});
+  const c=ev.target.closest&&ev.target.closest('.card');
+  if(c!==_tilt){ if(_tilt){ _tilt.style.setProperty('--rx','0deg'); _tilt.style.setProperty('--ry','0deg'); } _tilt=c; }
+  if(c){ const r=c.getBoundingClientRect(); const mx=(ev.clientX-r.left)/r.width, my=(ev.clientY-r.top)/r.height;
+    c.style.setProperty('--mx',(mx*100).toFixed(1)+'%'); c.style.setProperty('--my',(my*100).toFixed(1)+'%');
+    c.style.setProperty('--ry',((mx-.5)*7).toFixed(2)+'deg'); c.style.setProperty('--rx',((.5-my)*7).toFixed(2)+'deg'); } }); },{passive:true});
 
 $('pause').innerHTML=icon('pause'); fillLangs(); applyI18n(); toggleCmd(); load(); setInterval(load,3000);
 </script>
