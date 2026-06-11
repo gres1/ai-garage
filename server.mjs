@@ -2,7 +2,7 @@
 // Localhost Control — лёгкая панель управления локальными сервисами.
 // Без зависимостей: только встроенные модули Node. Слушает 127.0.0.1:7777.
 import http from "node:http";
-import { exec } from "node:child_process";
+import { exec, execFile } from "node:child_process";
 import { readFile, writeFile, mkdir, unlink, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -15,6 +15,10 @@ const SERVICES_PATH = join(CFG_DIR, "services.json");
 const CONFIG_PATH = join(CFG_DIR, "config.json");
 
 const expandHome = (p) => (p && p.startsWith("~") ? join(homedir(), p.slice(1)) : p);
+// Безопасность: порт — только целое 1..65535 (иначе null)
+const toPort = (v) => { const n = Number(v); return Number.isInteger(n) && n >= 1 && n <= 65535 ? n : null; };
+// XML-escape для plist (анти-инъекция)
+const xmlEsc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
 
 async function loadServices() {
   try { return JSON.parse(await readFile(SERVICES_PATH, "utf8")); } catch { return []; }
@@ -29,8 +33,9 @@ async function loadConfig() {
 
 function portUp(port) {
   return new Promise((resolve) => {
-    if (!port) return resolve(false);
-    exec(`lsof -ti tcp:${port} -sTCP:LISTEN`, (e, out) => resolve(!!out.trim()));
+    const p = toPort(port);
+    if (!p) return resolve(false);
+    execFile("lsof", ["-ti", `tcp:${p}`, "-sTCP:LISTEN"], (e, out) => resolve(!!(out || "").trim()));
   });
 }
 async function tunnelUrl(svc) {
@@ -74,9 +79,14 @@ function discoverPorts() {
 
 function killPort(port) {
   return new Promise((resolve) => {
-    if (!port) return resolve({ ok: false, error: "порт не задан" });
-    exec(`lsof -ti tcp:${port} | xargs kill -9`, (err) =>
-      resolve(err && err.code === 1 ? { ok: true, note: "порт уже свободен" } : { ok: true, note: "порт освобождён" }));
+    const p = toPort(port);
+    if (!p) return resolve({ ok: false, error: "некорректный порт" });
+    execFile("lsof", ["-ti", `tcp:${p}`], (e, out) => {
+      const pids = (out || "").trim().split(/\s+/).map(Number).filter((n) => Number.isInteger(n) && n > 1);
+      if (!pids.length) return resolve({ ok: true, note: "порт уже свободен" });
+      for (const pid of pids) { try { process.kill(pid, "SIGKILL"); } catch {} }
+      resolve({ ok: true, note: "порт освобождён" });
+    });
   });
 }
 
@@ -94,15 +104,15 @@ async function keepAliveSet(svc, enable) {
     const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>Label</key><string>${label}</string>
-  <key>ProgramArguments</key><array><string>/bin/bash</string><string>-lc</string><string>${svc.startCmd.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</string></array>
-  <key>WorkingDirectory</key><string>${cwd}</string>
+  <key>Label</key><string>${xmlEsc(label)}</string>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>-lc</string><string>${xmlEsc(svc.startCmd)}</string></array>
+  <key>WorkingDirectory</key><string>${xmlEsc(cwd)}</string>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><dict><key>Crashed</key><true/><key>SuccessfulExit</key><false/></dict>
   <key>ThrottleInterval</key><integer>10</integer>
-  <key>EnvironmentVariables</key><dict><key>PATH</key><string>${homedir()}/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
-  <key>StandardOutPath</key><string>/tmp/${label}.log</string>
-  <key>StandardErrorPath</key><string>/tmp/${label}.log</string>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>${xmlEsc(homedir())}/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
+  <key>StandardOutPath</key><string>/tmp/${xmlEsc(label)}.log</string>
+  <key>StandardErrorPath</key><string>/tmp/${xmlEsc(label)}.log</string>
 </dict></plist>`;
     await mkdir(LA_DIR, { recursive: true });
     await writeFile(path, plist);
@@ -126,13 +136,37 @@ async function readBody(req) {
   const chunks = []; for await (const c of req) chunks.push(c);
   try { return JSON.parse(Buffer.concat(chunks).toString() || "{}"); } catch { return {}; }
 }
+// Белый список полей сервиса (отбрасываем чужое, приводим типы)
+function sanitizeService(s) {
+  if (!s || typeof s.name !== "string" || !s.name.trim()) return null;
+  const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : undefined);
+  const out = { name: s.name.trim().slice(0, 100), type: s.type === "local" ? "local" : "link" };
+  const port = toPort(s.port); if (port) out.port = port;
+  out.url = str(s.url, 500); out.host = str(s.host, 40); out.note = str(s.note, 300);
+  if (out.type === "local") { out.startCmd = str(s.startCmd, 2000); out.stopCmd = str(s.stopCmd, 2000); out.cwd = str(s.cwd, 500); }
+  out.tunnelLog = str(s.tunnelLog, 500); out.tunnelRegex = str(s.tunnelRegex, 200);
+  Object.keys(out).forEach((k) => out[k] === undefined && delete out[k]);
+  return out;
+}
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   const cfg = await loadConfig();
 
-  // Опциональная защита: если в config.json задан token — мутации требуют заголовок.
+  // Анти-DNS-rebinding: принимаем только loopback Host (все методы)
+  const host = (req.headers.host || "").replace(/:\d+$/, "");
+  if (!["localhost", "127.0.0.1", "[::1]", ""].includes(host)) {
+    res.writeHead(403); return res.end("bad host");
+  }
   const isMutation = req.method === "POST";
+  // Анти-CSRF: на мутациях Origin должен быть наш (пустой — для curl/CLI)
+  if (isMutation) {
+    const o = req.headers.origin;
+    if (o && o !== `http://localhost:${PORT}` && o !== `http://127.0.0.1:${PORT}`) {
+      return sendJson(res, 403, { ok: false, error: "запрещённый источник (CSRF)" });
+    }
+  }
+  // Опциональный токен: если задан в config.json — мутации требуют заголовок.
   if (isMutation && cfg.token && req.headers["x-control-token"] !== cfg.token) {
     return sendJson(res, 401, { ok: false, error: "нужен токен доступа" });
   }
@@ -140,7 +174,13 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/") {
     try {
       const html = await readFile(join(__dirname, "public", "index.html"), "utf8");
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src http://localhost:* http://127.0.0.1:* https:; connect-src 'self'",
+      });
       return res.end(html);
     } catch { res.writeHead(500); return res.end("index.html не найден"); }
   }
@@ -185,10 +225,11 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "POST" && url.pathname === "/api/service-add") {
     const { service } = await readBody(req);
-    if (!service || !service.name) return sendJson(res, 400, { ok: false, error: "нужно имя" });
+    const clean = sanitizeService(service);
+    if (!clean) return sendJson(res, 400, { ok: false, error: "нужно корректное имя" });
     const list = await loadServices();
-    if (list.some((s) => s.name === service.name)) return sendJson(res, 400, { ok: false, error: "имя занято" });
-    list.push(service); await saveServices(list);
+    if (list.some((s) => s.name === clean.name)) return sendJson(res, 400, { ok: false, error: "имя занято" });
+    list.push(clean); await saveServices(list);
     return sendJson(res, 200, { ok: true, note: "сервис добавлен" });
   }
 

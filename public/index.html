@@ -179,7 +179,7 @@
       <div class="mbar"><span class="t" id="v-title"></span>
         <a id="v-link" target="_blank" data-i="openTab">открыть в новой вкладке ↗</a>
         <div class="spacer"></div><button class="btn btn-soft" onclick="closeViewer()" data-i="close">Закрыть</button></div>
-      <iframe id="v-frame" src="about:blank"></iframe>
+      <iframe id="v-frame" sandbox="allow-same-origin allow-scripts allow-forms" src="about:blank"></iframe>
     </div>
   </div>
 
@@ -366,6 +366,7 @@ const t=k=>(DICT[lang]&&DICT[lang][k])||DICT.en[k]||k;
 let DATA=[]; let paused=false; let authOn=false; let lastSig='';
 const $=id=>document.getElementById(id);
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeUrl=u=>{try{const p=new URL(u,location.origin);return ['http:','https:'].includes(p.protocol)?p.href:'#';}catch{return '#';}};
 const toast=m=>{const e=$('toast');e.textContent=m;e.classList.add('show');clearTimeout(e._);e._=setTimeout(()=>e.classList.remove('show'),2200);};
 const copy=v=>navigator.clipboard.writeText(v).then(()=>toast(t('copied')+': '+v));
 
@@ -402,15 +403,15 @@ function togglePreview(name){ const w=document.querySelector(`[data-prev="${CSS.
   const open=w.classList.toggle('open');
   if(open&&!w.dataset.loaded){ const s=DATA.find(x=>x.name===name);
     w.innerHTML=`<div class="thumb" onclick="openViewer('${esc(name)}')">
-      <iframe src="${s.url}"></iframe>
+      <iframe sandbox="allow-same-origin allow-scripts allow-forms" src="${safeUrl(s.url)}"></iframe>
       <div class="blocked">${t('blocked')}</div>
       <button class="reload" title="перезагрузить" onclick="event.stopPropagation();reloadPreview('${esc(name)}')">↻</button>
       <div class="expand">${t('expand')}</div></div>`;
     w.dataset.loaded='1'; } }
 function reloadPreview(name){ const w=document.querySelector(`[data-prev="${CSS.escape(name)}"]`); if(!w)return;
-  const f=w.querySelector('iframe'); if(f){ const s=DATA.find(x=>x.name===name); f.src=s.url+(s.url.includes('?')?'&':'?')+'_r='+Date.now(); toast('↻'); } }
+  const f=w.querySelector('iframe'); if(f){ const s=DATA.find(x=>x.name===name); const u=safeUrl(s.url); f.src=u==='#'?u:u+(u.includes('?')?'&':'?')+'_r='+Date.now(); toast('↻'); } }
 function openViewer(name){ const s=DATA.find(x=>x.name===name); if(!s)return;
-  $('v-title').textContent=s.name; $('v-link').href=s.url; $('v-frame').src=s.url; $('viewer').classList.add('show'); }
+  $('v-title').textContent=s.name; $('v-link').href=safeUrl(s.url); $('v-frame').src=safeUrl(s.url); $('viewer').classList.add('show'); }
 function closeViewer(){ $('viewer').classList.remove('show'); $('v-frame').src='about:blank'; }
 function togglePause(){ paused=!paused; $('pause').textContent=paused?'▶':'⏸'; if(!paused)load(); }
 
@@ -438,7 +439,7 @@ function card(s){ const cls=s.up?'up':'down';
     :`<div class="row" style="margin-top:4px"><span class="note" style="margin:0">${t('managed')}</span>
       <button class="btn btn-ghost" style="margin-left:auto" onclick="togglePreview('${esc(s.name)}')">👁 ${t('preview')}</button></div>`;
   const tunnel=s.tunnel?`<div class="urlrow"><span class="tag">📱 ${t('phone')}</span>
-      <a href="${s.tunnel}" target="_blank">${esc(s.tunnel)}</a><button class="icbtn" onclick="copy('${s.tunnel}')">⧉</button></div>`:'';
+      <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a><button class="icbtn" onclick="copy('${esc(s.tunnel)}')">⧉</button></div>`:'';
   return `<div class="card ${cls}" data-name="${esc(s.name)}">
     <div class="top"><span class="pulse ${cls}"></span><span class="name">${esc(s.name)}</span>
       <span class="hostb">${/vps|впс|server|серв|cloud/i.test(s.host||'')?'☁️':'💻'} ${esc(s.host||'Mac')}</span>
@@ -449,7 +450,7 @@ function card(s){ const cls=s.up?'up':'down';
       <button class="del" onclick="delService('${esc(s.name)}')">🗑 ${t('remove')}</button></div>
     ${s.note?`<div class="note">${esc(s.note)}</div>`:'<div style="height:5px"></div>'}
     <div class="urls"><div class="urlrow"><span class="badge">:${s.port||'—'}</span>
-        <a href="${s.url}" target="_blank">${esc(s.url)}</a><button class="icbtn" onclick="copy('${s.url}')">⧉</button></div>
+        <a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a><button class="icbtn" onclick="copy('${esc(s.url)}')">⧉</button></div>
       ${tunnel}</div>
     ${ctrls}<div class="prevwrap" data-prev="${esc(s.name)}"></div></div>`; }
 
