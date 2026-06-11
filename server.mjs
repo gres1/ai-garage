@@ -220,7 +220,29 @@ async function stopTunnel(port) {
   return { ok: true, note: "ссылка убрана" };
 }
 // синхронный info по заранее загруженному состоянию (для /api/status)
-const tunnelInfoFrom = (st, port) => { const r = st[toPort(port)]; return r && procAlive(r.pid) ? { url: readTunUrl(r.log), provider: r.provider, managed: true } : null; };
+const tunnelInfoFrom = (st, port) => { const r = st[toPort(port)]; return r ? { url: procAlive(r.pid) ? readTunUrl(r.log) : null, provider: r.provider, managed: true } : null; };
+// супервизор: держит «желаемые» туннели живыми. Мёртвый (после перезагрузки Мака / обрыва)
+// переподнимается сам — панель стартует при логине и восстанавливает ссылки (адрес меняется,
+// но руками пересоздавать не нужно). Без launchd-агента → без диалога macOS.
+let _ensuring = false;
+async function ensureTunnels() {
+  if (_ensuring) return; _ensuring = true;
+  try {
+    const st = await loadTun(); let changed = false, cf = null;
+    for (const k of Object.keys(st)) {
+      if (st[k].pid && procAlive(st[k].pid)) continue;
+      cf = cf || (await cfPath()); if (!cf) break;
+      const p = Number(k), log = tunLog(p);
+      let fd; try { fd = openSync(log, "w"); } catch { continue; }
+      try {
+        const child = spawn(cf, ["tunnel", "--url", `http://localhost:${p}`, "--http-host-header", `localhost:${p}`, "--no-autoupdate"], { stdio: ["ignore", fd, fd], detached: true });
+        child.on("error", () => {}); child.unref();
+        st[k] = { provider: st[k].provider || "cloudflared", log, pid: child.pid }; changed = true;
+      } catch {}
+    }
+    if (changed) await saveTun(st);
+  } finally { _ensuring = false; }
+}
 
 function sendJson(res, code, obj) {
   res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
@@ -287,10 +309,8 @@ const server = http.createServer(async (req, res) => {
     const services = await loadServices();
     const all = await discoverPorts();                       // один lsof на весь запрос
     const listening = new Set(all.map((d) => d.port));
-    const tun = await loadTun();                             // активные туннели (фоновые процессы)
-    let tunChanged = false;
-    for (const k of Object.keys(tun)) { if (!procAlive(tun[k].pid)) { delete tun[k]; tunChanged = true; } }
-    if (tunChanged) await saveTun(tun);
+    await ensureTunnels();                                   // переподнять мёртвые желаемые туннели (само-восстановление)
+    const tun = await loadTun();
     const rows = await Promise.all(services.map(async (s) => {
       const ti = tunnelInfoFrom(tun,s.port);
       return {
@@ -367,7 +387,27 @@ const server = http.createServer(async (req, res) => {
     }));
   }
 
+  if (req.method === "POST" && url.pathname === "/api/service-rename") {
+    const { name, newName } = await readBody(req);
+    const nn = typeof newName === "string" ? newName.trim().slice(0, 80) : "";
+    if (!nn) return sendJson(res, 400, { ok: false, error: "нужно новое имя" });
+    return sendJson(res, 200, await withLock(async () => {
+      const list = await loadServices();
+      const svc = list.find((s) => s.name === name);
+      if (!svc) return { ok: false, error: "сервис не найден" };
+      if (list.some((s) => s.name === nn)) return { ok: false, error: "имя занято" };
+      const wasKA = await fileExists(kaPlistPath(svc.name));
+      if (wasKA) { try { await keepAliveSet(svc, false); } catch {} }
+      svc.name = nn;
+      await saveServices(list);
+      if (wasKA) { try { await keepAliveSet(svc, true); } catch {} }
+      return { ok: true, note: "переименовано" };
+    }));
+  }
+
   res.writeHead(404); res.end("not found");
 });
 
 server.listen(PORT, "127.0.0.1", () => console.log(`AI Garage → http://localhost:${PORT}`));
+ensureTunnels();                                            // восстановить туннели при старте (в т.ч. после перезагрузки Мака)
+setInterval(() => ensureTunnels().catch(() => {}), 12000);  // и держать их живыми

@@ -67,13 +67,13 @@
   .pausebtn:hover{ border-color:var(--accent); color:var(--accent); }
 
   .grid{ max-width:1180px; margin:0 auto; display:grid; gap:20px; align-items:start;   /* авто-высота */
-         grid-template-columns:repeat(auto-fill,minmax(335px,1fr)); }
+         grid-template-columns:repeat(auto-fill,minmax(335px,1fr)); perspective:1400px; }
   .card{ position:relative; z-index:1; background:var(--glass); backdrop-filter:blur(22px) saturate(185%);
     -webkit-backdrop-filter:blur(22px) saturate(185%); border:1px solid var(--glass-brd); border-radius:var(--r);
-    padding:17px 17px 15px; box-shadow:var(--shadow); overflow:hidden;
-    transform:translateY(var(--lift,0));
-    transition:transform .25s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease; }
-  .card:hover{ --lift:-5px; box-shadow:var(--shadow-h); }
+    padding:17px 17px 15px; box-shadow:var(--shadow); overflow:hidden; transform-style:preserve-3d;
+    transform:translateY(var(--lift,0)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+    transition:transform .18s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease; }
+  .card:hover{ --lift:-6px; box-shadow:var(--shadow-h); }
   /* спотлайт-блик, следующий за курсором (живой эффект, как pletor) */
   .card::after{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0; transition:opacity .35s;
     background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%), rgba(255,90,31,.13), transparent 46%); }
@@ -161,7 +161,8 @@
   .badge{ font-family:ui-monospace,"SF Mono",Menlo,monospace; background:rgba(20,20,45,.06); color:var(--mut); letter-spacing:-.02em; }
   .prevwrap{ margin-top:11px; border-radius:14px; overflow:hidden; border:1px solid var(--line);
     background:var(--bg2); height:0; opacity:0; transition:height .3s ease, opacity .3s ease; }
-  .prevwrap.open{ height:226px; opacity:1; }
+  .prevwrap.open{ height:188px; opacity:1; }
+  .prevwrap.open.has-hint{ height:226px; }
   .prevhint{ display:flex; align-items:center; gap:5px; padding:7px 10px; font-size:11px; color:var(--mut); line-height:1.35; background:rgba(255,255,255,.5); }
   .prevhint .ic{ width:12px; height:12px; opacity:.55; flex:0 0 auto; }
   .prevhint a{ color:var(--blue); text-decoration:none; white-space:nowrap; }
@@ -284,8 +285,8 @@ const DICT={
  en:{title:"AI Garage",of:"of",working:"running",stopped:"off",addService:"+ Service",
    start:"Start",stop:"Stop",restart:"Restart",preview:"Preview",managed:"managed externally",phone:"phone",
    copied:"Copied",expand:"click to enlarge",blocked:"Embedding not allowed — open in new tab",
-   freePort:"Free the port",remove:"Delete service",confirmDel:"Delete this service?",searchPh:"Search…",
-   openTab:"open in new tab ↗",close:"Close",fName:"Name",fType:"Type",fTypeLocal:"local (with buttons)",
+   freePort:"Free the port",remove:"Remove (back to Discovered)",confirmDel:"Remove this service from your list?",searchPh:"Search…",
+   rename:"Rename",renamePrompt:"New name:",openTab:"open in new tab ↗",close:"Close",fName:"Name",fType:"Type",fTypeLocal:"local (with buttons)",
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
    discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",keepAlive:"Keep alive",kaOn:"Staying on",
@@ -294,8 +295,8 @@ const DICT={
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
    copied:"Скопировано",expand:"кликни — крупнее",blocked:"Встроенный просмотр запрещён — открой в новой вкладке",
-   freePort:"Освободить порт",remove:"Удалить сервис",confirmDel:"Удалить этот сервис?",searchPh:"Поиск…",
-   openTab:"открыть в новой вкладке ↗",close:"Закрыть",fName:"Название",fType:"Тип",fTypeLocal:"локальный (с кнопками)",
+   freePort:"Освободить порт",remove:"Убрать (назад в Обнаружено)",confirmDel:"Убрать этот сервис из списка?",searchPh:"Поиск…",
+   rename:"Переименовать",renamePrompt:"Новое имя:",openTab:"открыть в новой вкладке ↗",close:"Закрыть",fName:"Название",fType:"Тип",fTypeLocal:"локальный (с кнопками)",
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
    discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",keepAlive:"Держать включённым",kaOn:"Держится",
@@ -425,7 +426,7 @@ let lang=localStorage.getItem('lc-lang')||(navigator.language||'en').slice(0,2);
 if(!DICT[lang]) lang='en';
 const t=k=>(DICT[lang]&&DICT[lang][k])||DICT.en[k]||k;
 
-let DATA=[]; let paused=false; let authOn=false; let lastSig='';
+let DATA=[]; let paused=false; let authOn=false; let lastSig=''; const openPrevs=new Set();
 const $=id=>document.getElementById(id);
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl=u=>{try{const p=new URL(u,location.origin);return ['http:','https:'].includes(p.protocol)?p.href:'#';}catch{return '#';}};
@@ -454,6 +455,7 @@ const ICONS={
  cloud:'<path d="M17.5 19a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.6-1.5A4 4 0 0 0 6.5 19z"/>',
  monitor:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/>',
  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+ pencil:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
  warn:'<path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".7" fill="var(--ic,currentColor)" stroke="none"/>'
 };
 const icon=(n,cls='',sw=2)=>`<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="var(--ic,currentColor)" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`;
@@ -497,6 +499,7 @@ function tunnelBtn(port,managed,url,err){ if(!port) return '';
   if(managed) return `<button class="btn btn-soft" style="--ic:var(--ic-stop)" onclick="tunnelStop(${port})">${icon('x')} ${t('tunnelStop')}</button>`;
   return `<button class="btn btn-accent" title="${esc(t('tunnelHint'))}" onclick="tunnelStart(${port})">${icon('link')} ${t('tunnelStart')}</button>`; }
 async function delService(name){ if(!confirm(t('confirmDel')))return; const j=await api('/api/service-remove',{name}); toast(j.ok?'✅':'⛔️'); lastSig=''; load(); }
+async function renameService(name){ const nn=prompt(t('renamePrompt'),name); if(nn===null)return; const v=nn.trim(); if(!v||v===name){closeMenus();return;} const j=await api('/api/service-rename',{name,newName:v}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); lastSig=''; load(); }
 
 /* меню на карточке */
 function toggleMenu(e,name){ e.stopPropagation(); closeMenus(); const m=document.querySelector(`[data-menu="${CSS.escape(name)}"]`); if(m)m.classList.add('open'); }
@@ -504,16 +507,20 @@ function closeMenus(){ document.querySelectorAll('.menu.open').forEach(m=>m.clas
 document.addEventListener('click',closeMenus);
 
 /* превью */
-function togglePreview(name){ const w=document.querySelector(`[data-prev="${CSS.escape(name)}"]`); if(!w)return;
-  const open=w.classList.toggle('open');
-  if(open&&!w.dataset.loaded){ const s=DATA.find(x=>x.name===name);
-    w.innerHTML=`<div class="thumb" onclick="openViewer('${esc(name)}')">
-      <iframe sandbox="allow-same-origin allow-scripts allow-forms" src="${safeUrl(s.url)}"></iframe>
-      <div class="blocked">${t('blocked')}</div>
+function buildPreviewContent(w,name){ const s=DATA.find(x=>x.name===name); if(!s)return; const u=safeUrl(s.url);
+  w.innerHTML=`<div class="thumb" onclick="openViewer('${esc(name)}')">
+      <iframe sandbox="allow-same-origin allow-scripts allow-forms" src="${u}"></iframe>
       <button class="reload" title="${esc(t('reloadHint'))}" aria-label="${esc(t('reloadHint'))}" onclick="event.stopPropagation();reloadPreview('${esc(name)}')">${icon('restart')}</button>
       <div class="expand">${t('expand')}</div></div>
-      <div class="prevhint">${icon('help')} ${t('prevHint')} · <a onclick="event.stopPropagation()" href="${safeUrl(s.url)}" target="_blank" rel="noopener">${t('openTab')}</a></div>`;
-    w.dataset.loaded='1'; } }
+    <div class="prevhint" style="display:none">${icon('help')} ${t('prevHint')} · <a onclick="event.stopPropagation()" href="${u}" target="_blank" rel="noopener">${t('openTab')}</a></div>`;
+  w.dataset.loaded='1';
+  const f=w.querySelector('iframe'), hint=w.querySelector('.prevhint'); let ok=false;
+  f.addEventListener('load',()=>{ ok=true; hint.style.display='none'; w.classList.remove('has-hint'); });
+  setTimeout(()=>{ if(!ok){ hint.style.display='flex'; w.classList.add('has-hint'); } },4500); }
+function togglePreview(name){ const w=document.querySelector(`[data-prev="${CSS.escape(name)}"]`); if(!w)return;
+  const open=w.classList.toggle('open');
+  if(open){ openPrevs.add(name); if(!w.dataset.loaded) buildPreviewContent(w,name); }
+  else openPrevs.delete(name); }
 function reloadPreview(name){ const w=document.querySelector(`[data-prev="${CSS.escape(name)}"]`); if(!w)return;
   const f=w.querySelector('iframe'); if(f){ const s=DATA.find(x=>x.name===name); const u=safeUrl(s.url); f.src=u==='#'?u:u+(u.includes('?')?'&':'?')+'_r='+Date.now(); toast(t('reloading')); } }
 function openViewer(name){ const s=DATA.find(x=>x.name===name); if(!s)return;
@@ -561,6 +568,7 @@ function card(s){ const cls=s.up?'up':'down';
       <button class="kebab" aria-label="меню" onclick="toggleMenu(event,'${esc(s.name)}')">${icon('more')}</button></div>
     <div class="menu" data-menu="${esc(s.name)}">
       ${(s.port&&!s.control)?`<button onclick="killPort(${s.port})">${icon('zap')} ${t('freePort')} :${s.port}</button>`:''}
+      <button onclick="renameService('${esc(s.name)}')">${icon('pencil')} ${t('rename')}</button>
       <button class="del" onclick="delService('${esc(s.name)}')">${icon('trash')} ${t('remove')}</button></div>
     ${s.note?`<div class="note">${esc(s.note)}</div>`:'<div style="height:5px"></div>'}
     ${urls}
@@ -590,7 +598,9 @@ async function saveDiscovered(port,command){
   const j=await api('/api/service-add',{service:s}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
 
 function visible(){ const q=$('q').value.trim().toLowerCase(); return DATA.filter(s=>!q||s.name.toLowerCase().includes(q)); }
-function render(){ $('grid').innerHTML=visible().map(card).join(''); updateHeader(); }
+function render(){ $('grid').innerHTML=visible().map(card).join('');
+  openPrevs.forEach(n=>{ const w=document.querySelector(`[data-prev="${CSS.escape(n)}"]`); if(w){ w.classList.add('open'); buildPreviewContent(w,n); } else openPrevs.delete(n); });
+  updateHeader(); }
 function patch(){ visible().forEach(s=>{ const c=document.querySelector(`.card[data-name="${CSS.escape(s.name)}"]`); if(!c)return;
     const cls=s.up?'up':'down'; c.classList.toggle('up',s.up); c.classList.toggle('down',!s.up);
     c.querySelector('.pulse').className='pulse '+cls;
@@ -614,13 +624,15 @@ async function load(){ if(paused||document.hidden)return;
   }catch(e){ $('ts').textContent='—'; } }
 
 /* живой эффект: спотлайт за курсором на карточках + ambient-glow всей страницы */
-let _raf=0,_e=null;
+let _raf=0,_e=null,_tilt=null;
 addEventListener('pointermove',e=>{ _e=e; if(_raf)return; _raf=requestAnimationFrame(()=>{ _raf=0; const ev=_e;
   document.documentElement.style.setProperty('--gx',(ev.clientX/innerWidth*100).toFixed(1)+'%');
   document.documentElement.style.setProperty('--gy',(ev.clientY/innerHeight*100).toFixed(1)+'%');
-  const c=ev.target.closest&&ev.target.closest('.card'); if(c){ const r=c.getBoundingClientRect();
-    c.style.setProperty('--mx',((ev.clientX-r.left)/r.width*100).toFixed(1)+'%');
-    c.style.setProperty('--my',((ev.clientY-r.top)/r.height*100).toFixed(1)+'%'); } }); },{passive:true});
+  const c=ev.target.closest&&ev.target.closest('.card');
+  if(c!==_tilt){ if(_tilt){ _tilt.style.setProperty('--rx','0deg'); _tilt.style.setProperty('--ry','0deg'); } _tilt=c; }
+  if(c){ const r=c.getBoundingClientRect(); const mx=(ev.clientX-r.left)/r.width, my=(ev.clientY-r.top)/r.height;
+    c.style.setProperty('--mx',(mx*100).toFixed(1)+'%'); c.style.setProperty('--my',(my*100).toFixed(1)+'%');
+    c.style.setProperty('--ry',((mx-.5)*6.5).toFixed(2)+'deg'); c.style.setProperty('--rx',((.5-my)*6.5).toFixed(2)+'deg'); } }); },{passive:true});
 
 $('pause').innerHTML=icon('pause'); fillLangs(); applyI18n(); toggleCmd(); load(); setInterval(load,3000);
 </script>
