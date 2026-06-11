@@ -166,6 +166,8 @@
     </div>
   </header>
 
+  <div id="platwarn" style="display:none;max-width:1180px;margin:0 auto 16px;background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.3);border-radius:14px;padding:12px 16px;font-size:13px;color:#9a6a00">⚠️ <span data-i="macOnly">AI Garage рассчитан на macOS.</span></div>
+
   <div class="grid" id="grid"></div>
 
   <div id="disc-wrap" style="max-width:1180px;margin:26px auto 0;display:none">
@@ -230,7 +232,8 @@ const DICT={
    openTab:"open in new tab ↗",close:"Close",fName:"Name",fType:"Type",fTypeLocal:"local (with buttons)",
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
-   discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Save",keepAlive:"Keep alive",kaOn:"Staying on"},
+   discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Save",keepAlive:"Keep alive",kaOn:"Staying on",
+   whatIs:"What is it?",macOnly:"AI Garage is built for macOS — some features may be limited on this system."},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
    copied:"Скопировано",expand:"кликни — крупнее",blocked:"Встроенный просмотр запрещён — открой в новой вкладке",
@@ -238,7 +241,8 @@ const DICT={
    openTab:"открыть в новой вкладке ↗",close:"Закрыть",fName:"Название",fType:"Тип",fTypeLocal:"локальный (с кнопками)",
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
-   discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"Сохранить",keepAlive:"Держать включённым",kaOn:"Держится"},
+   discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"Сохранить",keepAlive:"Держать включённым",kaOn:"Держится",
+   whatIs:"что это?",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно."},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
    copied:"Copiado",expand:"clic para ampliar",blocked:"No permite incrustar — abre en pestaña nueva",
@@ -461,13 +465,18 @@ function card(s){ const cls=s.up?'up':'down';
       ${tunnel}</div>
     ${ctrls}<div class="prevwrap" data-prev="${esc(s.name)}"></div></div>`; }
 
-function dcard(d){ return `<div class="card disc">
+const catColor=c=>({system:'#8e8e93',db:'#ff3b30',app:'#0071e3',dev:'#34c759',agent:'#a06bff',unknown:'#8e8e93'}[c]||'#8e8e93');
+const catEmoji=c=>({system:'⚙️',db:'🗄',app:'📦',dev:'🛠',agent:'🤖',unknown:'❓'}[c]||'❓');
+function askAI(cmd,port){ copy(`Что за процесс «${cmd}» слушает порт ${port} на моём Mac? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.`); toast('Промпт скопирован — вставь своему ИИ'); }
+function dcard(d){ const col=catColor(d.cat); return `<div class="card disc">
     <div class="top"><span class="pulse up"></span><span class="cmd">${esc(d.command)}</span>
       <span class="hostb" style="margin-left:auto">:${d.port}</span></div>
-    <div class="pid" style="margin:6px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
+    <div style="margin:7px 0 3px"><span class="badge" style="background:${col}1f;color:${col}">${catEmoji(d.cat)} ${esc(d.label||d.cat||'')}</span></div>
+    <div class="pid" style="margin:2px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
     <div class="row">
-      <button class="btn btn-danger" onclick="killPort(${d.port})">🧹 ${t('freePort')}</button>
-      <button class="btn btn-soft" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">＋ ${t('saveBtn')}</button></div></div>`; }
+      <button class="btn ${d.safe===false?'btn-danger':'btn-soft'}" onclick="killPort(${d.port})">🧹 ${t('freePort')}</button>
+      <button class="btn btn-ghost" onclick="askAI('${esc(d.command)}',${d.port})">🤔 ${t('whatIs')}</button>
+      <button class="btn btn-ghost" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">＋ ${t('saveBtn')}</button></div></div>`; }
 function renderDiscovered(list){ const w=$('disc-wrap');
   if(!list||!list.length){ w.style.display='none'; return; }
   w.style.display='block'; $('disc-n').textContent=list.length; $('disc-grid').innerHTML=list.map(dcard).join(''); }
@@ -491,6 +500,7 @@ async function load(){ if(paused||document.hidden)return;
     const sig=DATA.map(s=>s.name+s.hasControls).join('|')+'#'+$('q').value;
     if(sig!==lastSig){ lastSig=sig; render(); } else patch();
     renderDiscovered(j.discovered||[]);
+    $('platwarn').style.display=(j.platform&&j.platform!=='darwin')?'block':'none';
   }catch(e){ $('ts').textContent='—'; } }
 
 fillLangs(); applyI18n(); toggleCmd(); load(); setInterval(load,3000);

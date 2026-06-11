@@ -4,7 +4,7 @@
 import http from "node:http";
 import { exec, execFile } from "node:child_process";
 import { readFile, writeFile, mkdir, unlink, stat, rename } from "node:fs/promises";
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
@@ -70,6 +70,17 @@ function runCmd(svc, which) {
     });
   });
 }
+// Старт + честная проверка: реально ли порт поднялся (а не ложный ✅)
+async function startAndVerify(svc) {
+  const r = await runCmd(svc, "start");
+  if (!r.ok || !toPort(svc.port)) return r;
+  for (let i = 0; i < 4; i++) {
+    await new Promise((res) => setTimeout(res, 800));
+    if (await portUp(svc.port)) return { ok: true, note: "запущено, порт отвечает" };
+  }
+  return { ok: true, note: "команда выполнена, но порт пока не отвечает — проверь статус" };
+}
+
 // Авто-обнаружение: все слушающие порты (даже не внесённые)
 function discoverPorts() {
   return new Promise((resolve) => {
@@ -87,6 +98,25 @@ function discoverPorts() {
       resolve([...map.values()].sort((a, b) => a.port - b.port));
     });
   });
+}
+
+// Распознавание процессов: чтобы юзер понимал что это и не убил нужное
+const KNOWN = {
+  system: ["controlce", "rapportd", "mdnsrespo", "launchd", "sharingd", "spotlight", "syspolicy", "nsurlsess", "apsd", "cfprefsd", "secd", "trustd", "remoted", "coreaudio", "bluetoothd"],
+  app: ["obsidian", "linear", "orbstack", "google", "chrome", "figma", "recordly", "antigravi", "spotify", "slack", "docker", "postman", "zoom", "telegram", "syncthing", "notion"],
+  agent: ["claude", "cursor", "copilot", "ollama", "lmstudio"],
+  dev: ["node", "python", "ruby", "java", "php", "deno", "bun", "vite", "webpack", "nginx", "caddy", "cli-proxy", "cliproxy", "stable"],
+};
+const DB_PORTS = new Set([5432, 5433, 3306, 27017, 6379, 5984, 9200, 1433, 11211]);
+function classifyProcess(command, port) {
+  const c = String(command || "").toLowerCase();
+  if (DB_PORTS.has(port)) return { cat: "db", label: "база данных — осторожно", safe: false };
+  for (const k of KNOWN.system) if (c.includes(k)) return { cat: "system", label: "системное — не трогать", safe: false };
+  if (port < 1024) return { cat: "system", label: "системный порт — осторожно", safe: false };
+  for (const k of KNOWN.agent) if (c.includes(k)) return { cat: "agent", label: "ИИ-агент", safe: true };
+  for (const k of KNOWN.app) if (c.includes(k)) return { cat: "app", label: "приложение", safe: true };
+  for (const k of KNOWN.dev) if (c.includes(k)) return { cat: "dev", label: "dev-инструмент", safe: true };
+  return { cat: "unknown", label: "неизвестно", safe: true };
 }
 
 function killPort(port) {
@@ -188,9 +218,13 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 403, { ok: false, error: "запрещённый источник (CSRF)" });
     }
   }
-  // Опциональный токен: если задан в config.json — мутации требуют заголовок.
-  if (isMutation && cfg.token && req.headers["x-control-token"] !== cfg.token) {
-    return sendJson(res, 401, { ok: false, error: "нужен токен доступа" });
+  // Опциональный токен: если задан в config.json — мутации требуют заголовок (constant-time сравнение).
+  if (isMutation && cfg.token) {
+    const a = Buffer.from(String(req.headers["x-control-token"] || ""));
+    const b = Buffer.from(String(cfg.token));
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return sendJson(res, 401, { ok: false, error: "нужен токен доступа" });
+    }
   }
 
   if (req.method === "GET" && url.pathname === "/") {
@@ -218,8 +252,9 @@ const server = http.createServer(async (req, res) => {
       keepAlive: await fileExists(kaPlistPath(s.name)),
     })));
     const registeredPorts = new Set(services.map((s) => s.port).filter(Boolean));
-    const discovered = all.filter((d) => !registeredPorts.has(d.port) && d.port !== PORT);
-    return sendJson(res, 200, { services: rows, discovered, ts: Date.now(), authOn: !!cfg.token });
+    const discovered = all.filter((d) => !registeredPorts.has(d.port) && d.port !== PORT)
+      .map((d) => ({ ...d, ...classifyProcess(d.command, d.port) }));
+    return sendJson(res, 200, { services: rows, discovered, platform: process.platform, ts: Date.now(), authOn: !!cfg.token });
   }
 
   if (req.method === "POST" && ["/api/start", "/api/stop", "/api/restart"].includes(url.pathname)) {
@@ -227,11 +262,11 @@ const server = http.createServer(async (req, res) => {
     const services = await loadServices();
     const svc = services.find((s) => s.name === name);
     if (!svc) return sendJson(res, 404, { ok: false, error: "сервис не найден" });
-    if (url.pathname === "/api/start") return sendJson(res, 200, await runCmd(svc, "start"));
+    if (url.pathname === "/api/start") return sendJson(res, 200, await startAndVerify(svc));
     if (url.pathname === "/api/stop") return sendJson(res, 200, await runCmd(svc, "stop"));
     await runCmd(svc, "stop");
     await new Promise((r) => setTimeout(r, 1500));
-    return sendJson(res, 200, await runCmd(svc, "start"));
+    return sendJson(res, 200, await startAndVerify(svc));
   }
 
   if (req.method === "POST" && url.pathname === "/api/kill-port") {
