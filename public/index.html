@@ -390,7 +390,14 @@ async function act(name,what){ toast('…');
   const j=await api('/api/'+what,{name}); toast(j.ok?'✅ '+(j.note||'ok'):'⛔️ '+(j.error||'err')); setTimeout(load,700); }
 async function toggleKeepAlive(name,enable){ toast(enable?'Включаю автозапуск…':'Выключаю…');
   const j=await api('/api/keepalive',{name,enable}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; setTimeout(load,700); }
-async function killPort(port){ const j=await api('/api/kill-port',{port}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); setTimeout(load,700); }
+const SYS_PORTS={5432:'PostgreSQL',3306:'MySQL',27017:'MongoDB',6379:'Redis',5984:'CouchDB'};
+async function killPort(port){
+  const danger = port<1024 ? 'системный порт' : (SYS_PORTS[port]||'');
+  const msg = danger
+    ? `⚠️ Порт ${port} — ${danger}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.`
+    : `Освободить порт ${port}? Процесс будет остановлен.`;
+  if(!confirm(msg)) { closeMenus(); return; }
+  const j=await api('/api/kill-port',{port}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); setTimeout(load,800); }
 async function delService(name){ if(!confirm(t('confirmDel')))return; const j=await api('/api/service-remove',{name}); toast(j.ok?'✅':'⛔️'); lastSig=''; load(); }
 
 /* меню на карточке */
@@ -478,7 +485,7 @@ function updateHeader(){ const up=DATA.filter(s=>s.up).length,tot=DATA.length;
   $('upn').textContent=up; $('totn').textContent=tot; $('upc').textContent=up; $('downc').textContent=tot-up;
   const C=214; $('arc').style.strokeDashoffset=tot?C-(C*up/tot):C; }
 
-async function load(){ if(paused)return;
+async function load(){ if(paused||document.hidden)return;
   try{ const r=await fetch('/api/status'); const j=await r.json(); DATA=j.services; authOn=j.authOn;
     $('ts').textContent=new Date(j.ts).toLocaleTimeString();
     const sig=DATA.map(s=>s.name+s.hasControls).join('|')+'#'+$('q').value;

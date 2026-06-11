@@ -6,10 +6,9 @@
 
 ## Установка
 ```bash
-# запустить без установки:
-npx ai-garage
-# или поставить глобально:
-npm i -g ai-garage && ai-garage
+# сейчас (из репозитория):
+git clone https://github.com/gres1/ai-garage && cd ai-garage && node server.mjs
+# после публикации в npm заработает: npx ai-garage
 ```
 Открой http://localhost:7777. Лицензия — **MIT** (бесплатно, можно форкать и использовать, в т.ч. коммерчески). Без зависимостей (нужен только Node ≥18).
 

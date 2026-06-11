@@ -3,7 +3,8 @@
 // Без зависимостей: только встроенные модули Node. Слушает 127.0.0.1:7777.
 import http from "node:http";
 import { exec, execFile } from "node:child_process";
-import { readFile, writeFile, mkdir, unlink, stat } from "node:fs/promises";
+import { readFile, writeFile, mkdir, unlink, stat, rename } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
@@ -25,7 +26,18 @@ async function loadServices() {
 }
 async function saveServices(list) {
   await mkdir(CFG_DIR, { recursive: true });
-  await writeFile(SERVICES_PATH, JSON.stringify(list, null, 2));
+  // Атомарно: пишем во временный файл и переименовываем (+ .bak), чтобы обрыв не потерял сервисы
+  try { await rename(SERVICES_PATH, SERVICES_PATH + ".bak"); } catch {}
+  const tmp = SERVICES_PATH + ".tmp";
+  await writeFile(tmp, JSON.stringify(list, null, 2));
+  await rename(tmp, SERVICES_PATH);
+}
+// Сериализация мутаций реестра (анти-гонка add/remove)
+let saveLock = Promise.resolve();
+function withLock(fn) {
+  const run = saveLock.then(fn, fn);
+  saveLock = run.catch(() => {});
+  return run;
 }
 async function loadConfig() {
   try { return JSON.parse(await readFile(CONFIG_PATH, "utf8")); } catch { return {}; }
@@ -81,18 +93,28 @@ function killPort(port) {
   return new Promise((resolve) => {
     const p = toPort(port);
     if (!p) return resolve({ ok: false, error: "некорректный порт" });
+    if (p === PORT) return resolve({ ok: false, error: "это порт самой панели — не трогаем" });
     execFile("lsof", ["-ti", `tcp:${p}`], (e, out) => {
       const pids = (out || "").trim().split(/\s+/).map(Number).filter((n) => Number.isInteger(n) && n > 1);
       if (!pids.length) return resolve({ ok: true, note: "порт уже свободен" });
-      for (const pid of pids) { try { process.kill(pid, "SIGKILL"); } catch {} }
-      resolve({ ok: true, note: "порт освобождён" });
+      // Мягко (SIGTERM — даёт БД/процессу шанс сохраниться), через 1.2с добиваем выживших
+      for (const pid of pids) { try { process.kill(pid, "SIGTERM"); } catch {} }
+      setTimeout(() => {
+        execFile("lsof", ["-ti", `tcp:${p}`], (e2, out2) => {
+          const left = (out2 || "").trim().split(/\s+/).map(Number).filter((n) => Number.isInteger(n) && n > 1);
+          for (const pid of left) { try { process.kill(pid, "SIGKILL"); } catch {} }
+          resolve({ ok: true, note: "порт освобождён" });
+        });
+      }, 1200);
     });
   });
 }
 
 // Keep-alive через launchd: держать сервис включённым без терминала
 const LA_DIR = join(homedir(), "Library", "LaunchAgents");
-const kaLabel = (name) => "com.localhostcontrol." + name.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+const kaLabel = (name) => "com.aigarage." +
+  (name.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 32) || "svc") +
+  "-" + createHash("md5").update(String(name)).digest("hex").slice(0, 6);
 const kaPlistPath = (name) => join(LA_DIR, kaLabel(name) + ".plist");
 async function fileExists(p) { try { await stat(p); return true; } catch { return false; } }
 
@@ -108,8 +130,8 @@ async function keepAliveSet(svc, enable) {
   <key>ProgramArguments</key><array><string>/bin/bash</string><string>-lc</string><string>${xmlEsc(svc.startCmd)}</string></array>
   <key>WorkingDirectory</key><string>${xmlEsc(cwd)}</string>
   <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><dict><key>Crashed</key><true/><key>SuccessfulExit</key><false/></dict>
-  <key>ThrottleInterval</key><integer>10</integer>
+  <key>KeepAlive</key><dict><key>Crashed</key><true/></dict>
+  <key>ThrottleInterval</key><integer>30</integer>
   <key>EnvironmentVariables</key><dict><key>PATH</key><string>${xmlEsc(homedir())}/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
   <key>StandardOutPath</key><string>/tmp/${xmlEsc(label)}.log</string>
   <key>StandardErrorPath</key><string>/tmp/${xmlEsc(label)}.log</string>
@@ -187,14 +209,16 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && url.pathname === "/api/status") {
     const services = await loadServices();
+    const all = await discoverPorts();                       // один lsof на весь запрос
+    const listening = new Set(all.map((d) => d.port));
     const rows = await Promise.all(services.map(async (s) => ({
       name: s.name, type: s.type, port: s.port, url: s.url, note: s.note || "", host: s.host || "mac",
-      up: await portUp(s.port), tunnel: await tunnelUrl(s),
+      up: !!s.port && listening.has(toPort(s.port)), tunnel: await tunnelUrl(s),
       hasControls: !!(s.startCmd || s.stopCmd),
       keepAlive: await fileExists(kaPlistPath(s.name)),
     })));
     const registeredPorts = new Set(services.map((s) => s.port).filter(Boolean));
-    const discovered = (await discoverPorts()).filter((d) => !registeredPorts.has(d.port) && d.port !== PORT);
+    const discovered = all.filter((d) => !registeredPorts.has(d.port) && d.port !== PORT);
     return sendJson(res, 200, { services: rows, discovered, ts: Date.now(), authOn: !!cfg.token });
   }
 
@@ -227,18 +251,24 @@ const server = http.createServer(async (req, res) => {
     const { service } = await readBody(req);
     const clean = sanitizeService(service);
     if (!clean) return sendJson(res, 400, { ok: false, error: "нужно корректное имя" });
-    const list = await loadServices();
-    if (list.some((s) => s.name === clean.name)) return sendJson(res, 400, { ok: false, error: "имя занято" });
-    list.push(clean); await saveServices(list);
-    return sendJson(res, 200, { ok: true, note: "сервис добавлен" });
+    return sendJson(res, 200, await withLock(async () => {
+      const list = await loadServices();
+      if (list.some((s) => s.name === clean.name)) return { ok: false, error: "имя занято" };
+      list.push(clean); await saveServices(list);
+      return { ok: true, note: "сервис добавлен" };
+    }));
   }
 
   if (req.method === "POST" && url.pathname === "/api/service-remove") {
     const { name } = await readBody(req);
-    const list = await loadServices();
-    const next = list.filter((s) => s.name !== name);
-    await saveServices(next);
-    return sendJson(res, 200, { ok: true, note: "сервис удалён" });
+    return sendJson(res, 200, await withLock(async () => {
+      const list = await loadServices();
+      const svc = list.find((s) => s.name === name);
+      if (!svc) return { ok: false, error: "сервис не найден" };
+      if (await fileExists(kaPlistPath(svc.name))) { try { await keepAliveSet(svc, false); } catch {} }
+      await saveServices(list.filter((s) => s.name !== name));
+      return { ok: true, note: "сервис удалён" };
+    }));
   }
 
   res.writeHead(404); res.end("not found");
