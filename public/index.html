@@ -67,13 +67,13 @@
   .pausebtn:hover{ border-color:var(--accent); color:var(--accent); }
 
   .grid{ max-width:1180px; margin:0 auto; display:grid; gap:20px; align-items:start;   /* авто-высота */
-         grid-template-columns:repeat(auto-fill,minmax(335px,1fr)); perspective:1400px; }
+         grid-template-columns:repeat(auto-fill,minmax(335px,1fr)); }
   .card{ position:relative; z-index:1; background:var(--glass); backdrop-filter:blur(22px) saturate(185%);
     -webkit-backdrop-filter:blur(22px) saturate(185%); border:1px solid var(--glass-brd); border-radius:var(--r);
-    padding:17px 17px 15px; box-shadow:var(--shadow); overflow:hidden; transform-style:preserve-3d;
-    transform:translateY(var(--lift,0)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
-    transition:transform .2s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease; }
-  .card:hover{ --lift:-6px; box-shadow:var(--shadow-h); }
+    padding:17px 17px 15px; box-shadow:var(--shadow); overflow:hidden;
+    transform:translateY(var(--lift,0));
+    transition:transform .25s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease; }
+  .card:hover{ --lift:-5px; box-shadow:var(--shadow-h); }
   /* спотлайт-блик, следующий за курсором (живой эффект, как pletor) */
   .card::after{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0; transition:opacity .35s;
     background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%), rgba(255,90,31,.13), transparent 46%); }
@@ -98,8 +98,12 @@
   .card.disc{ border-style:dashed; box-shadow:none; padding:14px 16px; }
   .card.disc:hover{ --lift:-3px; box-shadow:var(--shadow); }
   .card.disc .cmd{ font-weight:600; font-size:14px; } .card.disc .pid{ color:var(--faint); font-size:11px; }
-  .thumb .reload{ position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,.6); color:#fff; border:none;
-    font-size:13px; width:26px; height:26px; border-radius:7px; cursor:pointer; }
+  .thumb .reload{ position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,.62); color:#fff; border:none;
+    width:30px; height:30px; border-radius:9px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
+    transition:transform .12s ease, background .15s; }
+  .thumb .reload:hover{ background:rgba(0,0,0,.82); transform:scale(1.08); }
+  .thumb .reload:active{ transform:scale(.9); }
+  .thumb .reload .ic{ width:15px; height:15px; }
   .kebab{ border:none; background:transparent; color:var(--faint); cursor:pointer; font-size:17px; padding:2px 4px;
     border-radius:7px; line-height:1; }
   .kebab:hover{ background:var(--bg2); color:var(--txt); }
@@ -157,7 +161,10 @@
   .badge{ font-family:ui-monospace,"SF Mono",Menlo,monospace; background:rgba(20,20,45,.06); color:var(--mut); letter-spacing:-.02em; }
   .prevwrap{ margin-top:11px; border-radius:14px; overflow:hidden; border:1px solid var(--line);
     background:var(--bg2); height:0; opacity:0; transition:height .3s ease, opacity .3s ease; }
-  .prevwrap.open{ height:188px; opacity:1; }
+  .prevwrap.open{ height:226px; opacity:1; }
+  .prevhint{ display:flex; align-items:center; gap:5px; padding:7px 10px; font-size:11px; color:var(--mut); line-height:1.35; background:rgba(255,255,255,.5); }
+  .prevhint .ic{ width:12px; height:12px; opacity:.55; flex:0 0 auto; }
+  .prevhint a{ color:var(--blue); text-decoration:none; white-space:nowrap; }
   .thumb{ position:relative; width:100%; height:188px; cursor:zoom-in; }
   .thumb iframe{ position:absolute; top:0; left:0; width:1320px; height:825px; transform:scale(.235);
     transform-origin:top left; border:0; pointer-events:none; background:#fff; }
@@ -281,8 +288,8 @@ const DICT={
    openTab:"open in new tab ↗",close:"Close",fName:"Name",fType:"Type",fTypeLocal:"local (with buttons)",
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
-   discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Save",keepAlive:"Keep alive",kaOn:"Staying on",
-   whatIs:"What is it?",protected:"protected — don't touch",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",
+   discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",keepAlive:"Keep alive",kaOn:"Staying on",
+   whatIs:"What is it?",protected:"protected — don't touch",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",
    tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link (cloudflared) — open this service from your phone or share it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
@@ -291,8 +298,8 @@ const DICT={
    openTab:"открыть в новой вкладке ↗",close:"Закрыть",fName:"Название",fType:"Тип",fTypeLocal:"локальный (с кнопками)",
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
-   discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"Сохранить",keepAlive:"Держать включённым",kaOn:"Держится",
-   whatIs:"что это?",protected:"защищён — не трогай",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",
+   discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",keepAlive:"Держать включённым",kaOn:"Держится",
+   whatIs:"что это?",protected:"защищён — не трогай",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",
    tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку (cloudflared) — открыть сервис с телефона или поделиться"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
@@ -503,11 +510,12 @@ function togglePreview(name){ const w=document.querySelector(`[data-prev="${CSS.
     w.innerHTML=`<div class="thumb" onclick="openViewer('${esc(name)}')">
       <iframe sandbox="allow-same-origin allow-scripts allow-forms" src="${safeUrl(s.url)}"></iframe>
       <div class="blocked">${t('blocked')}</div>
-      <button class="reload" title="перезагрузить" aria-label="перезагрузить" onclick="event.stopPropagation();reloadPreview('${esc(name)}')">${icon('restart')}</button>
-      <div class="expand">${t('expand')}</div></div>`;
+      <button class="reload" title="${esc(t('reloadHint'))}" aria-label="${esc(t('reloadHint'))}" onclick="event.stopPropagation();reloadPreview('${esc(name)}')">${icon('restart')}</button>
+      <div class="expand">${t('expand')}</div></div>
+      <div class="prevhint">${icon('help')} ${t('prevHint')} · <a onclick="event.stopPropagation()" href="${safeUrl(s.url)}" target="_blank" rel="noopener">${t('openTab')}</a></div>`;
     w.dataset.loaded='1'; } }
 function reloadPreview(name){ const w=document.querySelector(`[data-prev="${CSS.escape(name)}"]`); if(!w)return;
-  const f=w.querySelector('iframe'); if(f){ const s=DATA.find(x=>x.name===name); const u=safeUrl(s.url); f.src=u==='#'?u:u+(u.includes('?')?'&':'?')+'_r='+Date.now(); toast('↻'); } }
+  const f=w.querySelector('iframe'); if(f){ const s=DATA.find(x=>x.name===name); const u=safeUrl(s.url); f.src=u==='#'?u:u+(u.includes('?')?'&':'?')+'_r='+Date.now(); toast(t('reloading')); } }
 function openViewer(name){ const s=DATA.find(x=>x.name===name); if(!s)return;
   $('v-title').textContent=s.name; $('v-link').href=safeUrl(s.url); $('v-frame').src=safeUrl(s.url); $('viewer').classList.add('show'); }
 function closeViewer(){ $('viewer').classList.remove('show'); $('v-frame').src='about:blank'; }
@@ -561,27 +569,24 @@ function card(s){ const cls=s.up?'up':'down';
 const catColor=c=>({system:'#8a8a8e',db:'#e8503a',app:'#0a84ff',dev:'#30b14a',agent:'#a06bff',unknown:'#8a8a8e'}[c]||'#8a8a8e');
 function askAI(cmd,port){ copy(`Что за процесс «${cmd}» слушает порт ${port} на моём Mac? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.`); toast('Промпт скопирован — вставь своему ИИ'); }
 function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const mk='disc'+d.port;
-  const phone=d.tunnel?`<div class="urlrow" style="margin:0 0 9px"><span class="tag">${icon('phone')} ${t('phone')}</span>
-      <a href="${safeUrl(d.tunnel)}" target="_blank" rel="noopener">${esc(d.tunnel)}</a><button class="icbtn" onclick="copy('${esc(d.tunnel)}')">${icon('copy')}</button></div>`:'';
   return `<div class="card disc${unsafe?' guarded':''}">
     <div class="top"><span class="pulse up"></span><span class="cmd">${esc(d.command)}</span>
-      <span class="hostb">:${d.port}</span>
-      <button class="kebab" aria-label="меню" onclick="toggleMenu(event,'${mk}')">${icon('more')}</button></div>
-    <div class="menu" data-menu="${mk}">
-      ${(!unsafe&&!d.tunnelManaged)?`<button title="${esc(t('tunnelHint'))}" onclick="closeMenus();tunnelStart(${d.port})">${icon('link')} ${t('tunnelStart')}</button>`:''}
-      <button class="${unsafe?'del':''}" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')} :${d.port}</button></div>
-    <div style="margin:7px 0 3px"><span class="catb" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)"><span class="dot"></span>${icon(catIcon(d.cat))} ${esc(d.label||d.cat||'')}</span>${unsafe?`<span class="guard">${icon('shield')} ${t('protected')}</span>`:''}</div>
+      <span class="hostb">:${d.port}</span></div>
+    <div style="margin:7px 0 3px"><span class="catb" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)"><span class="dot"></span>${icon(catIcon(d.cat))} ${t('cat_'+d.cat)}</span>${unsafe?`<span class="guard">${icon('shield')} ${t('protected')}</span>`:''}</div>
     <div class="pid" style="margin:2px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
-    ${phone}
     <div class="row">
-      <button class="btn btn-primary" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">${icon('plus')} ${t('saveBtn')}</button>
+      <button class="btn btn-primary" title="${esc(t('saveHint'))}" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">${icon('plus')} ${t('saveBtn')}</button>
       <button class="btn btn-soft" onclick="askAI('${esc(d.command)}',${d.port})">${icon('help')} ${t('whatIs')}</button>
-      ${d.tunnelManaged?tunnelBtn(d.port,d.tunnelManaged,d.tunnel,d.tunnelError):''}</div></div>`; }
+      ${unsafe
+        ? `<button class="btn btn-soft" onclick="toggleMenu(event,'${mk}')">${icon('more')} ${t('moreBtn')}</button>`
+        : `<button class="btn btn-soft" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>`}</div>
+    ${unsafe?`<div class="menu" data-menu="${mk}" style="top:auto;bottom:14px;right:14px">
+      <button class="del" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')} :${d.port}</button></div>`:''}</div>`; }
 function renderDiscovered(list){ const w=$('disc-wrap');
   if(!list||!list.length){ w.style.display='none'; return; }
   w.style.display='block'; $('disc-n').textContent=list.length; $('disc-grid').innerHTML=list.map(dcard).join(''); }
 async function saveDiscovered(port,command){
-  const s={name:command+' :'+port, type:'link', port, url:'http://localhost:'+port, host:'Mac', note:'обнаружено'};
+  const s={name:command+' :'+port, type:'link', port, url:'http://localhost:'+port, host:'Mac', note:t('discNote')};
   const j=await api('/api/service-add',{service:s}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
 
 function visible(){ const q=$('q').value.trim().toLowerCase(); return DATA.filter(s=>!q||s.name.toLowerCase().includes(q)); }
@@ -609,15 +614,13 @@ async function load(){ if(paused||document.hidden)return;
   }catch(e){ $('ts').textContent='—'; } }
 
 /* живой эффект: спотлайт за курсором на карточках + ambient-glow всей страницы */
-let _raf=0,_e=null,_tilt=null;
+let _raf=0,_e=null;
 addEventListener('pointermove',e=>{ _e=e; if(_raf)return; _raf=requestAnimationFrame(()=>{ _raf=0; const ev=_e;
   document.documentElement.style.setProperty('--gx',(ev.clientX/innerWidth*100).toFixed(1)+'%');
   document.documentElement.style.setProperty('--gy',(ev.clientY/innerHeight*100).toFixed(1)+'%');
-  const c=ev.target.closest&&ev.target.closest('.card');
-  if(c!==_tilt){ if(_tilt){ _tilt.style.setProperty('--rx','0deg'); _tilt.style.setProperty('--ry','0deg'); } _tilt=c; }
-  if(c){ const r=c.getBoundingClientRect(); const mx=(ev.clientX-r.left)/r.width, my=(ev.clientY-r.top)/r.height;
-    c.style.setProperty('--mx',(mx*100).toFixed(1)+'%'); c.style.setProperty('--my',(my*100).toFixed(1)+'%');
-    c.style.setProperty('--ry',((mx-.5)*7).toFixed(2)+'deg'); c.style.setProperty('--rx',((.5-my)*7).toFixed(2)+'deg'); } }); },{passive:true});
+  const c=ev.target.closest&&ev.target.closest('.card'); if(c){ const r=c.getBoundingClientRect();
+    c.style.setProperty('--mx',((ev.clientX-r.left)/r.width*100).toFixed(1)+'%');
+    c.style.setProperty('--my',((ev.clientY-r.top)/r.height*100).toFixed(1)+'%'); } }); },{passive:true});
 
 $('pause').innerHTML=icon('pause'); fillLangs(); applyI18n(); toggleCmd(); load(); setInterval(load,3000);
 </script>

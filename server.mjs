@@ -181,59 +181,46 @@ async function keepAliveSet(svc, enable) {
   }
 }
 
-// ── Туннель-менеджер: публичная ссылка (cloudflared) как ОТДЕЛЬНЫЙ launchd-агент ──
-// Каждый туннель — независимая launchd-задача com.aigarage.tunnel-<порт>. Поэтому он
-// ПЕРЕЖИВАЕТ рестарт панели с ТЕМ ЖЕ url (launchd не трогает чужие задачи).
-// KeepAlive{Crashed} — самовосстановление при падении сети.
+// ── Туннель-менеджер: публичная ссылка (cloudflared) фоновым процессом ──
+// Запускаем detached + состояние в файле + лог. БЕЗ launchd-агента — иначе macOS
+// показывает диалог «фоновый объект» и требует подтверждения (тогда по кнопке туннель
+// висит неподтверждённым и не стартует). Минус: при полном рестарте панели ссылку
+// нужно пересоздать кнопкой (бывает редко).
+const TUN_STATE = join(CFG_DIR, "tunnels.json");
 const tunLog = (p) => `/tmp/aigarage-tunnel-${p}.log`;
-const tunLabel = (p) => `com.aigarage.tunnel-${p}`;
-const tunPlistPath = (p) => join(LA_DIR, tunLabel(p) + ".plist");
-// последний url в логе (после самовосстановления url новее — берём свежий)
+const procAlive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+async function loadTun() { try { return JSON.parse(await readFile(TUN_STATE, "utf8")); } catch { return {}; } }
+async function saveTun(st) { await mkdir(CFG_DIR, { recursive: true }); await writeFile(TUN_STATE, JSON.stringify(st, null, 2)); }
 const readTunUrl = (log) => { try { const m = readFileSync(log, "utf8").match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/g); return m ? m[m.length - 1] : null; } catch { return null; } };
 async function cfPath() { for (const p of ["/opt/homebrew/bin/cloudflared", "/usr/local/bin/cloudflared", "/usr/bin/cloudflared"]) if (await fileExists(p)) return p; return null; }
-async function managedTunnelPorts() {
-  try { const files = await readdir(LA_DIR);
-    return new Set(files.map((f) => (f.match(/^com\.aigarage\.tunnel-(\d+)\.plist$/) || [])[1]).filter(Boolean).map(Number));
-  } catch { return new Set(); }
-}
 async function startTunnel(port, provider = "cloudflared") {
   const p = toPort(port);
   if (!p) return { ok: false, error: "некорректный порт" };
   if (provider !== "cloudflared") return { ok: false, error: "провайдер пока не поддержан (cloudflared)" };
-  if (await fileExists(tunPlistPath(p))) return { ok: true, note: "туннель уже поднят" };
+  const st = await loadTun();
+  if (st[p] && procAlive(st[p].pid)) return { ok: true, note: "ссылка уже создана" };
   const cf = await cfPath();
   if (!cf) return { ok: false, error: "cloudflared не найден — установи: brew install cloudflared" };
-  const log = tunLog(p), label = tunLabel(p), path = tunPlistPath(p);
-  try { await unlink(log); } catch {}                        // чтобы не подхватить старый url
-  const plist = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-  <key>Label</key><string>${xmlEsc(label)}</string>
-  <key>ProgramArguments</key><array><string>${xmlEsc(cf)}</string><string>tunnel</string><string>--url</string><string>http://localhost:${p}</string><string>--http-host-header</string><string>localhost:${p}</string><string>--no-autoupdate</string></array>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><dict><key>Crashed</key><true/></dict>
-  <key>ThrottleInterval</key><integer>30</integer>
-  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string><key>HOME</key><string>${xmlEsc(homedir())}</string></dict>
-  <key>StandardOutPath</key><string>${xmlEsc(log)}</string>
-  <key>StandardErrorPath</key><string>${xmlEsc(log)}</string>
-</dict></plist>`;
-  await mkdir(LA_DIR, { recursive: true });
-  await writeFile(path, plist);
-  return new Promise((r) => exec(`launchctl unload "${path}" 2>/dev/null; launchctl load -w "${path}"`, (e) =>
-    r(e ? { ok: false, error: e.message.slice(0, 200) } : { ok: true, note: "туннель поднимается…" })));
+  const log = tunLog(p);
+  let fd, child;
+  try { fd = openSync(log, "w"); } catch { return { ok: false, error: "не открыть лог-файл" }; }
+  try {
+    child = spawn(cf, ["tunnel", "--url", `http://localhost:${p}`, "--http-host-header", `localhost:${p}`, "--no-autoupdate"], { stdio: ["ignore", fd, fd], detached: true });
+  } catch { return { ok: false, error: "cloudflared не запустился" }; }
+  child.on("error", () => {});
+  child.unref();
+  st[p] = { provider, log, pid: child.pid };
+  await saveTun(st);
+  return { ok: true, note: "ссылка создаётся…" };
 }
 async function stopTunnel(port) {
   const p = toPort(port);
-  if (!p) return { ok: false, error: "некорректный порт" };
-  const path = tunPlistPath(p);
-  return new Promise((r) => exec(`launchctl unload "${path}" 2>/dev/null`, async () => {
-    try { await unlink(path); } catch {}
-    try { await unlink(tunLog(p)); } catch {}
-    r({ ok: true, note: "туннель остановлен" });
-  }));
+  const st = await loadTun();
+  if (st[p]) { try { process.kill(st[p].pid, "SIGTERM"); } catch {} delete st[p]; await saveTun(st); try { await unlink(tunLog(p)); } catch {} }
+  return { ok: true, note: "ссылка убрана" };
 }
-// синхронный info по заранее загруженному множеству портов (для /api/status)
-const tunnelInfoFrom = (set, port) => { const p = toPort(port); return set.has(p) ? { url: readTunUrl(tunLog(p)), provider: "cloudflared", managed: true } : null; };
+// синхронный info по заранее загруженному состоянию (для /api/status)
+const tunnelInfoFrom = (st, port) => { const r = st[toPort(port)]; return r && procAlive(r.pid) ? { url: readTunUrl(r.log), provider: r.provider, managed: true } : null; };
 
 function sendJson(res, code, obj) {
   res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
@@ -300,9 +287,12 @@ const server = http.createServer(async (req, res) => {
     const services = await loadServices();
     const all = await discoverPorts();                       // один lsof на весь запрос
     const listening = new Set(all.map((d) => d.port));
-    const tunPorts = await managedTunnelPorts();             // порты с активным туннелем (launchd-агенты, переживают рестарт)
+    const tun = await loadTun();                             // активные туннели (фоновые процессы)
+    let tunChanged = false;
+    for (const k of Object.keys(tun)) { if (!procAlive(tun[k].pid)) { delete tun[k]; tunChanged = true; } }
+    if (tunChanged) await saveTun(tun);
     const rows = await Promise.all(services.map(async (s) => {
-      const ti = tunnelInfoFrom(tunPorts,s.port);
+      const ti = tunnelInfoFrom(tun,s.port);
       return {
         name: s.name, type: s.type, port: s.port, url: s.url, note: s.note || "", host: s.host || "mac",
         up: !!s.port && listening.has(toPort(s.port)), tunnel: ti?.url || await tunnelUrl(s),
@@ -314,7 +304,7 @@ const server = http.createServer(async (req, res) => {
     }));
     const registeredPorts = new Set(services.map((s) => s.port).filter(Boolean));
     const discovered = all.filter((d) => !registeredPorts.has(d.port) && d.port !== PORT)
-      .map((d) => { const ti = tunnelInfoFrom(tunPorts,d.port); return { ...d, ...classifyProcess(d.command, d.port), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
+      .map((d) => { const ti = tunnelInfoFrom(tun,d.port); return { ...d, ...classifyProcess(d.command, d.port), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
     return sendJson(res, 200, { services: rows, discovered, platform: process.platform, ts: Date.now(), authOn: !!cfg.token });
   }
 
