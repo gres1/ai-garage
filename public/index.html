@@ -71,7 +71,8 @@
   .state{ font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:980px; }
   .state.up{ color:#1a7f37; background:rgba(52,199,89,.14); }
   .state.down{ color:#b3261e; background:rgba(255,59,48,.12); }
-  .hostb{ font-size:11px; font-weight:600; padding:3px 8px; border-radius:980px; background:var(--bg2); color:var(--mut); flex:0 0 auto; }
+  .hostb{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:3px 8px; border-radius:980px; background:var(--bg2); color:var(--mut); flex:0 0 auto; }
+  .hostb .ic{ width:12px; height:12px; }
   .card.disc{ border-style:dashed; box-shadow:none; padding:14px 16px; }
   .card.disc:hover{ transform:translateY(-3px); box-shadow:var(--shadow); }
   .card.disc .cmd{ font-weight:600; font-size:14px; } .card.disc .pid{ color:var(--faint); font-size:11px; }
@@ -106,6 +107,21 @@
   .btn-soft{ background:var(--bg2); color:var(--txt); } .btn-soft:hover{ background:#e2e2e5; }
   .btn-danger{ background:rgba(255,59,48,.1); color:var(--red); } .btn-danger:hover{ background:rgba(255,59,48,.18); }
   .btn-ghost{ background:transparent; color:var(--mut); padding:8px 12px; } .btn-ghost:hover{ color:var(--blue); background:var(--bg2); }
+  /* система иконок (SVG, не эмодзи) */
+  .ic{ width:15px; height:15px; flex:0 0 auto; display:inline-block; vertical-align:-2px; }
+  .btn{ display:inline-flex; align-items:center; gap:6px; }
+  .icbtn{ display:inline-flex; align-items:center; justify-content:center; } .icbtn .ic{ width:14px; height:14px; }
+  .kebab{ display:inline-flex; align-items:center; } .kebab .ic{ width:17px; height:17px; }
+  .menu button{ display:flex; align-items:center; gap:8px; } .menu button .ic{ width:14px; height:14px; }
+  .spin{ animation:spin 1s linear infinite; } @keyframes spin{ to{ transform:rotate(360deg); } }
+  /* a11y: видимый фокус */
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible{ outline:2px solid var(--blue); outline-offset:2px; }
+  /* профессиональный бейдж категории: точка + иконка + подпись */
+  .catb{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; padding:3px 9px 3px 7px; border-radius:980px; }
+  .catb .ic{ width:13px; height:13px; }
+  .catb .dot{ width:6px; height:6px; border-radius:50%; flex:0 0 auto; }
+  .tag{ display:inline-flex; align-items:center; gap:4px; } .tag .ic{ width:11px; height:11px; }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } .card:hover{ transform:none; } }
   .prevwrap{ margin-top:11px; border-radius:14px; overflow:hidden; border:1px solid var(--line);
     background:var(--bg2); height:0; opacity:0; transition:height .3s ease, opacity .3s ease; }
   .prevwrap.open{ height:188px; opacity:1; }
@@ -162,7 +178,7 @@
         <input class="field" id="q" oninput="render()"/>
       </div>
       <select class="field" id="lang" onchange="setLang(this.value)"></select>
-      <button class="pausebtn" id="pause" onclick="togglePause()">⏸</button>
+      <button class="pausebtn" id="pause" aria-label="пауза" onclick="togglePause()"></button>
     </div>
   </header>
 
@@ -373,6 +389,34 @@ let DATA=[]; let paused=false; let authOn=false; let lastSig='';
 const $=id=>document.getElementById(id);
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl=u=>{try{const p=new URL(u,location.origin);return ['http:','https:'].includes(p.protocol)?p.href:'#';}catch{return '#';}};
+const ICONS={
+ play:'<path d="M7 4v16l13-8z" fill="currentColor" stroke="none"/>',
+ stop:'<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>',
+ restart:'<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>',
+ keepalive:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+ eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+ zap:'<path d="M13 2L3 14h7l-1 8 10-12h-7z" fill="currentColor" stroke="none"/>',
+ help:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".7" fill="currentColor" stroke="none"/>',
+ plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+ link:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+ x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+ spin:'<path d="M21 12a9 9 0 1 1-6.2-8.6"/>',
+ copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+ more:'<circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none"/>',
+ trash:'<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6"/>',
+ phone:'<rect x="7" y="2" width="10" height="20" rx="2.5"/><line x1="11" y1="18" x2="13" y2="18"/>',
+ pause:'<rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/>',
+ cpu:'<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/>',
+ database:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+ box:'<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/>',
+ wrench:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.8 2.8-2.1-2.1 2.8-2.8z"/>',
+ bot:'<rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="9" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1" fill="currentColor" stroke="none"/>',
+ cloud:'<path d="M17.5 19a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.6-1.5A4 4 0 0 0 6.5 19z"/>',
+ monitor:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/>',
+ warn:'<path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".7" fill="currentColor" stroke="none"/>'
+};
+const icon=(n,cls='')=>`<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`;
+const catIcon=c=>({system:'cpu',db:'database',app:'box',dev:'wrench',agent:'bot',unknown:'help'}[c]||'help');
 const toast=m=>{const e=$('toast');e.textContent=m;e.classList.add('show');clearTimeout(e._);e._=setTimeout(()=>e.classList.remove('show'),2200);};
 const copy=v=>navigator.clipboard.writeText(v).then(()=>toast(t('copied')+': '+v));
 
@@ -408,9 +452,9 @@ async function tunnelStart(port){ toast('Поднимаю туннель…'); c
 async function tunnelStop(port){ const j=await api('/api/tunnel-stop',{port}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; setTimeout(load,600); }
 function tunnelBtn(port,managed,url,err){ if(!port) return '';
   if(err) return `<span class="note" style="margin:0;color:var(--red)">${esc(err)}</span>`;
-  if(managed&&!url) return `<button class="btn btn-soft" onclick="tunnelStop(${port})">⏳ ${t('tunnelUp')}</button>`;
-  if(managed) return `<button class="btn btn-soft" onclick="tunnelStop(${port})">⏹ ${t('tunnelStop')}</button>`;
-  return `<button class="btn btn-ghost" onclick="tunnelStart(${port})">🔗 ${t('tunnelStart')}</button>`; }
+  if(managed&&!url) return `<button class="btn btn-soft" onclick="tunnelStop(${port})">${icon('spin','spin')} ${t('tunnelUp')}</button>`;
+  if(managed) return `<button class="btn btn-soft" onclick="tunnelStop(${port})">${icon('x')} ${t('tunnelStop')}</button>`;
+  return `<button class="btn btn-ghost" onclick="tunnelStart(${port})">${icon('link')} ${t('tunnelStart')}</button>`; }
 async function delService(name){ if(!confirm(t('confirmDel')))return; const j=await api('/api/service-remove',{name}); toast(j.ok?'✅':'⛔️'); lastSig=''; load(); }
 
 /* меню на карточке */
@@ -425,7 +469,7 @@ function togglePreview(name){ const w=document.querySelector(`[data-prev="${CSS.
     w.innerHTML=`<div class="thumb" onclick="openViewer('${esc(name)}')">
       <iframe sandbox="allow-same-origin allow-scripts allow-forms" src="${safeUrl(s.url)}"></iframe>
       <div class="blocked">${t('blocked')}</div>
-      <button class="reload" title="перезагрузить" onclick="event.stopPropagation();reloadPreview('${esc(name)}')">↻</button>
+      <button class="reload" title="перезагрузить" aria-label="перезагрузить" onclick="event.stopPropagation();reloadPreview('${esc(name)}')">${icon('restart')}</button>
       <div class="expand">${t('expand')}</div></div>`;
     w.dataset.loaded='1'; } }
 function reloadPreview(name){ const w=document.querySelector(`[data-prev="${CSS.escape(name)}"]`); if(!w)return;
@@ -433,7 +477,7 @@ function reloadPreview(name){ const w=document.querySelector(`[data-prev="${CSS.
 function openViewer(name){ const s=DATA.find(x=>x.name===name); if(!s)return;
   $('v-title').textContent=s.name; $('v-link').href=safeUrl(s.url); $('v-frame').src=safeUrl(s.url); $('viewer').classList.add('show'); }
 function closeViewer(){ $('viewer').classList.remove('show'); $('v-frame').src='about:blank'; }
-function togglePause(){ paused=!paused; $('pause').textContent=paused?'▶':'⏸'; if(!paused)load(); }
+function togglePause(){ paused=!paused; $('pause').innerHTML=paused?icon('play'):icon('pause'); if(!paused)load(); }
 
 /* форма добавления */
 function openForm(){ $('formModal').classList.add('show'); }
@@ -451,28 +495,28 @@ async function saveService(){
 
 function card(s){ const cls=s.up?'up':'down';
   const ctrls=s.hasControls?`<div class="row" style="margin-top:4px">
-      <button class="btn btn-primary" onclick="act('${esc(s.name)}','start')">▶ ${t('start')}</button>
-      <button class="btn btn-danger" onclick="act('${esc(s.name)}','stop')">■ ${t('stop')}</button>
-      <button class="btn btn-soft" onclick="act('${esc(s.name)}','restart')">⟳ ${t('restart')}</button>
-      <button class="btn ${s.keepAlive?'btn-primary':'btn-ghost'}" onclick="toggleKeepAlive('${esc(s.name)}',${!s.keepAlive})">🔁 ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>
+      <button class="btn btn-primary" onclick="act('${esc(s.name)}','start')">${icon('play')} ${t('start')}</button>
+      <button class="btn btn-danger" onclick="act('${esc(s.name)}','stop')">${icon('stop')} ${t('stop')}</button>
+      <button class="btn btn-soft" onclick="act('${esc(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>
+      <button class="btn ${s.keepAlive?'btn-primary':'btn-ghost'}" onclick="toggleKeepAlive('${esc(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
-      <button class="btn btn-ghost" onclick="togglePreview('${esc(s.name)}')">👁 ${t('preview')}</button></div>`
+      <button class="btn btn-ghost" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`
     :`<div class="row" style="margin-top:4px"><span class="note" style="margin:0">${t('managed')}</span>
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
-      <button class="btn btn-ghost" style="margin-left:auto" onclick="togglePreview('${esc(s.name)}')">👁 ${t('preview')}</button></div>`;
-  const tunnel=s.tunnel?`<div class="urlrow"><span class="tag">📱 ${t('phone')}</span>
-      <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a><button class="icbtn" onclick="copy('${esc(s.tunnel)}')">⧉</button></div>`:'';
+      <button class="btn btn-ghost" style="margin-left:auto" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`;
+  const tunnel=s.tunnel?`<div class="urlrow"><span class="tag">${icon('phone')} ${t('phone')}</span>
+      <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a><button class="icbtn" onclick="copy('${esc(s.tunnel)}')">${icon('copy')}</button></div>`:'';
   return `<div class="card ${cls}" data-name="${esc(s.name)}">
     <div class="top"><span class="pulse ${cls}"></span><span class="name">${esc(s.name)}</span>
-      <span class="hostb">${/vps|впс|server|серв|cloud/i.test(s.host||'')?'☁️':'💻'} ${esc(s.host||'Mac')}</span>
+      <span class="hostb">${icon(/vps|впс|server|серв|cloud/i.test(s.host||'')?'cloud':'monitor')} ${esc(s.host||'Mac')}</span>
       <span class="state ${cls}" style="margin-left:auto">${s.up?t('working'):t('stopped')}</span>
-      <button class="kebab" onclick="toggleMenu(event,'${esc(s.name)}')">⋯</button></div>
+      <button class="kebab" aria-label="меню" onclick="toggleMenu(event,'${esc(s.name)}')">${icon('more')}</button></div>
     <div class="menu" data-menu="${esc(s.name)}">
-      ${s.port?`<button onclick="killPort(${s.port})">🧹 ${t('freePort')} :${s.port}</button>`:''}
-      <button class="del" onclick="delService('${esc(s.name)}')">🗑 ${t('remove')}</button></div>
+      ${s.port?`<button onclick="killPort(${s.port})">${icon('zap')} ${t('freePort')} :${s.port}</button>`:''}
+      <button class="del" onclick="delService('${esc(s.name)}')">${icon('trash')} ${t('remove')}</button></div>
     ${s.note?`<div class="note">${esc(s.note)}</div>`:'<div style="height:5px"></div>'}
     <div class="urls"><div class="urlrow"><span class="badge">:${s.port||'—'}</span>
-        <a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a><button class="icbtn" onclick="copy('${esc(s.url)}')">⧉</button></div>
+        <a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a><button class="icbtn" onclick="copy('${esc(s.url)}')">${icon('copy')}</button></div>
       ${tunnel}</div>
     ${ctrls}<div class="prevwrap" data-prev="${esc(s.name)}"></div></div>`; }
 
@@ -482,13 +526,13 @@ function askAI(cmd,port){ copy(`Что за процесс «${cmd}» слуша
 function dcard(d){ const col=catColor(d.cat); return `<div class="card disc">
     <div class="top"><span class="pulse up"></span><span class="cmd">${esc(d.command)}</span>
       <span class="hostb" style="margin-left:auto">:${d.port}</span></div>
-    <div style="margin:7px 0 3px"><span class="badge" style="background:${col}1f;color:${col}">${catEmoji(d.cat)} ${esc(d.label||d.cat||'')}</span></div>
+    <div style="margin:7px 0 3px"><span class="catb" style="background:${col}1f;color:${col}">${icon(catIcon(d.cat))} ${esc(d.label||d.cat||'')}</span></div>
     <div class="pid" style="margin:2px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
     <div class="row">
-      <button class="btn ${d.safe===false?'btn-danger':'btn-soft'}" onclick="killPort(${d.port})">🧹 ${t('freePort')}</button>
-      <button class="btn btn-ghost" onclick="askAI('${esc(d.command)}',${d.port})">🤔 ${t('whatIs')}</button>
+      <button class="btn ${d.safe===false?'btn-danger':'btn-soft'}" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>
+      <button class="btn btn-ghost" onclick="askAI('${esc(d.command)}',${d.port})">${icon('help')} ${t('whatIs')}</button>
       ${tunnelBtn(d.port,d.tunnelManaged,d.tunnel,d.tunnelError)}
-      <button class="btn btn-ghost" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">＋ ${t('saveBtn')}</button></div></div>`; }
+      <button class="btn btn-ghost" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">${icon('plus')} ${t('saveBtn')}</button></div></div>`; }
 function renderDiscovered(list){ const w=$('disc-wrap');
   if(!list||!list.length){ w.style.display='none'; return; }
   w.style.display='block'; $('disc-n').textContent=list.length; $('disc-grid').innerHTML=list.map(dcard).join(''); }
@@ -515,7 +559,7 @@ async function load(){ if(paused||document.hidden)return;
     $('platwarn').style.display=(j.platform&&j.platform!=='darwin')?'block':'none';
   }catch(e){ $('ts').textContent='—'; } }
 
-fillLangs(); applyI18n(); toggleCmd(); load(); setInterval(load,3000);
+$('pause').innerHTML=icon('pause'); fillLangs(); applyI18n(); toggleCmd(); load(); setInterval(load,3000);
 </script>
 </body>
 </html>
