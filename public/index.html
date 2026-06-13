@@ -564,7 +564,7 @@ function card(s){ const cls=s.up?'up':'down';
   const urls = s.control ? '' : `<div class="urls"><div class="urlrow"><span class="badge">:${s.port||'—'}</span>
         <a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a><button class="icbtn" onclick="copy('${esc(s.url)}')">${icon('copy')}</button></div>
       ${tunnel}</div>`;
-  return `<div class="card ${cls}${s.control?' ctrl':''}" data-name="${esc(s.name)}" draggable="true" ondragstart="dragStart(event)" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondrop="dragDrop(event)">
+  return `<div class="card ${cls}${s.control?' ctrl':''}" data-name="${esc(s.name)}" onpointerdown="dragPointerDown(event)">
     <div class="top"><span class="pulse ${cls}"></span><span class="name">${esc(s.name)}</span>
       <span class="hostb">${icon(/vps|впс|server|серв|cloud/i.test(s.host||'')?'cloud':'monitor')} ${esc(s.host||'Mac')}</span>
       <span class="state ${cls}" style="margin-left:auto">${s.up?t('working'):t('stopped')}</span>
@@ -601,14 +601,29 @@ async function saveDiscovered(port,command){
   const j=await api('/api/service-add',{service:s}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
 async function saveAllDiscovered(){ toast('…'); const j=await api('/api/save-all-discovered',{}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
 
-/* перетаскивание карточек мышкой (порядок сохраняется на сервере) */
-let _drag=null;
-function dragStart(e){ _drag=e.currentTarget; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','1'); }catch(_){} setTimeout(()=>{ if(_drag) _drag.classList.add('dragging'); },0); }
-function dragEnd(){ if(_drag) _drag.classList.remove('dragging'); _drag=null; }
-function dragOver(e){ if(!_drag)return; e.preventDefault(); const c=e.currentTarget; if(c===_drag||!c.classList.contains('card'))return;
-  const r=c.getBoundingClientRect(); const after=(e.clientY-r.top)/r.height>0.5; c.parentNode.insertBefore(_drag, after?c.nextSibling:c); }
-function dragDrop(e){ e.preventDefault(); const names=[...document.querySelectorAll('#grid .card')].map(c=>c.dataset.name);
-  api('/api/service-reorder',{order:names}); lastSig=''; }
+/* перетаскивание карточек (pointer-события: надёжно + автоскролл к краям экрана) */
+let _asTimer=0,_asD=0;
+function autoScroll(y){ const m=90; _asD = y<m? -16 : (y>innerHeight-m? 16 : 0);
+  if(_asD && !_asTimer) _asTimer=setInterval(()=>scrollBy(0,_asD),16); if(!_asD && _asTimer){ clearInterval(_asTimer); _asTimer=0; } }
+function stopAutoScroll(){ if(_asTimer){ clearInterval(_asTimer); _asTimer=0; } _asD=0; }
+async function persistOrder(){ const names=[...document.querySelectorAll('#grid .card')].map(c=>c.dataset.name);
+  await api('/api/service-reorder',{order:names}); lastSig=''; load(); }
+function dragPointerDown(e){
+  if(e.button!==0) return;
+  if(e.target.closest('button,a,input,select,.menu,.icbtn,.kebab,.thumb,.prevwrap')) return;  // не мешаем кликам/превью
+  const card=e.currentTarget, sx=e.clientX, sy=e.clientY; let started=false;
+  const move=(ev)=>{
+    if(!started){ if(Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)<6) return; started=true; _dragging=true; card.classList.add('dragging'); document.body.style.userSelect='none'; }
+    ev.preventDefault();
+    card.style.pointerEvents='none'; const under=document.elementFromPoint(ev.clientX,ev.clientY); card.style.pointerEvents='';
+    const tgt=under&&under.closest&&under.closest('#grid .card');
+    if(tgt&&tgt!==card){ const r=tgt.getBoundingClientRect(); const after=(ev.clientY-r.top)/r.height>0.5; tgt.parentNode.insertBefore(card, after?tgt.nextSibling:tgt); }
+    autoScroll(ev.clientY);
+  };
+  const up=()=>{ removeEventListener('pointermove',move); removeEventListener('pointerup',up); stopAutoScroll(); document.body.style.userSelect='';
+    if(started){ card.classList.remove('dragging'); _dragging=false; persistOrder(); } };
+  addEventListener('pointermove',move); addEventListener('pointerup',up);
+}
 
 function visible(){ const q=$('q').value.trim().toLowerCase(); return DATA.filter(s=>!q||s.name.toLowerCase().includes(q)); }
 function render(){ $('grid').innerHTML=visible().map(card).join('');
@@ -638,8 +653,8 @@ async function load(){ if(paused||document.hidden)return;
   }catch(e){ $('ts').textContent='—'; } }
 
 /* живой эффект: спотлайт за курсором на карточках + ambient-glow всей страницы */
-let _raf=0,_e=null,_tilt=null;
-addEventListener('pointermove',e=>{ _e=e; if(_raf)return; _raf=requestAnimationFrame(()=>{ _raf=0; const ev=_e;
+let _raf=0,_e=null,_tilt=null,_dragging=false;
+addEventListener('pointermove',e=>{ _e=e; if(_raf)return; _raf=requestAnimationFrame(()=>{ _raf=0; if(_dragging)return; const ev=_e;
   document.documentElement.style.setProperty('--gx',(ev.clientX/innerWidth*100).toFixed(1)+'%');
   document.documentElement.style.setProperty('--gy',(ev.clientY/innerHeight*100).toFixed(1)+'%');
   const c=ev.target.closest&&ev.target.closest('.card');

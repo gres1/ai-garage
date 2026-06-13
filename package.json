@@ -24,7 +24,13 @@
     "process-manager",
     "kill-port",
     "ai-agents",
+    "ai-agent",
+    "claude-code",
+    "cursor",
     "developer-tools",
+    "devtools",
+    "dx",
+    "zero-dependencies",
     "macos",
     "dashboard"
   ],

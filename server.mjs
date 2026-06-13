@@ -273,11 +273,15 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   const cfg = await loadConfig();
 
-  // Анти-DNS-rebinding: принимаем только loopback Host (все методы)
-  const host = (req.headers.host || "").replace(/:\d+$/, "");
-  if (!["localhost", "127.0.0.1", "[::1]", ""].includes(host)) {
-    res.writeHead(403); return res.end("bad host");
-  }
+  // Анти-DNS-rebinding: loopback всегда; плюс Tailscale (*.ts.net, 100.64/10), локальная
+  // сеть (10/192.168/172.16-31) и явный cfg.allowedHosts. Публичные домены (rebinding) — блок.
+  const host = (req.headers.host || "").replace(/:\d+$/, "").toLowerCase();
+  const hostOk = ["localhost", "127.0.0.1", "[::1]", ""].includes(host)
+    || host.endsWith(".ts.net")
+    || /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host)
+    || /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)
+    || (Array.isArray(cfg.allowedHosts) && cfg.allowedHosts.map((h) => String(h).toLowerCase()).includes(host));
+  if (!hostOk) { res.writeHead(403); return res.end("bad host"); }
   const isMutation = req.method === "POST";
   // Анти-CSRF: на мутациях Origin должен быть наш (пустой — для curl/CLI)
   if (isMutation) {
