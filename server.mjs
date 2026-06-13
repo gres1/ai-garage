@@ -149,36 +149,36 @@ const kaLabel = (name) => "com.aigarage." +
 const kaPlistPath = (name) => join(LA_DIR, kaLabel(name) + ".plist");
 async function fileExists(p) { try { await stat(p); return true; } catch { return false; } }
 
+// Keep-alive теперь СУПЕРВИЗИТ САМА ПАНЕЛЬ (а не отдельный launchd-агент): у панели есть
+// доступ к ~/Documents, а у отдельного агента — нет (macOS TCC → «Operation not permitted»).
+// Список «держать живым» — в keepalive.json; супервизор перезапускает упавшее по таймеру.
+const KA_STATE = join(CFG_DIR, "keepalive.json");
+async function loadKA() { try { return new Set(JSON.parse(await readFile(KA_STATE, "utf8"))); } catch { return new Set(); } }
+async function saveKA(set) { await mkdir(CFG_DIR, { recursive: true }); await writeFile(KA_STATE, JSON.stringify([...set], null, 2)); }
+async function removeKAPlist(name) {                          // снести старый (сломанный TCC) launchd-агент, если остался
+  const path = kaPlistPath(name);
+  if (await fileExists(path)) { await new Promise((r) => exec(`launchctl unload "${path}" 2>/dev/null; true`, () => r())); try { await unlink(path); } catch {} }
+}
 async function keepAliveSet(svc, enable) {
-  if (!svc.startCmd) return { ok: false, error: "у сервиса нет команды старта" };
-  const label = kaLabel(svc.name), path = kaPlistPath(svc.name);
-  if (enable) {
-    const cwd = svc.cwd ? expandHome(svc.cwd) : homedir();
-    const plist = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-  <key>Label</key><string>${xmlEsc(label)}</string>
-  <key>ProgramArguments</key><array><string>/bin/bash</string><string>-lc</string><string>${xmlEsc(svc.startCmd)}</string></array>
-  <key>WorkingDirectory</key><string>${xmlEsc(cwd)}</string>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><dict><key>Crashed</key><true/></dict>
-  <key>ThrottleInterval</key><integer>30</integer>
-  <key>EnvironmentVariables</key><dict><key>PATH</key><string>${xmlEsc(homedir())}/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
-  <key>StandardOutPath</key><string>/tmp/${xmlEsc(label)}.log</string>
-  <key>StandardErrorPath</key><string>/tmp/${xmlEsc(label)}.log</string>
-</dict></plist>`;
-    await mkdir(LA_DIR, { recursive: true });
-    await writeFile(path, plist);
-    return new Promise((r) => exec(`launchctl unload "${path}" 2>/dev/null; launchctl load -w "${path}"`, (e) =>
-      r(e ? { ok: false, error: e.message.slice(0, 200) } : { ok: true, note: "держится включённым" })));
-  } else {
-    return new Promise(async (r) => {
-      exec(`launchctl unload "${path}" 2>/dev/null`, async () => {
-        try { await unlink(path); } catch {}
-        r({ ok: true, note: "автозапуск выключен" });
-      });
-    });
-  }
+  if (enable && !svc.startCmd) return { ok: false, error: "у сервиса нет команды старта" };
+  const ka = await loadKA();
+  await removeKAPlist(svc.name);                              // миграция со старого механизма
+  if (enable) { ka.add(svc.name); await saveKA(ka); startAndVerify(svc).catch(() => {}); return { ok: true, note: "держится включённым" }; }
+  ka.delete(svc.name); await saveKA(ka); return { ok: true, note: "автозапуск выключен" };
+}
+let _ensuringKA = false;
+async function ensureKeepAlive() {
+  if (_ensuringKA) return; _ensuringKA = true;
+  try {
+    const ka = await loadKA(); if (!ka.size) return;
+    const services = await loadServices();
+    const listening = new Set((await discoverPorts()).map((d) => d.port));
+    for (const svc of services) {
+      if (!ka.has(svc.name) || !svc.startCmd) continue;
+      const p = toPort(svc.port);
+      if (p && !listening.has(p)) await startAndVerify(svc).catch(() => {});
+    }
+  } finally { _ensuringKA = false; }
 }
 
 // ── Туннель-менеджер: публичная ссылка (cloudflared) фоновым процессом ──
@@ -240,7 +240,7 @@ async function ensureTunnels() {
       const p = Number(k);
       if (alive.has(p)) { delete _tunFail[p]; continue; }            // живёт — сброс счётчика
       const f = _tunFail[p] || { at: 0, n: 0 };
-      const backoff = Math.min(60000 * 2 ** f.n, 1800000);           // 1,2,4,8,16,30 мин (макс)
+      const backoff = Math.min(20000 * 2 ** f.n, 480000);            // 20с,40с,…,8 мин (макс) — быстрее восстанавливается
       if (now - f.at < backoff) continue;                            // ещё рано — не трогаем лимит
       _tunFail[p] = { at: now, n: Math.min(f.n + 1, 6) };
       await spawnTunnel(p);
@@ -320,6 +320,7 @@ const server = http.createServer(async (req, res) => {
     await ensureTunnels();                                   // переподнять мёртвые желаемые туннели (само-восстановление)
     const tun = await loadTun();
     const tunAlive = await aliveTunnelPorts();
+    const kaSet = await loadKA();
     const rows = await Promise.all(services.map(async (s) => {
       const ti = tunnelInfoFrom(tun, tunAlive, s.port);
       return {
@@ -327,7 +328,7 @@ const server = http.createServer(async (req, res) => {
         up: !!s.port && listening.has(toPort(s.port)), tunnel: ti?.url || await tunnelUrl(s),
         tunnelManaged: !!ti, tunnelError: ti?.error || null,
         hasControls: !!(s.startCmd || s.stopCmd),
-        keepAlive: await fileExists(kaPlistPath(s.name)),
+        keepAlive: kaSet.has(s.name),
         control: !!s.control,
       };
     }));
@@ -390,7 +391,7 @@ const server = http.createServer(async (req, res) => {
       const list = await loadServices();
       const svc = list.find((s) => s.name === name);
       if (!svc) return { ok: false, error: "сервис не найден" };
-      if (await fileExists(kaPlistPath(svc.name))) { try { await keepAliveSet(svc, false); } catch {} }
+      try { await keepAliveSet(svc, false); } catch {}
       await saveServices(list.filter((s) => s.name !== name));
       return { ok: true, note: "сервис удалён" };
     }));
@@ -405,7 +406,7 @@ const server = http.createServer(async (req, res) => {
       const svc = list.find((s) => s.name === name);
       if (!svc) return { ok: false, error: "сервис не найден" };
       if (list.some((s) => s.name === nn)) return { ok: false, error: "имя занято" };
-      const wasKA = await fileExists(kaPlistPath(svc.name));
+      const wasKA = (await loadKA()).has(svc.name);
       if (wasKA) { try { await keepAliveSet(svc, false); } catch {} }
       svc.name = nn;
       await saveServices(list);
@@ -446,5 +447,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, "127.0.0.1", () => console.log(`AI Garage → http://localhost:${PORT}`));
-ensureTunnels();                                            // восстановить туннели при старте (в т.ч. после перезагрузки Мака)
-setInterval(() => ensureTunnels().catch(() => {}), 12000);  // и держать их живыми
+ensureTunnels(); ensureKeepAlive();                         // восстановить туннели и поднять keep-alive сервисы при старте
+setInterval(() => { ensureTunnels().catch(() => {}); ensureKeepAlive().catch(() => {}); }, 12000);  // и держать их живыми
