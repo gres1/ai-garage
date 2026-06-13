@@ -33,7 +33,7 @@
   /* живой ambient-glow за курсором (как pletor) */
   body::before{ content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
     background:radial-gradient(440px circle at var(--gx,50%) var(--gy,-10%), rgba(255,90,31,.07), transparent 62%); }
-  header, .grid, #disc-wrap, #platwarn{ position:relative; z-index:1; }
+  header, .grid, #disc-wrap, #platwarn, #selftun{ position:relative; z-index:1; }
   .rounded{ font-family:ui-rounded,-apple-system,"SF Pro Rounded",sans-serif; }
   header{ max-width:1180px; margin:0 auto 24px; display:flex; align-items:center; gap:20px; flex-wrap:wrap;
     background:var(--glass-strong); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%);
@@ -74,6 +74,7 @@
     transform:translateY(var(--lift,0)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
     transition:transform .18s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease; }
   .card:hover{ --lift:-6px; box-shadow:var(--shadow-h); }
+  .card.dragging{ opacity:.4; cursor:grabbing; }
   /* спотлайт-блик, следующий за курсором (живой эффект, как pletor) */
   .card::after{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0; transition:opacity .35s;
     background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%), rgba(255,90,31,.13), transparent 46%); }
@@ -225,10 +226,12 @@
 
   <div id="platwarn" style="display:none;max-width:1180px;margin:0 auto 16px;background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.3);border-radius:14px;padding:12px 16px;font-size:13px;color:#9a6a00"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg> <span data-i="macOnly">AI Garage рассчитан на macOS.</span></div>
 
+  <div id="selftun" style="display:none;max-width:1180px;margin:0 auto 16px;background:rgba(255,159,10,.13);border:1px solid rgba(255,159,10,.32);border-radius:14px;padding:10px 14px;font-size:13px;color:#9a6a00"></div>
+
   <div class="grid" id="grid"></div>
 
   <div id="disc-wrap" style="max-width:1180px;margin:26px auto 0;display:none">
-    <div style="font-size:14px;color:var(--mut);margin:0 0 12px 2px"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.6;vertical-align:-2px"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg> <span data-i="discovered">Обнаружено</span> · <span id="disc-n"></span> <span style="color:var(--faint)" data-i="discHint">(запущено, но не сохранено)</span></div>
+    <div style="font-size:14px;color:var(--mut);margin:0 0 12px 2px"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.6;vertical-align:-2px"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg> <span data-i="discovered">Обнаружено</span> · <span id="disc-n"></span> <span style="color:var(--faint)" data-i="discHint">(запущено, но не сохранено)</span> <button class="btn btn-soft" style="font-size:12px;padding:5px 11px;margin-left:6px" onclick="saveAllDiscovered()"><span data-i="saveAll">Добавить всё</span></button></div>
     <div class="grid" id="disc-grid"></div>
   </div>
 
@@ -289,8 +292,8 @@ const DICT={
    rename:"Rename",renamePrompt:"New name:",openTab:"open in new tab ↗",close:"Close",fName:"Name",fType:"Type",fTypeLocal:"local (with buttons)",
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
-   discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",keepAlive:"Keep alive",kaOn:"Staying on",
-   whatIs:"What is it?",protected:"protected — don't touch",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",
+   discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all",keepAlive:"Keep alive",kaOn:"Staying on",
+   whatIs:"What is it?",protected:"protected — don't touch",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
    tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link (cloudflared) — open this service from your phone or share it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
@@ -299,8 +302,8 @@ const DICT={
    rename:"Переименовать",renamePrompt:"Новое имя:",openTab:"открыть в новой вкладке ↗",close:"Закрыть",fName:"Название",fType:"Тип",fTypeLocal:"локальный (с кнопками)",
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
-   discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",keepAlive:"Держать включённым",kaOn:"Держится",
-   whatIs:"что это?",protected:"защищён — не трогай",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",
+   discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить всё",keepAlive:"Держать включённым",kaOn:"Держится",
+   whatIs:"что это?",protected:"защищён — не трогай",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
    tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку (cloudflared) — открыть сервис с телефона или поделиться"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
@@ -561,7 +564,7 @@ function card(s){ const cls=s.up?'up':'down';
   const urls = s.control ? '' : `<div class="urls"><div class="urlrow"><span class="badge">:${s.port||'—'}</span>
         <a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a><button class="icbtn" onclick="copy('${esc(s.url)}')">${icon('copy')}</button></div>
       ${tunnel}</div>`;
-  return `<div class="card ${cls}${s.control?' ctrl':''}" data-name="${esc(s.name)}">
+  return `<div class="card ${cls}${s.control?' ctrl':''}" data-name="${esc(s.name)}" draggable="true" ondragstart="dragStart(event)" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondrop="dragDrop(event)">
     <div class="top"><span class="pulse ${cls}"></span><span class="name">${esc(s.name)}</span>
       <span class="hostb">${icon(/vps|впс|server|серв|cloud/i.test(s.host||'')?'cloud':'monitor')} ${esc(s.host||'Mac')}</span>
       <span class="state ${cls}" style="margin-left:auto">${s.up?t('working'):t('stopped')}</span>
@@ -596,6 +599,16 @@ function renderDiscovered(list){ const w=$('disc-wrap');
 async function saveDiscovered(port,command){
   const s={name:command+' :'+port, type:'link', port, url:'http://localhost:'+port, host:'Mac', note:t('discNote')};
   const j=await api('/api/service-add',{service:s}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
+async function saveAllDiscovered(){ toast('…'); const j=await api('/api/save-all-discovered',{}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
+
+/* перетаскивание карточек мышкой (порядок сохраняется на сервере) */
+let _drag=null;
+function dragStart(e){ _drag=e.currentTarget; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','1'); }catch(_){} setTimeout(()=>{ if(_drag) _drag.classList.add('dragging'); },0); }
+function dragEnd(){ if(_drag) _drag.classList.remove('dragging'); _drag=null; }
+function dragOver(e){ if(!_drag)return; e.preventDefault(); const c=e.currentTarget; if(c===_drag||!c.classList.contains('card'))return;
+  const r=c.getBoundingClientRect(); const after=(e.clientY-r.top)/r.height>0.5; c.parentNode.insertBefore(_drag, after?c.nextSibling:c); }
+function dragDrop(e){ e.preventDefault(); const names=[...document.querySelectorAll('#grid .card')].map(c=>c.dataset.name);
+  api('/api/service-reorder',{order:names}); lastSig=''; }
 
 function visible(){ const q=$('q').value.trim().toLowerCase(); return DATA.filter(s=>!q||s.name.toLowerCase().includes(q)); }
 function render(){ $('grid').innerHTML=visible().map(card).join('');
@@ -621,6 +634,7 @@ async function load(){ if(paused||document.hidden)return;
     if(sig!==lastSig){ lastSig=sig; render(); } else patch();
     renderDiscovered(j.discovered||[]);
     $('platwarn').style.display=(j.platform&&j.platform!=='darwin')?'block':'none';
+    const stn=$('selftun'); if(j.selfTunnel){ stn.style.display='block'; stn.innerHTML=`${icon('cloud')} <b>${t('exposed')}</b> · <a href="${safeUrl(j.selfTunnel)}" target="_blank" rel="noopener" style="color:#9a6a00;word-break:break-all">${esc(j.selfTunnel)}</a> <button class="btn btn-soft" style="margin-left:8px;font-size:12px;padding:4px 10px" onclick="tunnelStop(7777)">${t('exposedOff')}</button>`; } else stn.style.display='none';
   }catch(e){ $('ts').textContent='—'; } }
 
 /* живой эффект: спотлайт за курсором на карточках + ambient-glow всей страницы */
