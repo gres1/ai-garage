@@ -331,6 +331,7 @@ const server = http.createServer(async (req, res) => {
         control: !!s.control,
         kind: s.kind || null,
         bots: Array.isArray(s.bots) ? s.bots : null,
+        agent: s.agent || null,
       };
     }));
     const registeredPorts = new Set(services.map((s) => s.port).filter(Boolean));
@@ -424,6 +425,7 @@ const server = http.createServer(async (req, res) => {
       let n = 0;
       for (const d of all) {
         if (d.port === PORT || have.has(d.port)) continue;
+        if (classifyProcess(d.command, d.port).safe === false) continue;   // не тащить системные/БД-процессы в список
         list.push({ name: `${d.command} :${d.port}`, type: "link", port: d.port, url: `http://localhost:${d.port}`, host: "Mac", note: "обнаружено" });
         have.add(d.port); n++;
       }
@@ -441,6 +443,20 @@ const server = http.createServer(async (req, res) => {
       list.sort((a, b) => (idx.has(a.name) ? idx.get(a.name) : 1e6) - (idx.has(b.name) ? idx.get(b.name) : 1e6));
       await saveServices(list);
       return { ok: true };
+    }));
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/service-sethost") {
+    const { name, host } = await readBody(req);
+    const h = typeof host === "string" ? host.trim().slice(0, 40) : "";
+    if (!h) return sendJson(res, 400, { ok: false, error: "нужно устройство" });
+    return sendJson(res, 200, await withLock(async () => {
+      const list = await loadServices();
+      const svc = list.find((s) => s.name === name);
+      if (!svc) return { ok: false, error: "сервис не найден" };
+      svc.host = h;
+      await saveServices(list);
+      return { ok: true, note: "устройство изменено" };
     }));
   }
 
