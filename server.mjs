@@ -194,7 +194,7 @@ const readTunUrl = (log) => { try { const m = readFileSync(log, "utf8").match(/h
 async function cfPath() { for (const p of ["/opt/homebrew/bin/cloudflared", "/usr/local/bin/cloudflared", "/usr/bin/cloudflared"]) if (await fileExists(p)) return p; return null; }
 // какие порты сейчас реально протуннелированы (один pgrep на все)
 function aliveTunnelPorts() {
-  return new Promise((r) => exec(`pgrep -af "cloudflared tunnel --url" || true`, (e, out) => {
+  return new Promise((r) => exec(`pgrep -fl "cloudflared tunnel --url" || true`, (e, out) => {
     const s = new Set(); if (out) for (const m of String(out).matchAll(/--url http:\/\/localhost:(\d+)/g)) s.add(Number(m[1])); r(s);
   }));
 }
@@ -317,8 +317,7 @@ const server = http.createServer(async (req, res) => {
     const services = await loadServices();
     const all = await discoverPorts();                       // один lsof на весь запрос
     const listening = new Set(all.map((d) => d.port));
-    await ensureTunnels();                                   // переподнять мёртвые желаемые туннели (само-восстановление)
-    const tun = await loadTun();
+    const tun = await loadTun();                             // супервизор туннелей — на таймере (не в каждом статусе), чтобы не молотить
     const tunAlive = await aliveTunnelPorts();
     const kaSet = await loadKA();
     const rows = await Promise.all(services.map(async (s) => {
