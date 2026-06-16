@@ -88,6 +88,10 @@
   .agentb{ display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--accent); background:rgba(255,90,31,.10); border-radius:980px; padding:2px 8px; flex:0 0 auto; }
   .agentb .ic{ width:12px; height:12px; }
   .hostb.hostbtn{ border:none; cursor:pointer; font-family:inherit; } .hostb.hostbtn:hover{ background:#dcdce0; }
+  .agentb.agentbtn{ border:none; cursor:pointer; font-family:inherit; } .agentb.agentbtn:hover{ filter:brightness(.96); }
+  .tunwrap{ position:relative; display:inline-flex; }
+  .tunmenu{ left:0; right:auto; top:auto; bottom:calc(100% + 6px); min-width:240px; }
+  .menucap{ font-size:11px; color:var(--faint); padding:5px 10px 3px; font-weight:600; }
   /* спотлайт-блик, следующий за курсором (живой эффект, как pletor) */
   .card::after{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0; transition:opacity .35s;
     background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%), rgba(255,90,31,.13), transparent 46%); }
@@ -122,7 +126,7 @@
     border-radius:7px; line-height:1; }
   .kebab:hover{ background:var(--bg2); color:var(--txt); }
   .menu{ position:absolute; right:14px; top:42px; background:#fff; border:1px solid var(--line); border-radius:12px;
-    box-shadow:var(--shadow-h); padding:5px; z-index:5; display:none; min-width:170px; }
+    box-shadow:var(--shadow-h); padding:5px; z-index:40; display:none; min-width:170px; }
   .menu.open{ display:block; }
   .menu button{ display:block; width:100%; text-align:left; border:none; background:none; padding:8px 10px;
     border-radius:8px; font-size:13px; cursor:pointer; color:var(--txt); font-family:inherit; }
@@ -302,22 +306,22 @@ const DICT={
    start:"Start",stop:"Stop",restart:"Restart",preview:"Preview",managed:"managed externally",phone:"phone",
    copied:"Copied",expand:"click to enlarge",blocked:"Embedding not allowed — open in new tab",
    freePort:"Free the port",remove:"Remove (back to Discovered)",confirmDel:"Remove this service from your list?",searchPh:"Search…",
-   rename:"Rename",renamePrompt:"New name:",changeHost:"Change device (Mac/VPS)",openTab:"open in new tab ↗",close:"Close",fName:"Name",fType:"Type",fTypeLocal:"local (with buttons)",
+   rename:"Rename",renamePrompt:"New name:",changeHost:"Change device (Mac/VPS)",changeAgent:"Change linked agent",agentPrompt:"Which agent runs this bot? (Claude Code / Hermes / OpenClaw …)",openTab:"open in new tab ↗",close:"Close",fName:"Name",fType:"Type",fTypeLocal:"local (with buttons)",
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
    discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all to my services",secLocal:"This Mac",secVps:"VPS",secBots:"Bots",keepAlive:"Keep alive",kaOn:"Staying on",
    whatIs:"What is it?",protected:"protected — don't touch",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
-   tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link (cloudflared) — open this service from your phone or share it"},
+   tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link — open this service from your phone or share it",provPick:"Choose how to share:",provCf:"Cloudflare — instant, link changes",provNgrok:"ngrok — stable address (soon)",provDomain:"Your own domain (soon)",provSoonMsg:"Coming next — needs your free account; we're building it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
    copied:"Скопировано",expand:"кликни — крупнее",blocked:"Встроенный просмотр запрещён — открой в новой вкладке",
    freePort:"Освободить порт",remove:"Убрать (назад в Обнаружено)",confirmDel:"Убрать этот сервис из списка?",searchPh:"Поиск…",
-   rename:"Переименовать",renamePrompt:"Новое имя:",changeHost:"Сменить устройство (Mac/VPS)",openTab:"открыть в новой вкладке ↗",close:"Закрыть",fName:"Название",fType:"Тип",fTypeLocal:"локальный (с кнопками)",
+   rename:"Переименовать",renamePrompt:"Новое имя:",changeHost:"Сменить устройство (Mac/VPS)",changeAgent:"Сменить агента",agentPrompt:"Какой агент управляет ботом? (Claude Code / Hermes / OpenClaw …)",openTab:"открыть в новой вкладке ↗",close:"Закрыть",fName:"Название",fType:"Тип",fTypeLocal:"локальный (с кнопками)",
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
    discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить все в мои сервисы",secLocal:"Этот Mac",secVps:"VPS",secBots:"Боты",keepAlive:"Держать включённым",kaOn:"Держится",
    whatIs:"что это?",protected:"защищён — не трогай",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
-   tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку (cloudflared) — открыть сервис с телефона или поделиться"},
+   tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку — открыть сервис с телефона или поделиться",provPick:"Чем поделиться:",provCf:"Cloudflare — сразу, адрес меняется",provNgrok:"ngrok — стабильный адрес (скоро)",provDomain:"Свой домен (скоро)",provSoonMsg:"Скоро — нужен твой бесплатный аккаунт, делаем"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
    copied:"Copiado",expand:"clic para ampliar",blocked:"No permite incrustar — abre en pestaña nueva",
@@ -507,19 +511,30 @@ async function killPort(port){
     : `Освободить порт ${port}? Процесс будет остановлен.`;
   if(!confirm(msg)) { closeMenus(); return; }
   const j=await api('/api/kill-port',{port}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); setTimeout(load,800); }
-async function tunnelStart(port){ toast('Поднимаю туннель…'); const j=await api('/api/tunnel-start',{port}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; setTimeout(load,1500); }
+async function tunnelStart(port,provider){ toast(t('tunnelUp')); const j=await api('/api/tunnel-start',{port,provider:provider||'cloudflared'}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; setTimeout(load,1500); }
+function provSoon(){ toast(t('provSoonMsg')); }
 async function tunnelStop(port){ const j=await api('/api/tunnel-stop',{port}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; setTimeout(load,600); }
 function tunnelBtn(port,managed,url,err){ if(!port) return '';
   if(err) return `<span class="note" style="margin:0;color:var(--red)">${esc(err)}</span>`;
   if(managed&&!url) return `<button class="btn btn-soft" onclick="tunnelStop(${port})">${icon('spin','spin')} ${t('tunnelUp')}</button>`;
   if(managed) return `<button class="btn btn-soft" style="--ic:var(--ic-stop)" onclick="tunnelStop(${port})">${icon('x')} ${t('tunnelStop')}</button>`;
-  return `<button class="btn btn-accent" title="${esc(t('tunnelHint'))}" onclick="tunnelStart(${port})">${icon('link')} ${t('tunnelStart')}</button>`; }
+  return `<span class="tunwrap"><button class="btn btn-accent" title="${esc(t('tunnelHint'))}" onclick="toggleMenu(event,'tun:${port}')">${icon('link')} ${t('tunnelStart')}</button>
+    <div class="menu tunmenu" data-menu="tun:${port}">
+      <div class="menucap">${t('provPick')}</div>
+      <button onclick="closeMenus();tunnelStart(${port},'cloudflared')">${icon('cloud')} ${t('provCf')}</button>
+      <button onclick="closeMenus();provSoon()">${icon('link')} ${t('provNgrok')}</button>
+      <button onclick="closeMenus();provSoon()">${icon('monitor')} ${t('provDomain')}</button></div></span>`; }
 async function delService(name){ if(!confirm(t('confirmDel')))return; const j=await api('/api/service-remove',{name}); toast(j.ok?'✅':'⛔️'); lastSig=''; load(); }
 async function renameService(name){ const nn=prompt(t('renamePrompt'),name); if(nn===null)return; const v=nn.trim(); if(!v||v===name){closeMenus();return;} const j=await api('/api/service-rename',{name,newName:v}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); lastSig=''; load(); }
 async function setHost(name,host){ const j=await api('/api/service-sethost',{name,host}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); lastSig=''; load(); }
+async function setAgent(name){ const cur=(DATA.find(x=>x.name===name)||{}).agent||''; const a=prompt(t('agentPrompt'),cur); if(a===null)return; const j=await api('/api/service-setagent',{name,agent:a.trim()}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
 
 /* меню на карточке */
-function toggleMenu(e,name){ e.stopPropagation(); closeMenus(); const m=document.querySelector(`[data-menu="${CSS.escape(name)}"]`); if(m)m.classList.add('open'); }
+function toggleMenu(e,name){ e.stopPropagation(); closeMenus(); const m=document.querySelector(`[data-menu="${CSS.escape(name)}"]`); if(!m)return; m.classList.add('open');
+  const b=(e.currentTarget||e.target).getBoundingClientRect(); m.style.position='fixed'; m.style.right='auto'; m.style.bottom='auto';
+  const mh=m.offsetHeight||160, mw=m.offsetWidth||210;
+  let top=b.bottom+6; if(top+mh>innerHeight-8) top=Math.max(8,b.top-mh-6);
+  m.style.top=top+'px'; m.style.left=Math.max(8,Math.min(b.left, innerWidth-mw-8))+'px'; }
 function closeMenus(){ document.querySelectorAll('.menu.open').forEach(m=>m.classList.remove('open')); }
 document.addEventListener('click',closeMenus);
 
@@ -584,7 +599,7 @@ function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&ty
       ${tunnel}</div>`;
   return `<div class="card ${cls}${s.control?' ctrl':''}" data-name="${esc(s.name)}" onpointerdown="dragPointerDown(event)">
     <div class="top"><span class="pulse ${cls}"></span><span class="name">${esc(s.name)}</span><span style="flex:1"></span>
-      ${s.agent?`<span class="agentb">${icon('bot')} ${esc(s.agent)}</span>`:''}
+      ${bot?`<button class="agentb agentbtn" title="${esc(t('changeAgent'))}" onclick="setAgent('${esc(s.name)}')">${icon('bot')} ${esc(s.agent||'?')}</button>`:(s.agent?`<span class="agentb">${icon('bot')} ${esc(s.agent)}</span>`:'')}
       <button class="hostb hostbtn" title="${esc(t('changeHost'))}" onclick="toggleMenu(event,'host:${esc(s.name)}')">${icon(bot?'bot':isVps(s)?'cloud':'monitor')} ${esc(s.host||'Mac')}</button>
       ${bot?'':`<span class="state ${cls}">${s.up?t('working'):t('stopped')}</span>`}
       <button class="kebab" aria-label="меню" onclick="toggleMenu(event,'${esc(s.name)}')">${icon('more')}</button></div>

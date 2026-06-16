@@ -460,6 +460,19 @@ const server = http.createServer(async (req, res) => {
     }));
   }
 
+  if (req.method === "POST" && url.pathname === "/api/service-setagent") {
+    const { name, agent } = await readBody(req);
+    const a = typeof agent === "string" ? agent.trim().slice(0, 40) : "";
+    return sendJson(res, 200, await withLock(async () => {
+      const list = await loadServices();
+      const svc = list.find((s) => s.name === name);
+      if (!svc) return { ok: false, error: "сервис не найден" };
+      if (a) svc.agent = a; else delete svc.agent;
+      await saveServices(list);
+      return { ok: true, note: "агент обновлён" };
+    }));
+  }
+
   res.writeHead(404); res.end("not found");
 });
 
