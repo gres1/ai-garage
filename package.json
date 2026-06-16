@@ -4,13 +4,16 @@
   "description": "AI Garage — visual control panel for your localhost services, ports and tunnels — no terminal. See and stop everything running (even what AI agents left behind), free a stuck port, share a public link, on Mac and VPS.",
   "type": "module",
   "bin": {
-    "ai-garage": "server.mjs"
+    "ai-garage": "server.mjs",
+    "ai-garage-mcp": "mcp.mjs"
   },
+  "mcpName": "io.github.gres1/ai-garage",
   "scripts": {
     "start": "node server.mjs"
   },
   "files": [
     "server.mjs",
+    "mcp.mjs",
     "public/",
     "README.md",
     "AGENTS.md",
