@@ -329,6 +329,8 @@ const server = http.createServer(async (req, res) => {
         hasControls: !!(s.startCmd || s.stopCmd),
         keepAlive: kaSet.has(s.name),
         control: !!s.control,
+        kind: s.kind || null,
+        bots: Array.isArray(s.bots) ? s.bots : null,
       };
     }));
     const registeredPorts = new Set(services.map((s) => s.port).filter(Boolean));

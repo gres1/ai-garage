@@ -75,6 +75,14 @@
     transition:transform .18s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease; }
   .card:hover{ --lift:-6px; box-shadow:var(--shadow-h); }
   .card.dragging{ opacity:.4; cursor:grabbing; }
+  .section{ grid-column:1/-1; display:flex; align-items:center; gap:8px; font-size:13px; font-weight:650; color:var(--mut); margin:8px 2px -4px; letter-spacing:.01em; }
+  .section:first-child{ margin-top:0; }
+  .section .ic{ width:15px; height:15px; opacity:.65; }
+  .section .secn{ font-weight:600; color:var(--faint); background:rgba(20,20,45,.06); border-radius:980px; padding:1px 8px; font-size:11px; }
+  .bots{ display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 10px; }
+  .botchip{ display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; text-decoration:none; color:#0088cc; background:rgba(0,136,204,.10); border-radius:980px; padding:4px 10px; }
+  .botchip:hover{ background:rgba(0,136,204,.18); }
+  .botchip .ic{ width:13px; height:13px; }
   /* спотлайт-блик, следующий за курсором (живой эффект, как pletor) */
   .card::after{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0; transition:opacity .35s;
     background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%), rgba(255,90,31,.13), transparent 46%); }
@@ -292,7 +300,7 @@ const DICT={
    rename:"Rename",renamePrompt:"New name:",openTab:"open in new tab ↗",close:"Close",fName:"Name",fType:"Type",fTypeLocal:"local (with buttons)",
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
-   discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all to my services",keepAlive:"Keep alive",kaOn:"Staying on",
+   discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all to my services",secLocal:"This Mac",secVps:"VPS",secBots:"Bots",keepAlive:"Keep alive",kaOn:"Staying on",
    whatIs:"What is it?",protected:"protected — don't touch",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
    tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link (cloudflared) — open this service from your phone or share it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
@@ -302,7 +310,7 @@ const DICT={
    rename:"Переименовать",renamePrompt:"Новое имя:",openTab:"открыть в новой вкладке ↗",close:"Закрыть",fName:"Название",fType:"Тип",fTypeLocal:"локальный (с кнопками)",
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
-   discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить все в мои сервисы",keepAlive:"Держать включённым",kaOn:"Держится",
+   discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить все в мои сервисы",secLocal:"Этот Mac",secVps:"VPS",secBots:"Боты",keepAlive:"Держать включённым",kaOn:"Держится",
    whatIs:"что это?",protected:"защищён — не трогай",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
    tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку (cloudflared) — открыть сервис с телефона или поделиться"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
@@ -547,6 +555,8 @@ async function saveService(){
 
 /* одна toggle-кнопка: показывает действие, которое произойдёт при клике (Стоп если работает, Старт если выключено) */
 const toggleBtn=s=>`<button class="btn tgl ${s.up?'btn-soft':'btn-primary'}" ${s.up?'style="--ic:var(--ic-stop)"':''} onclick="act('${esc(s.name)}','${s.up?'stop':'start'}')">${icon(s.up?'stop':'play')} ${s.up?t('stop'):t('start')}</button>`;
+const isVps=s=>/vps|впс|server|серв|cloud/i.test(s.host||'');
+const isBot=s=>s.kind==='bot'||(Array.isArray(s.bots)&&s.bots.length>0);
 function card(s){ const cls=s.up?'up':'down';
   const restart=`<button class="btn btn-soft" onclick="act('${esc(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>`;
   const ka=`<button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" onclick="toggleKeepAlive('${esc(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>`;
@@ -566,7 +576,7 @@ function card(s){ const cls=s.up?'up':'down';
       ${tunnel}</div>`;
   return `<div class="card ${cls}${s.control?' ctrl':''}" data-name="${esc(s.name)}" onpointerdown="dragPointerDown(event)">
     <div class="top"><span class="pulse ${cls}"></span><span class="name">${esc(s.name)}</span>
-      <span class="hostb">${icon(/vps|впс|server|серв|cloud/i.test(s.host||'')?'cloud':'monitor')} ${esc(s.host||'Mac')}</span>
+      <span class="hostb">${icon(isBot(s)?'bot':isVps(s)?'cloud':'monitor')} ${esc(s.host||'Mac')}</span>
       <span class="state ${cls}" style="margin-left:auto">${s.up?t('working'):t('stopped')}</span>
       <button class="kebab" aria-label="меню" onclick="toggleMenu(event,'${esc(s.name)}')">${icon('more')}</button></div>
     <div class="menu" data-menu="${esc(s.name)}">
@@ -574,6 +584,7 @@ function card(s){ const cls=s.up?'up':'down';
       <button onclick="renameService('${esc(s.name)}')">${icon('pencil')} ${t('rename')}</button>
       <button class="del" onclick="delService('${esc(s.name)}')">${icon('trash')} ${t('remove')}</button></div>
     ${s.note?`<div class="note">${esc(s.note)}</div>`:'<div style="height:5px"></div>'}
+    ${(Array.isArray(s.bots)&&s.bots.length)?`<div class="bots">${s.bots.map(b=>{const u=String(b).replace(/^@/,'');return `<a class="botchip" href="https://t.me/${encodeURIComponent(u)}" target="_blank" rel="noopener">${icon('bot')} @${esc(u)}</a>`;}).join('')}</div>`:''}
     ${urls}
     ${ctrls}<div class="prevwrap" data-prev="${esc(s.name)}"></div></div>`; }
 
@@ -626,7 +637,16 @@ function dragPointerDown(e){
 }
 
 function visible(){ const q=$('q').value.trim().toLowerCase(); return DATA.filter(s=>!q||s.name.toLowerCase().includes(q)); }
-function render(){ $('grid').innerHTML=visible().map(card).join('');
+/* секции-категории: тонкий заголовок над группой карточек */
+const SECTIONS=[
+  {ic:'monitor', label:()=>t('secLocal'), test:s=>!isBot(s)&&!isVps(s)},
+  {ic:'cloud',   label:()=>t('secVps'),   test:s=>!isBot(s)&&isVps(s)},
+  {ic:'bot',     label:()=>t('secBots'),  test:s=>isBot(s)},
+];
+function render(){ const vis=visible(); let html='';
+  for(const g of SECTIONS){ const items=vis.filter(g.test); if(!items.length)continue;
+    html+=`<div class="section">${icon(g.ic)} ${g.label()} <span class="secn">${items.length}</span></div>`+items.map(card).join(''); }
+  $('grid').innerHTML=html;
   openPrevs.forEach(n=>{ const w=document.querySelector(`[data-prev="${CSS.escape(n)}"]`); if(w){ w.classList.add('open'); buildPreviewContent(w,n); } else openPrevs.delete(n); });
   updateHeader(); }
 function patch(){ visible().forEach(s=>{ const c=document.querySelector(`.card[data-name="${CSS.escape(s.name)}"]`); if(!c)return;
