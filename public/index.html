@@ -7,13 +7,13 @@
 <link rel="icon" type="image/png" href="/favicon.png"/>
 <style>
   :root{
-    --bg:#f5fbe6; --bg2:#ebf2da; --card:#ffffff; --txt:#233d4d; --mut:#4d5e6a; --faint:#8a96a0;
+    --bg:#eef0f5; --bg2:#e7e9f0; --card:#ffffff; --txt:#233d4d; --mut:#4d5e6a; --faint:#8a96a0;
     --line:rgba(35,61,77,.12);
-    /* фирменная палитра (Color Hunt): кремовый фон #F5FBE6, тёмный teal #215E61, сине-серый #233D4D, оранжевый #FE7F2D */
-    --teal:#215e61; --teal-neon:#2d8488; --teal-d:#1a4d50; --green:#215e61; --green-d:#1a4d50;
-    --blue:#215e61; --blue-d:#2d8488; --red:#e5484d;
+    /* тёмный teal #215E61 + неоновый бирюзовый из лого #1CE5E8 рядом; текст #233D4D; CTA оранжевый #FE7F2D; фон светлый */
+    --teal:#215e61; --teal-neon:#1ce5e8; --teal-d:#1a4d50; --green:#215e61; --green-d:#1a4d50;
+    --blue:#215e61; --blue-d:#1ce5e8; --red:#e5484d;
     --accent:#fe7f2d; --accent-d:#ed6a15;
-    --soft:#eef3e2; --soft-h:#e3ebcf;
+    --soft:#f3f4f6; --soft-h:#e5e7eb;
     --glass:rgba(255,255,255,.58); --glass-strong:rgba(255,255,255,.72); --glass-brd:rgba(255,255,255,.72);
     --ic-stop:#ff453a;
     --shadow:0 1px 1px rgba(20,20,45,.04), 0 12px 34px -14px rgba(25,25,60,.22);
@@ -25,10 +25,10 @@
   body{
     min-height:100vh; position:relative;
     background:
-      radial-gradient(820px 560px at 9% 3%, rgba(254,127,45,.09), transparent 55%),
-      radial-gradient(820px 560px at 93% 1%, rgba(33,94,97,.10), transparent 55%),
-      radial-gradient(900px 720px at 78% 110%, rgba(33,94,97,.06), transparent 55%),
-      linear-gradient(180deg,#f5fbe6,#eaf1d9);
+      radial-gradient(820px 560px at 9% 3%, rgba(254,127,45,.08), transparent 55%),
+      radial-gradient(820px 560px at 93% 1%, rgba(28,229,232,.12), transparent 55%),
+      radial-gradient(900px 720px at 78% 110%, rgba(33,94,97,.07), transparent 55%),
+      linear-gradient(180deg,#f5f6fa,#e8eaf1);
     background-attachment:fixed;
     color:var(--txt); padding:30px 26px 80px;
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
@@ -113,13 +113,13 @@
   .card:hover::after{ opacity:1; }
   .card>*{ position:relative; z-index:1; }
   .card::before{ content:""; position:absolute; left:0; top:0; right:0; height:3px; background:var(--faint); opacity:.35; z-index:2; }
-  .card.up::before{ background:linear-gradient(90deg,var(--green),var(--teal-neon)); opacity:.95; }
+  .card.up::before{ background:linear-gradient(90deg,var(--teal) 0%,var(--teal) 42%,var(--teal-neon) 58%,var(--teal-neon) 100%); opacity:.95; }
   .card.down::before{ background:linear-gradient(90deg,var(--red),#ff8a80); opacity:.9; }
   .top{ display:flex; align-items:center; gap:10px; }
   .pulse{ width:12px; height:12px; border-radius:50%; flex:0 0 auto; background:#c7c7cc; position:relative; }
-  .pulse.up{ background:var(--green); }
+  .pulse.up{ background:linear-gradient(135deg,var(--teal) 0%,var(--teal) 48%,var(--teal-neon) 52%,var(--teal-neon) 100%); }
   .pulse.down{ background:var(--red); }
-  .pulse.up::after{ content:""; position:absolute; inset:-5px; border-radius:50%; border:2px solid var(--green);
+  .pulse.up::after{ content:""; position:absolute; inset:-5px; border-radius:50%; border:2px solid var(--teal-neon);
     opacity:.5; animation:ring 2s ease-out infinite; }
   @keyframes ring{ 0%{ transform:scale(.6); opacity:.6 } 100%{ transform:scale(1.5); opacity:0 } }
   .name{ font-weight:650; font-size:15.5px; letter-spacing:-.01em; }
@@ -275,8 +275,8 @@
       </div>
     </div>
     <div class="ring">
-      <svg width="80" height="80"><circle cx="40" cy="40" r="34" fill="none" stroke="#e6e6ea" stroke-width="8"/>
-        <circle id="arc" cx="40" cy="40" r="34" fill="none" stroke="var(--green)" stroke-width="8"
+      <svg width="80" height="80"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#215e61"/><stop offset="100%" stop-color="#1ce5e8"/></linearGradient></defs><circle cx="40" cy="40" r="34" fill="none" stroke="#e6e6ea" stroke-width="8"/>
+        <circle id="arc" cx="40" cy="40" r="34" fill="none" stroke="url(#rg)" stroke-width="8"
           stroke-linecap="round" stroke-dasharray="214" stroke-dashoffset="214"/></svg>
       <div class="num rounded"><b id="upn">0</b><span><span data-i="of">of</span> <span id="totn">0</span></span></div>
     </div>
