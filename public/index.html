@@ -310,7 +310,7 @@ const DICT={
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
    discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all to my services",secLocal:"This Mac",secVps:"VPS",secBots:"Bots",keepAlive:"Keep alive",kaOn:"Staying on",
-   whatIs:"What is it?",protected:"protected — don't touch",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
+   whatIs:"What is it?",protected:"protected — don't touch",kaEnabling:"Enabling keep-alive…",kaDisabling:"Disabling…",sysPort:"system port",killDanger:"⚠️ Port {p} — {d}. Kill the process? DATA LOSS possible.",killSafe:"Free port {p}? The process will be stopped.",askAIPrompt:"What is the process «{cmd}» listening on port {port} on my machine? Is it safe, do I need it, can I kill it? Explain simply.",askAICopied:"Prompt copied — paste it to your AI",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
    tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link — open this service from your phone or share it",provPick:"Choose how to share:",provCf:"Cloudflare — instant, link changes",provNgrok:"ngrok — stable address (soon)",provDomain:"Your own domain (soon)",provSoonMsg:"Coming next — needs your free account; we're building it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
@@ -320,7 +320,7 @@ const DICT={
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
    discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить все в мои сервисы",secLocal:"Этот Mac",secVps:"VPS",secBots:"Боты",keepAlive:"Держать включённым",kaOn:"Держится",
-   whatIs:"что это?",protected:"защищён — не трогай",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
+   whatIs:"что это?",protected:"защищён — не трогай",kaEnabling:"Включаю автозапуск…",kaDisabling:"Выключаю…",sysPort:"системный порт",killDanger:"⚠️ Порт {p} — {d}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.",killSafe:"Освободить порт {p}? Процесс будет остановлен.",askAIPrompt:"Что за процесс «{cmd}» слушает порт {port} на моей машине? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.",askAICopied:"Промпт скопирован — вставь своему ИИ",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
    tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку — открыть сервис с телефона или поделиться",provPick:"Чем поделиться:",provCf:"Cloudflare — сразу, адрес меняется",provNgrok:"ngrok — стабильный адрес (скоро)",provDomain:"Свой домен (скоро)",provSoonMsg:"Скоро — нужен твой бесплатный аккаунт, делаем"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
@@ -449,6 +449,8 @@ const t=k=>(DICT[lang]&&DICT[lang][k])||DICT.en[k]||k;
 let DATA=[]; let paused=false; let authOn=false; let lastSig=''; const openPrevs=new Set();
 const $=id=>document.getElementById(id);
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* экранирование для JS-строкового контекста внутри onclick="fn('...')" — \uXXXX безопасно и в JS, и в HTML-атрибуте */
+const jsq=x=>String(x).replace(/[\\'"<>&\n\r]/g,c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0'));
 const safeUrl=u=>{try{const p=new URL(u,location.origin);return ['http:','https:'].includes(p.protocol)?p.href:'#';}catch{return '#';}};
 const ICONS={
  play:'<path d="M7 4v16l13-8z" fill="var(--ic,currentColor)" stroke="none"/>',
@@ -501,14 +503,12 @@ function setLang(l){ lang=l; localStorage.setItem('lc-lang',l); applyI18n(); ren
 
 async function act(name,what){ toast('…');
   const j=await api('/api/'+what,{name}); toast(j.ok?'✅ '+(j.note||'ok'):'⛔️ '+(j.error||'err')); setTimeout(load,700); }
-async function toggleKeepAlive(name,enable){ toast(enable?'Включаю автозапуск…':'Выключаю…');
+async function toggleKeepAlive(name,enable){ toast(enable?t('kaEnabling'):t('kaDisabling'));
   const j=await api('/api/keepalive',{name,enable}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; setTimeout(load,700); }
 const SYS_PORTS={5432:'PostgreSQL',3306:'MySQL',27017:'MongoDB',6379:'Redis',5984:'CouchDB'};
 async function killPort(port){
-  const danger = port<1024 ? 'системный порт' : (SYS_PORTS[port]||'');
-  const msg = danger
-    ? `⚠️ Порт ${port} — ${danger}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.`
-    : `Освободить порт ${port}? Процесс будет остановлен.`;
+  const danger = port<1024 ? t('sysPort') : (SYS_PORTS[port]||'');
+  const msg = danger ? t('killDanger').replace('{p}',port).replace('{d}',danger) : t('killSafe').replace('{p}',port);
   if(!confirm(msg)) { closeMenus(); return; }
   const j=await api('/api/kill-port',{port}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); setTimeout(load,800); }
 async function tunnelStart(port,provider){ toast(t('tunnelUp')); const j=await api('/api/tunnel-start',{port,provider:provider||'cloudflared'}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; setTimeout(load,1500); }
@@ -540,9 +540,9 @@ document.addEventListener('click',closeMenus);
 
 /* превью */
 function buildPreviewContent(w,name){ const s=DATA.find(x=>x.name===name); if(!s)return; const u=safeUrl(s.url);
-  w.innerHTML=`<div class="thumb" onclick="openViewer('${esc(name)}')">
+  w.innerHTML=`<div class="thumb" onclick="openViewer('${jsq(name)}')">
       <iframe sandbox="allow-same-origin allow-scripts allow-forms" src="${u}"></iframe>
-      <button class="reload" title="${esc(t('reloadHint'))}" aria-label="${esc(t('reloadHint'))}" onclick="event.stopPropagation();reloadPreview('${esc(name)}')">${icon('restart')}</button>
+      <button class="reload" title="${esc(t('reloadHint'))}" aria-label="${esc(t('reloadHint'))}" onclick="event.stopPropagation();reloadPreview('${jsq(name)}')">${icon('restart')}</button>
       <div class="expand">${t('expand')}</div></div>
     <div class="prevhint" style="display:none">${icon('help')} ${t('prevHint')} · <a onclick="event.stopPropagation()" href="${u}" target="_blank" rel="noopener">${t('openTab')}</a></div>`;
   w.dataset.loaded='1';
@@ -575,12 +575,12 @@ async function saveService(){
   else toast('⛔️ '+(j.error||'')); }
 
 /* одна toggle-кнопка: показывает действие, которое произойдёт при клике (Стоп если работает, Старт если выключено) */
-const toggleBtn=s=>`<button class="btn tgl ${s.up?'btn-soft':'btn-primary'}" ${s.up?'style="--ic:var(--ic-stop)"':''} onclick="act('${esc(s.name)}','${s.up?'stop':'start'}')">${icon(s.up?'stop':'play')} ${s.up?t('stop'):t('start')}</button>`;
+const toggleBtn=s=>`<button class="btn tgl ${s.up?'btn-soft':'btn-primary'}" ${s.up?'style="--ic:var(--ic-stop)"':''} onclick="act('${jsq(s.name)}','${s.up?'stop':'start'}')">${icon(s.up?'stop':'play')} ${s.up?t('stop'):t('start')}</button>`;
 const isVps=s=>/vps|впс|server|серв|cloud/i.test(s.host||'');
 const isBot=s=>s.kind==='bot'||(Array.isArray(s.bots)&&s.bots.length>0);
 function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&typeof b==='object'?b.status:'')==='on')?'up':''):(s.up?'up':'down');
-  const restart=`<button class="btn btn-soft" onclick="act('${esc(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>`;
-  const ka=`<button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" onclick="toggleKeepAlive('${esc(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>`;
+  const restart=`<button class="btn btn-soft" onclick="act('${jsq(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>`;
+  const ka=`<button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" onclick="toggleKeepAlive('${jsq(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>`;
   const ctrls = bot
     ? (s.port&&s.url?`<div class="row" style="margin-top:4px"><a class="btn btn-soft" href="${safeUrl(s.url)}" target="_blank" rel="noopener">${icon('eye')} health</a></div>`:'')
     : s.control
@@ -588,35 +588,35 @@ function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&ty
     : s.hasControls
     ? `<div class="row" style="margin-top:4px">${toggleBtn(s)}${restart}${ka}
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
-      <button class="btn btn-accent" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`
+      <button class="btn btn-accent" onclick="togglePreview('${jsq(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`
     : `<div class="row" style="margin-top:4px"><span class="note" style="margin:0">${t('managed')}</span>
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
-      <button class="btn btn-accent" style="margin-left:auto" onclick="togglePreview('${esc(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`;
+      <button class="btn btn-accent" style="margin-left:auto" onclick="togglePreview('${jsq(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`;
   const tunnel=s.tunnel?`<div class="urlrow"><span class="tag">${icon('phone')} ${t('phone')}</span>
-      <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a><button class="icbtn" onclick="copy('${esc(s.tunnel)}')">${icon('copy')}</button></div>`:'';
+      <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a><button class="icbtn" onclick="copy('${jsq(s.tunnel)}')">${icon('copy')}</button></div>`:'';
   const urls = (s.control||bot) ? '' : `<div class="urls"><div class="urlrow"><span class="badge">:${s.port||'—'}</span>
-        <a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a><button class="icbtn" onclick="copy('${esc(s.url)}')">${icon('copy')}</button></div>
+        <a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a><button class="icbtn" onclick="copy('${jsq(s.url)}')">${icon('copy')}</button></div>
       ${tunnel}</div>`;
   return `<div class="card ${cls}${s.control?' ctrl':''}" data-name="${esc(s.name)}" onpointerdown="dragPointerDown(event)">
     <div class="top"><span class="pulse ${cls}"></span><span class="name">${esc(s.name)}</span><span style="flex:1"></span>
-      ${bot?`<button class="agentb agentbtn" title="${esc(t('changeAgent'))}" onclick="setAgent('${esc(s.name)}')">${icon('bot')} ${esc(s.agent||'?')}</button>`:(s.agent?`<span class="agentb">${icon('bot')} ${esc(s.agent)}</span>`:'')}
+      ${bot?`<button class="agentb agentbtn" title="${esc(t('changeAgent'))}" onclick="setAgent('${jsq(s.name)}')">${icon('bot')} ${esc(s.agent||'?')}</button>`:(s.agent?`<span class="agentb">${icon('bot')} ${esc(s.agent)}</span>`:'')}
       <button class="hostb hostbtn" title="${esc(t('changeHost'))}" onclick="toggleMenu(event,'host:${esc(s.name)}')">${icon(bot?'bot':isVps(s)?'cloud':'monitor')} ${esc(s.host||'Mac')}</button>
       ${bot?'':`<span class="state ${cls}">${s.up?t('working'):t('stopped')}</span>`}
-      <button class="kebab" aria-label="меню" onclick="toggleMenu(event,'${esc(s.name)}')">${icon('more')}</button></div>
+      <button class="kebab" aria-label="меню" onclick="toggleMenu(event,'${jsq(s.name)}')">${icon('more')}</button></div>
     <div class="menu" data-menu="host:${esc(s.name)}">
-      <button onclick="setHost('${esc(s.name)}','Mac')">${icon('monitor')} Mac</button>
-      <button onclick="setHost('${esc(s.name)}','VPS')">${icon('cloud')} VPS</button></div>
+      <button onclick="setHost('${jsq(s.name)}','Mac')">${icon('monitor')} Mac</button>
+      <button onclick="setHost('${jsq(s.name)}','VPS')">${icon('cloud')} VPS</button></div>
     <div class="menu" data-menu="${esc(s.name)}">
       ${(s.port&&!s.control)?`<button onclick="killPort(${s.port})">${icon('zap')} ${t('freePort')} :${s.port}</button>`:''}
-      <button onclick="renameService('${esc(s.name)}')">${icon('pencil')} ${t('rename')}</button>
-      <button class="del" onclick="delService('${esc(s.name)}')">${icon('trash')} ${t('remove')}</button></div>
+      <button onclick="renameService('${jsq(s.name)}')">${icon('pencil')} ${t('rename')}</button>
+      <button class="del" onclick="delService('${jsq(s.name)}')">${icon('trash')} ${t('remove')}</button></div>
     ${s.note?`<div class="note">${esc(s.note)}</div>`:'<div style="height:5px"></div>'}
     ${(Array.isArray(s.bots)&&s.bots.length)?`<div class="bots">${s.bots.map(b=>{const o=(b&&typeof b==='object')?b:{user:b};const u=String(o.user||'').replace(/^@/,'');const st=o.status==='on'?'on':(o.status==='off'?'off':'unk');return `<a class="botchip ${st}" href="https://t.me/${encodeURIComponent(u)}" target="_blank" rel="noopener" title="${esc(o.name||'')}${o.tier==='advanced'?' · голос/реалтайм':''}"><span class="bdot"></span>@${esc(u)}${o.tier==='advanced'?` ${icon('zap')}`:''}</a>`;}).join('')}</div>`:''}
     ${urls}
     ${ctrls}<div class="prevwrap" data-prev="${esc(s.name)}"></div></div>`; }
 
 const catColor=c=>({system:'#8a8a8e',db:'#e8503a',app:'#0a84ff',dev:'#30b14a',agent:'#a06bff',unknown:'#8a8a8e'}[c]||'#8a8a8e');
-function askAI(cmd,port){ copy(`Что за процесс «${cmd}» слушает порт ${port} на моём Mac? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.`); toast('Промпт скопирован — вставь своему ИИ'); }
+function askAI(cmd,port){ copy(t('askAIPrompt').replace('{cmd}',cmd).replace('{port}',port)); toast(t('askAICopied')); }
 function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const mk='disc'+d.port;
   return `<div class="card disc${unsafe?' guarded':''}">
     <div class="top"><span class="pulse up"></span><span class="cmd">${esc(d.command)}</span>
@@ -624,8 +624,8 @@ function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const
     <div style="margin:7px 0 3px"><span class="catb" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)"><span class="dot"></span>${icon(catIcon(d.cat))} ${t('cat_'+d.cat)}</span>${unsafe?`<span class="guard">${icon('shield')} ${t('protected')}</span>`:''}</div>
     <div class="pid" style="margin:2px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
     <div class="row">
-      <button class="btn btn-primary" title="${esc(t('saveHint'))}" onclick="saveDiscovered(${d.port},'${esc(d.command)}')">${icon('plus')} ${t('saveBtn')}</button>
-      <button class="btn btn-soft" onclick="askAI('${esc(d.command)}',${d.port})">${icon('help')} ${t('whatIs')}</button>
+      <button class="btn btn-primary" title="${esc(t('saveHint'))}" onclick="saveDiscovered(${d.port},'${jsq(d.command)}')">${icon('plus')} ${t('saveBtn')}</button>
+      <button class="btn btn-soft" onclick="askAI('${jsq(d.command)}',${d.port})">${icon('help')} ${t('whatIs')}</button>
       ${unsafe
         ? `<button class="btn btn-soft" onclick="toggleMenu(event,'${mk}')">${icon('more')} ${t('moreBtn')}</button>`
         : `<button class="btn btn-soft" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>`}</div>

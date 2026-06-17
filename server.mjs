@@ -191,7 +191,10 @@ const tunLog = (p) => `/tmp/aigarage-tunnel-${p}.log`;
 async function loadTun() { try { return JSON.parse(await readFile(TUN_STATE, "utf8")); } catch { return {}; } }
 async function saveTun(st) { await mkdir(CFG_DIR, { recursive: true }); await writeFile(TUN_STATE, JSON.stringify(st, null, 2)); }
 const readTunUrl = (log) => { try { const m = readFileSync(log, "utf8").match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/g); return m ? m[m.length - 1] : null; } catch { return null; } };
-async function cfPath() { for (const p of ["/opt/homebrew/bin/cloudflared", "/usr/local/bin/cloudflared", "/usr/bin/cloudflared"]) if (await fileExists(p)) return p; return null; }
+async function cfPath() {
+  for (const p of ["/opt/homebrew/bin/cloudflared", "/usr/local/bin/cloudflared", "/usr/bin/cloudflared"]) if (await fileExists(p)) return p;
+  return new Promise((r) => exec("command -v cloudflared 2>/dev/null", (e, out) => r((out || "").trim() || null)));   // фолбэк по PATH (Linux/нестандартная установка)
+}
 // какие порты сейчас реально протуннелированы (один pgrep на все)
 function aliveTunnelPorts() {
   return new Promise((r) => exec(`pgrep -fl "cloudflared tunnel --url" || true`, (e, out) => {
@@ -260,7 +263,7 @@ async function readBody(req) {
 function sanitizeService(s) {
   if (!s || typeof s.name !== "string" || !s.name.trim()) return null;
   const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : undefined);
-  const out = { name: s.name.trim().slice(0, 100), type: s.type === "local" ? "local" : "link" };
+  const out = { name: s.name.trim().replace(/["'<>`]/g, "").slice(0, 100) || "service", type: s.type === "local" ? "local" : "link" };
   const port = toPort(s.port); if (port) out.port = port;
   out.url = str(s.url, 500); out.host = str(s.host, 40); out.note = str(s.note, 300);
   if (out.type === "local") { out.startCmd = str(s.startCmd, 2000); out.stopCmd = str(s.stopCmd, 2000); out.cwd = str(s.cwd, 500); }
