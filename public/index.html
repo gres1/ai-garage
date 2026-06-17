@@ -84,10 +84,14 @@
   .draghandle:active{ cursor:grabbing; }
   .draghandle .ic{ width:16px; height:16px; pointer-events:none; }
   body.dragging-active, body.dragging-active *{ cursor:grabbing !important; user-select:none; }
-  .section{ grid-column:1/-1; display:flex; align-items:center; gap:8px; font-size:13px; font-weight:650; color:var(--mut); margin:8px 2px -4px; letter-spacing:.01em; }
+  .section{ grid-column:1/-1; display:flex; align-items:center; gap:8px; font-size:13px; font-weight:650; color:var(--mut); margin:8px 2px -4px; letter-spacing:.01em; cursor:pointer; user-select:none; }
   .section:first-child{ margin-top:0; }
+  .section:hover{ color:var(--txt); }
   .section .ic{ width:15px; height:15px; opacity:.65; }
   .section .secn{ font-weight:600; color:var(--faint); background:rgba(20,20,45,.06); border-radius:980px; padding:1px 8px; font-size:11px; }
+  .seccaret{ display:inline-flex; align-items:center; transition:transform .2s ease; margin-right:-2px; }
+  .seccaret .ic{ width:14px; height:14px; opacity:.55; }
+  .section.collapsed .seccaret{ transform:rotate(-90deg); }
   .bots{ display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 10px; }
   .botchip{ display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; text-decoration:none; color:#0088cc; background:rgba(0,136,204,.10); border-radius:980px; padding:4px 10px; }
   .botchip:hover{ background:rgba(0,136,204,.18); }
@@ -283,7 +287,9 @@
   <div class="grid" id="grid"></div>
 
   <div id="disc-wrap" style="max-width:1180px;margin:26px auto 0;display:none">
-    <div style="font-size:14px;color:var(--mut);margin:0 0 12px 2px"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.6;vertical-align:-2px"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg> <span data-i="discovered">Обнаружено</span> · <span id="disc-n"></span> <span style="color:var(--faint)" data-i="discHint">(запущено, но не сохранено)</span></div>
+    <div class="section" id="disc-head" onclick="toggleSection('disc')" style="margin:0 0 12px 2px;font-size:14px;color:var(--mut)">
+      <span class="seccaret"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.6;vertical-align:-2px"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg> <span data-i="discovered">Обнаружено</span> · <span id="disc-n"></span> <span style="color:var(--faint)" data-i="discHint">(запущено, но не сохранено)</span></div>
     <div class="grid" id="disc-grid"></div>
   </div>
 
@@ -514,7 +520,8 @@ const ICONS={
  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
  pencil:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
  warn:'<path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".7" fill="var(--ic,currentColor)" stroke="none"/>',
- grip:'<circle cx="9" cy="6" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="15" cy="6" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="9" cy="12" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="15" cy="12" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="9" cy="18" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="15" cy="18" r="1.3" fill="var(--ic,currentColor)" stroke="none"/>'
+ grip:'<circle cx="9" cy="6" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="15" cy="6" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="9" cy="12" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="15" cy="12" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="9" cy="18" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="15" cy="18" r="1.3" fill="var(--ic,currentColor)" stroke="none"/>',
+ chevron:'<polyline points="6 9 12 15 18 9"/>'
 };
 const icon=(n,cls='',sw=2)=>`<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="var(--ic,currentColor)" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`;
 const catIcon=c=>({system:'cpu',db:'database',app:'box',dev:'wrench',agent:'bot',unknown:'help'}[c]||'help');
@@ -693,13 +700,15 @@ function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const
         : `<button class="btn btn-soft" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>`}</div>
     ${unsafe?`<div class="menu" data-menu="${mk}" style="top:auto;bottom:14px;right:14px">
       <button class="del" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')} :${d.port}</button></div>`:''}</div>`; }
-let lastDiscSig='';
-function renderDiscovered(list){ const w=$('disc-wrap');
+let lastDiscSig='', _lastDisc=[];
+function renderDiscovered(list){ _lastDisc=list||[]; const w=$('disc-wrap'), head=$('disc-head'), grid=$('disc-grid');
   if(!list||!list.length){ w.style.display='none'; lastDiscSig=''; return; }
   w.style.display='block'; $('disc-n').textContent=list.length;
+  const col=collapsed.has('disc'); if(head) head.classList.toggle('collapsed',col); grid.style.display=col?'none':'';
+  if(col) return;                                            // свёрнуто — карточки не трогаем
   const sig=list.map(d=>d.port+d.cat+d.command).join('|');   // без изменений не перерисовываем — иначе открытое меню «улетает» каждые 3с
   if(sig===lastDiscSig) return; lastDiscSig=sig; closeMenus();
-  $('disc-grid').innerHTML=list.map(dcard).join(''); }
+  grid.innerHTML=list.map(dcard).join(''); }
 async function saveDiscovered(port,command){
   const s={name:command+' :'+port, type:'link', port, url:'http://localhost:'+port, host:DEVICE, note:t('discNote')};
   const j=await api('/api/service-add',{service:s}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
@@ -737,13 +746,20 @@ function dragStart(e){
 function visible(){ const q=$('q').value.trim().toLowerCase(); return DATA.filter(s=>!q||s.name.toLowerCase().includes(q)); }
 /* секции-категории: тонкий заголовок над группой карточек */
 const SECTIONS=[
-  {ic:'monitor', label:()=>t('secLocal'), test:s=>!isBot(s)&&!isVps(s)},
-  {ic:'cloud',   label:()=>t('secVps'),   test:s=>!isBot(s)&&isVps(s)},
-  {ic:'bot',     label:()=>t('secBots'),  test:s=>isBot(s)},
+  {key:'local', ic:'monitor', label:()=>t('secLocal'), test:s=>!isBot(s)&&!isVps(s)},
+  {key:'vps',   ic:'cloud',   label:()=>t('secVps'),   test:s=>!isBot(s)&&isVps(s)},
+  {key:'bots',  ic:'bot',     label:()=>t('secBots'),  test:s=>isBot(s)},
 ];
+/* сворачиваемые секции: состояние помним в localStorage */
+const collapsed=new Set(JSON.parse(localStorage.getItem('lc-collapsed')||'[]'));
+function toggleSection(key){ collapsed.has(key)?collapsed.delete(key):collapsed.add(key);
+  localStorage.setItem('lc-collapsed',JSON.stringify([...collapsed]));
+  if(key==='disc') renderDiscovered(_lastDisc); else { lastSig=''; render(); } }
 function render(){ closeMenus(); const vis=visible(); let html='';
   for(const g of SECTIONS){ const items=vis.filter(g.test); if(!items.length)continue;
-    html+=`<div class="section">${icon(g.ic)} ${g.label()} <span class="secn">${items.length}</span></div>`+items.map(card).join(''); }
+    const col=collapsed.has(g.key);
+    html+=`<div class="section${col?' collapsed':''}" onclick="toggleSection('${g.key}')"><span class="seccaret">${icon('chevron')}</span>${icon(g.ic)} ${g.label()} <span class="secn">${items.length}</span></div>`
+      + (col?'':items.map(card).join('')); }
   if(!html && !$('q').value.trim()) html=`<div class="empty"><div class="emptyt">${t('emptyTitle')}</div><div class="emptyh">${t('emptyHint')}</div></div>`;
   $('grid').innerHTML=html;
   openPrevs.forEach(n=>{ const w=document.querySelector(`[data-prev="${CSS.escape(n)}"]`); if(w){ w.classList.add('open'); buildPreviewContent(w,n); } else openPrevs.delete(n); });
