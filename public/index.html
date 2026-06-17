@@ -44,6 +44,7 @@
     border:1px solid var(--glass-brd); border-radius:24px; padding:18px 22px; box-shadow:var(--shadow); }
   h1{ font-size:28px; letter-spacing:-.022em; margin:0; font-weight:700; line-height:1.1; }
   .sub{ color:var(--faint); font-size:13px; margin-top:3px; }
+  .logo{ width:48px; height:48px; border-radius:13px; object-fit:cover; flex:0 0 auto; box-shadow:var(--shadow); }
   .ring{ position:relative; width:80px; height:80px; flex:0 0 auto; }
   .ring svg{ transform:rotate(-90deg); }
   #arc{ transition:stroke-dashoffset .7s cubic-bezier(.2,.7,.2,1); }
@@ -262,6 +263,7 @@
 </head>
 <body>
   <header>
+    <img class="logo" src="/logo.png" alt="AI Garage" onerror="this.remove()"/>
     <div class="ring">
       <svg width="80" height="80"><circle cx="40" cy="40" r="34" fill="none" stroke="#e6e6ea" stroke-width="8"/>
         <circle id="arc" cx="40" cy="40" r="34" fill="none" stroke="var(--green)" stroke-width="8"

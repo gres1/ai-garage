@@ -354,6 +354,22 @@ const server = http.createServer(async (req, res) => {
     } catch { res.writeHead(500); return res.end("index.html не найден"); }
   }
 
+  // Статика из public/ (logo и пр.) — только GET, с защитой от path traversal
+  if (req.method === "GET" && url.pathname !== "/" && !url.pathname.startsWith("/api/")) {
+    const safe = url.pathname.replace(/\.\.+/g, "").replace(/^\/+/, "");
+    const pub = join(__dirname, "public");
+    const fp = join(pub, safe);
+    if (fp.startsWith(pub)) {
+      try {
+        const data = await readFile(fp);
+        const ext = (safe.split(".").pop() || "").toLowerCase();
+        const types = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", svg: "image/svg+xml", webp: "image/webp", ico: "image/x-icon", gif: "image/gif" };
+        res.writeHead(200, { "Content-Type": types[ext] || "application/octet-stream", "Cache-Control": "max-age=3600", "X-Content-Type-Options": "nosniff" });
+        return res.end(data);
+      } catch {}
+    }
+  }
+
   if (req.method === "GET" && url.pathname === "/api/status") {
     const services = await loadServices();
     const all = await discoverPorts();                       // один lsof на весь запрос
