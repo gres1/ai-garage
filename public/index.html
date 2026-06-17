@@ -211,6 +211,20 @@
     background:rgba(30,30,32,.95); color:#fff; padding:11px 18px; border-radius:12px; font-size:13px;
     opacity:0; transition:.25s; pointer-events:none; box-shadow:0 8px 30px rgba(0,0,0,.3); z-index:60; }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .caret{ font-size:9px; opacity:.5; margin-left:1px; }
+  .empty{ grid-column:1/-1; text-align:center; padding:46px 20px; background:var(--glass); border:1px dashed var(--glass-brd); border-radius:var(--r); }
+  .emptyt{ font-weight:650; font-size:16px; color:var(--txt); }
+  .emptyh{ color:var(--mut); font-size:13px; margin-top:6px; line-height:1.5; }
+  @media (max-width:560px){
+    body{ padding:16px 12px 60px; }
+    header{ padding:14px 16px; gap:12px; }
+    h1{ font-size:22px; }
+    .grid{ grid-template-columns:1fr; gap:14px; }
+    .search{ flex:1 1 100%; } .search input,.search input:focus{ width:100%; }
+    .ctl{ flex-wrap:wrap; }
+    .frow{ flex-direction:column; }
+    .mbox.viewer{ width:100vw; height:100vh; border-radius:0; }
+  }
 </style>
 </head>
 <body>
@@ -306,7 +320,7 @@ const DICT={
    start:"Start",stop:"Stop",restart:"Restart",preview:"Preview",managed:"managed externally",phone:"phone",
    copied:"Copied",expand:"click to enlarge",blocked:"Embedding not allowed — open in new tab",
    freePort:"Free the port",remove:"Remove (back to Discovered)",confirmDel:"Remove this service from your list?",searchPh:"Search…",
-   rename:"Rename",renamePrompt:"New name:",changeHost:"Change device (Mac/VPS)",changeAgent:"Change linked agent",agentPrompt:"Which agent runs this bot? (Claude Code / Hermes / OpenClaw …)",openTab:"open in new tab ↗",close:"Close",fName:"Name",fType:"Type",fTypeLocal:"local (with buttons)",
+   rename:"Rename",renamePrompt:"New name:",changeHost:"Change device",other:"Other…",emptyTitle:"Nothing here yet",emptyHint:"Anything running on your machine shows up below under “Discovered” automatically. Or add one with “+ Service”.",changeAgent:"Change linked agent",agentPrompt:"Which agent runs this bot? (Claude Code / Hermes / OpenClaw …)",openTab:"open in new tab ↗",close:"Close",fName:"Name",fType:"Type",fTypeLocal:"local (with buttons)",
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
    discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all to my services",secLocal:"This Mac",secVps:"VPS",secBots:"Bots",keepAlive:"Keep alive",kaOn:"Staying on",
@@ -316,7 +330,7 @@ const DICT={
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
    copied:"Скопировано",expand:"кликни — крупнее",blocked:"Встроенный просмотр запрещён — открой в новой вкладке",
    freePort:"Освободить порт",remove:"Убрать (назад в Обнаружено)",confirmDel:"Убрать этот сервис из списка?",searchPh:"Поиск…",
-   rename:"Переименовать",renamePrompt:"Новое имя:",changeHost:"Сменить устройство (Mac/VPS)",changeAgent:"Сменить агента",agentPrompt:"Какой агент управляет ботом? (Claude Code / Hermes / OpenClaw …)",openTab:"открыть в новой вкладке ↗",close:"Закрыть",fName:"Название",fType:"Тип",fTypeLocal:"локальный (с кнопками)",
+   rename:"Переименовать",renamePrompt:"Новое имя:",changeHost:"Сменить устройство",other:"Другое…",emptyTitle:"Пока пусто",emptyHint:"Всё, что запущено на твоей машине, появится ниже в разделе «Обнаружено» автоматически. Или добавь вручную кнопкой «+ Сервис».",changeAgent:"Сменить агента",agentPrompt:"Какой агент управляет ботом? (Claude Code / Hermes / OpenClaw …)",openTab:"открыть в новой вкладке ↗",close:"Закрыть",fName:"Название",fType:"Тип",fTypeLocal:"локальный (с кнопками)",
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
    discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить все в мои сервисы",secLocal:"Этот Mac",secVps:"VPS",secBots:"Боты",keepAlive:"Держать включённым",kaOn:"Держится",
@@ -446,7 +460,7 @@ let lang=localStorage.getItem('lc-lang')||(navigator.language||'en').slice(0,2);
 if(!DICT[lang]) lang='en';
 const t=k=>(DICT[lang]&&DICT[lang][k])||DICT.en[k]||k;
 
-let DATA=[]; let paused=false; let authOn=false; let lastSig=''; const openPrevs=new Set();
+let DATA=[]; let paused=false; let authOn=false; let lastSig=''; let DEVICE='Local'; const openPrevs=new Set();
 const $=id=>document.getElementById(id);
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* экранирование для JS-строкового контекста внутри onclick="fn('...')" — \uXXXX безопасно и в JS, и в HTML-атрибуте */
@@ -527,6 +541,7 @@ function tunnelBtn(port,managed,url,err){ if(!port) return '';
 async function delService(name){ if(!confirm(t('confirmDel')))return; const j=await api('/api/service-remove',{name}); toast(j.ok?'✅':'⛔️'); lastSig=''; load(); }
 async function renameService(name){ const nn=prompt(t('renamePrompt'),name); if(nn===null)return; const v=nn.trim(); if(!v||v===name){closeMenus();return;} const j=await api('/api/service-rename',{name,newName:v}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); lastSig=''; load(); }
 async function setHost(name,host){ const j=await api('/api/service-sethost',{name,host}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); lastSig=''; load(); }
+async function setHostPrompt(name){ const cur=(DATA.find(x=>x.name===name)||{}).host||''; const h=prompt(t('changeHost'),cur); closeMenus(); if(h===null)return; const v=h.trim(); if(!v)return; setHost(name,v); }
 async function setAgent(name){ const cur=(DATA.find(x=>x.name===name)||{}).agent||''; const a=prompt(t('agentPrompt'),cur); if(a===null)return; const j=await api('/api/service-setagent',{name,agent:a.trim()}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
 
 /* меню на карточке */
@@ -566,7 +581,7 @@ function closeForm(){ $('formModal').classList.remove('show'); }
 function toggleCmd(){ $('cmd-fields').style.display=$('f-type').value==='local'?'block':'none'; }
 async function saveService(){
   const s={ name:$('f-name').value.trim(), type:$('f-type').value, port:+$('f-port').value||undefined,
-    url:$('f-url').value.trim(), host:$('f-host').value.trim()||'Mac', note:$('f-note').value.trim() };
+    url:$('f-url').value.trim(), host:$('f-host').value.trim()||DEVICE, note:$('f-note').value.trim() };
   if(s.type==='local'){ s.startCmd=$('f-start').value.trim()||undefined; s.stopCmd=$('f-stop').value.trim()||undefined;
     s.cwd=$('f-cwd').value.trim()||undefined; }
   if(!s.name){ toast('⛔️ '+t('fName')); return; }
@@ -599,13 +614,14 @@ function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&ty
       ${tunnel}</div>`;
   return `<div class="card ${cls}${s.control?' ctrl':''}" data-name="${esc(s.name)}" onpointerdown="dragPointerDown(event)">
     <div class="top"><span class="pulse ${cls}"></span><span class="name">${esc(s.name)}</span><span style="flex:1"></span>
-      ${bot?`<button class="agentb agentbtn" title="${esc(t('changeAgent'))}" onclick="setAgent('${jsq(s.name)}')">${icon('bot')} ${esc(s.agent||'?')}</button>`:(s.agent?`<span class="agentb">${icon('bot')} ${esc(s.agent)}</span>`:'')}
-      <button class="hostb hostbtn" title="${esc(t('changeHost'))}" onclick="toggleMenu(event,'host:${esc(s.name)}')">${icon(bot?'bot':isVps(s)?'cloud':'monitor')} ${esc(s.host||'Mac')}</button>
+      ${bot?`<button class="agentb agentbtn" title="${esc(t('changeAgent'))}" onclick="setAgent('${jsq(s.name)}')">${icon('bot')} ${esc(s.agent||'?')}<span class="caret">▾</span></button>`:(s.agent?`<span class="agentb">${icon('bot')} ${esc(s.agent)}</span>`:'')}
+      <button class="hostb hostbtn" title="${esc(t('changeHost'))}" onclick="toggleMenu(event,'host:${esc(s.name)}')">${icon(bot?'bot':isVps(s)?'cloud':'monitor')} ${esc(s.host||DEVICE)}<span class="caret">▾</span></button>
       ${bot?'':`<span class="state ${cls}">${s.up?t('working'):t('stopped')}</span>`}
       <button class="kebab" aria-label="меню" onclick="toggleMenu(event,'${jsq(s.name)}')">${icon('more')}</button></div>
     <div class="menu" data-menu="host:${esc(s.name)}">
-      <button onclick="setHost('${jsq(s.name)}','Mac')">${icon('monitor')} Mac</button>
-      <button onclick="setHost('${jsq(s.name)}','VPS')">${icon('cloud')} VPS</button></div>
+      <button onclick="setHost('${jsq(s.name)}','${jsq(DEVICE)}')">${icon('monitor')} ${esc(DEVICE)}</button>
+      <button onclick="setHost('${jsq(s.name)}','VPS')">${icon('cloud')} VPS</button>
+      <button onclick="setHostPrompt('${jsq(s.name)}')">${icon('pencil')} ${t('other')}</button></div>
     <div class="menu" data-menu="${esc(s.name)}">
       ${(s.port&&!s.control)?`<button onclick="killPort(${s.port})">${icon('zap')} ${t('freePort')} :${s.port}</button>`:''}
       <button onclick="renameService('${jsq(s.name)}')">${icon('pencil')} ${t('rename')}</button>
@@ -635,7 +651,7 @@ function renderDiscovered(list){ const w=$('disc-wrap');
   if(!list||!list.length){ w.style.display='none'; return; }
   w.style.display='block'; $('disc-n').textContent=list.length; $('disc-grid').innerHTML=list.map(dcard).join(''); }
 async function saveDiscovered(port,command){
-  const s={name:command+' :'+port, type:'link', port, url:'http://localhost:'+port, host:'Mac', note:t('discNote')};
+  const s={name:command+' :'+port, type:'link', port, url:'http://localhost:'+port, host:DEVICE, note:t('discNote')};
   const j=await api('/api/service-add',{service:s}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
 async function saveAllDiscovered(){ toast('…'); const j=await api('/api/save-all-discovered',{}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
 
@@ -673,6 +689,7 @@ const SECTIONS=[
 function render(){ const vis=visible(); let html='';
   for(const g of SECTIONS){ const items=vis.filter(g.test); if(!items.length)continue;
     html+=`<div class="section">${icon(g.ic)} ${g.label()} <span class="secn">${items.length}</span></div>`+items.map(card).join(''); }
+  if(!html && !$('q').value.trim()) html=`<div class="empty"><div class="emptyt">${t('emptyTitle')}</div><div class="emptyh">${t('emptyHint')}</div></div>`;
   $('grid').innerHTML=html;
   openPrevs.forEach(n=>{ const w=document.querySelector(`[data-prev="${CSS.escape(n)}"]`); if(w){ w.classList.add('open'); buildPreviewContent(w,n); } else openPrevs.delete(n); });
   updateHeader(); }
@@ -690,7 +707,7 @@ function updateHeader(){ const up=DATA.filter(s=>s.up).length,tot=DATA.length;
   const C=214; $('arc').style.strokeDashoffset=tot?C-(C*up/tot):C; }
 
 async function load(){ if(paused||document.hidden)return;
-  try{ const r=await fetch('/api/status'); const j=await r.json(); DATA=j.services; authOn=j.authOn;
+  try{ const r=await fetch('/api/status'); const j=await r.json(); DATA=j.services; authOn=j.authOn; DEVICE=j.device||'Local';
     $('ts').textContent=new Date(j.ts).toLocaleTimeString();
     const sig=DATA.map(s=>s.name+s.hasControls+(s.tunnelManaged?1:0)+(s.tunnel||'')+(s.keepAlive?1:0)).join('|')+'#'+$('q').value;
     if(sig!==lastSig){ lastSig=sig; render(); } else patch();

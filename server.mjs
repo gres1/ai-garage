@@ -8,11 +8,13 @@ import { openSync, readFileSync } from "node:fs";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { homedir } from "node:os";
+import { homedir, hostname } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = 7777;
 const CFG_DIR = join(homedir(), ".config", "localhost-control");
+// Имя этого устройства по ОС (дефолт для host, чтобы не было «Mac» у всех)
+const DEVICE = process.platform === "darwin" ? "Mac" : process.platform === "win32" ? "PC" : process.platform === "linux" ? "Linux" : (hostname() || "Local");
 const SERVICES_PATH = join(CFG_DIR, "services.json");
 const CONFIG_PATH = join(CFG_DIR, "config.json");
 
@@ -326,7 +328,7 @@ const server = http.createServer(async (req, res) => {
     const rows = await Promise.all(services.map(async (s) => {
       const ti = tunnelInfoFrom(tun, tunAlive, s.port);
       return {
-        name: s.name, type: s.type, port: s.port, url: s.url, note: s.note || "", host: s.host || "mac",
+        name: s.name, type: s.type, port: s.port, url: s.url, note: s.note || "", host: s.host || DEVICE,
         up: !!s.port && listening.has(toPort(s.port)), tunnel: ti?.url || await tunnelUrl(s),
         tunnelManaged: !!ti, tunnelError: ti?.error || null,
         hasControls: !!(s.startCmd || s.stopCmd),
@@ -340,7 +342,7 @@ const server = http.createServer(async (req, res) => {
     const registeredPorts = new Set(services.map((s) => s.port).filter(Boolean));
     const discovered = all.filter((d) => !registeredPorts.has(d.port) && d.port !== PORT)
       .map((d) => { const ti = tunnelInfoFrom(tun, tunAlive, d.port); return { ...d, ...classifyProcess(d.command, d.port), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
-    return sendJson(res, 200, { services: rows, discovered, platform: process.platform, ts: Date.now(), authOn: !!cfg.token, selfTunnel: (tunnelInfoFrom(tun, tunAlive, PORT) || {}).url || null });
+    return sendJson(res, 200, { services: rows, discovered, platform: process.platform, device: DEVICE, ts: Date.now(), authOn: !!cfg.token, selfTunnel: (tunnelInfoFrom(tun, tunAlive, PORT) || {}).url || null });
   }
 
   if (req.method === "POST" && ["/api/start", "/api/stop", "/api/restart"].includes(url.pathname)) {
@@ -429,7 +431,7 @@ const server = http.createServer(async (req, res) => {
       for (const d of all) {
         if (d.port === PORT || have.has(d.port)) continue;
         if (classifyProcess(d.command, d.port).safe === false) continue;   // не тащить системные/БД-процессы в список
-        list.push({ name: `${d.command} :${d.port}`, type: "link", port: d.port, url: `http://localhost:${d.port}`, host: "Mac", note: "обнаружено" });
+        list.push({ name: `${d.command} :${d.port}`, type: "link", port: d.port, url: `http://localhost:${d.port}`, host: DEVICE, note: "обнаружено" });
         have.add(d.port); n++;
       }
       if (n) await saveServices(list);
