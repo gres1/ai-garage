@@ -117,7 +117,7 @@
   .card.down::before{ background:linear-gradient(90deg,var(--red),#ff8a80); opacity:.9; }
   .top{ display:flex; align-items:center; gap:10px; }
   .pulse{ width:12px; height:12px; border-radius:50%; flex:0 0 auto; background:#c7c7cc; position:relative; }
-  .pulse.up{ background:linear-gradient(135deg,var(--teal) 0%,var(--teal) 48%,var(--teal-neon) 52%,var(--teal-neon) 100%); }
+  .pulse.up{ background:var(--teal-neon); }
   .pulse.down{ background:var(--red); }
   .pulse.up::after{ content:""; position:absolute; inset:-5px; border-radius:50%; border:2px solid var(--teal-neon);
     opacity:.5; animation:ring 2s ease-out infinite; }
@@ -270,13 +270,13 @@
       <h1 class="rounded brand">AI Garage</h1>
       <div class="sub"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.5;vertical-align:-2px"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> 3s · <span id="ts"></span></div>
       <div class="legend">
-        <div><span class="ld" style="background:var(--green)"></span> <span id="upc">0</span> <span data-i="working">работает</span></div>
+        <div><span class="ld" style="background:var(--teal-neon)"></span> <span id="upc">0</span> <span data-i="working">работает</span></div>
         <div><span class="ld" style="background:var(--red)"></span> <span id="downc">0</span> <span data-i="stopped">выключено</span></div>
       </div>
     </div>
     <div class="ring">
       <svg width="80" height="80"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#215e61"/><stop offset="100%" stop-color="#1ce5e8"/></linearGradient></defs><circle cx="40" cy="40" r="34" fill="none" stroke="#e6e6ea" stroke-width="8"/>
-        <circle id="arc" cx="40" cy="40" r="34" fill="none" stroke="url(#rg)" stroke-width="8"
+        <circle id="arc" cx="40" cy="40" r="34" fill="none" stroke="var(--teal-neon)" stroke-width="8"
           stroke-linecap="round" stroke-dasharray="214" stroke-dashoffset="214"/></svg>
       <div class="num rounded"><b id="upn">0</b><span><span data-i="of">of</span> <span id="totn">0</span></span></div>
     </div>
