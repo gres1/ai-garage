@@ -538,6 +538,24 @@ const server = http.createServer(async (req, res) => {
     }));
   }
 
+  // Настроить управление сервисом из панели (задать команды старта/стопа) — чтобы у «managed externally» появились кнопки
+  if (req.method === "POST" && url.pathname === "/api/service-setcmd") {
+    const { name, startCmd, stopCmd, cwd } = await readBody(req);
+    const str = (v, n) => (typeof v === "string" ? v.slice(0, n).trim() : "");
+    return sendJson(res, 200, await withLock(async () => {
+      const list = await loadServices();
+      const svc = list.find((s) => s.name === name);
+      if (!svc) return { ok: false, error: "сервис не найден" };
+      const sc = str(startCmd, 2000), st = str(stopCmd, 2000), cw = str(cwd, 500);
+      if (sc) svc.startCmd = sc; else delete svc.startCmd;
+      if (st) svc.stopCmd = st; else delete svc.stopCmd;
+      if (cw) svc.cwd = cw; else delete svc.cwd;
+      svc.type = (svc.startCmd || svc.stopCmd) ? "local" : "link";   // есть команды → панель управляет
+      await saveServices(list);
+      return { ok: true, note: "управление настроено" };
+    }));
+  }
+
   if (req.method === "POST" && url.pathname === "/api/cat-override") {
     const { command, port, cat } = await readBody(req);
     const p = toPort(port);

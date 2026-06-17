@@ -356,6 +356,15 @@
     </div>
   </div>
 
+  <!-- модалка «Управлять отсюда» -->
+  <div class="modal" id="manageModal" onclick="if(event.target===this)closeManage()">
+    <div class="mbox form">
+      <div class="mbar"><span class="t" id="mg-title"></span><div class="spacer"></div>
+        <button class="btn btn-soft" onclick="closeManage()" data-i="cancel">Отмена</button></div>
+      <div class="fbody" id="mg-body"></div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -371,7 +380,7 @@ const DICT={
    rename:"Rename",renamePrompt:"New name:",changeHost:"Change device",other:"Other…",emptyTitle:"Nothing here yet",emptyHint:"Anything running on your machine shows up below under “Discovered” automatically. Or add one with “+ Service”.",changeAgent:"Change linked agent",agentPrompt:"Which agent runs this bot? (Claude Code / Hermes / OpenClaw …)",openTab:"open in new tab ↗",close:"Close",fName:"Name",fType:"Type",fTypeLocal:"local (with buttons)",
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
-   discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all to my services",secLocal:"This Mac",secVps:"VPS",secBots:"Bots",keepAlive:"Keep alive",kaOn:"Staying on",
+   discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all to my services",secLocal:"This Mac",secVps:"VPS",secBots:"Bots",keepAlive:"Keep alive",kaOn:"Staying on",manageBtn:"Control from here",manageTitle:"Control this service from the panel",manageIntro:"Right now this service is started by the system (launchd, Docker, or you by hand). To get Start / Stop buttons here, tell the panel how to launch it.",mStart:"Start command",mStop:"Stop command",mCwd:"Folder",mStopHint:"optional — leave empty and I'll just free the port",mCwdHint:"optional — where to run it",mAskAI:"Don't know the command? Ask your AI",mSave:"Enable control",mSaved:"Control enabled — Start/Stop buttons added",kaTip:"I'll restart it automatically if it crashes",managedTip:"Started by the system — the panel only monitors it",mAskPrompt:"How do I start and stop the service «{n}» (port {p}) on my Mac? Give me the exact start command and stop command I can paste into a localhost control panel.",
    whatIs:"What is it?",protected:"protected — don't touch",kaEnabling:"Enabling keep-alive…",kaDisabling:"Disabling…",sysPort:"system port",killDanger:"⚠️ Port {p} — {d}. Kill the process? DATA LOSS possible.",killSafe:"Free port {p}? The process will be stopped.",askAIPrompt:"What is the process «{cmd}» listening on port {port} on my machine? Is it safe, do I need it, can I kill it? Explain simply.",askAICopied:"Prompt copied — paste it to your AI",wi_askLabel:"Prompt for your AI agent",wi_copyBtn:"Copy prompt",wi_port:"Port {x} —",wi_system:"Looks like part of macOS or a background service. Safer to leave it alone.",wi_db:"Looks like a database. Killing it can lose unsaved data — be careful.",wi_app:"An app you're running (browser, editor, etc.). Closing the app itself is usually enough.",wi_dev:"A development server or tool (Node, Python, Vite…). Usually safe to stop or restart.",wi_agent:"An AI agent or tool running locally. Safe to stop if you're not using it.",wi_unknown:"Couldn't identify it for sure. If unsure, ask your AI before stopping it.",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",cat_web:"web / frontend",cat_api:"API / backend",cat_worker:"worker / queue",cat_docker:"container",cat_monitoring:"monitoring",cat_tunnel:"tunnel",changeCat:"Change category",catAuto:"Auto-detect",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",dragHint:"Drag to reorder",prevLoading:"Loading preview…",blockedTitle:"Preview blocked by the service",blockedBody:"This service doesn't allow being shown inside a frame — that's its own security setting, not a panel error. Open it in a new tab instead.",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
    tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link — open this service from your phone or share it",provPick:"Choose how to share:",provCf:"Cloudflare — instant, link changes",provNgrok:"ngrok — stable address (soon)",provDomain:"Your own domain (soon)",provSoonMsg:"Coming next — needs your free account; we're building it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
@@ -381,7 +390,7 @@ const DICT={
    rename:"Переименовать",renamePrompt:"Новое имя:",changeHost:"Сменить устройство",other:"Другое…",emptyTitle:"Пока пусто",emptyHint:"Всё, что запущено на твоей машине, появится ниже в разделе «Обнаружено» автоматически. Или добавь вручную кнопкой «+ Сервис».",changeAgent:"Сменить агента",agentPrompt:"Какой агент управляет ботом? (Claude Code / Hermes / OpenClaw …)",openTab:"открыть в новой вкладке ↗",close:"Закрыть",fName:"Название",fType:"Тип",fTypeLocal:"локальный (с кнопками)",
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
-   discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить все в мои сервисы",secLocal:"Этот Mac",secVps:"VPS",secBots:"Боты",keepAlive:"Держать включённым",kaOn:"Держится",
+   discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить все в мои сервисы",secLocal:"Этот Mac",secVps:"VPS",secBots:"Боты",keepAlive:"Держать включённым",kaOn:"Держится",manageBtn:"Управлять отсюда",manageTitle:"Управлять сервисом из панели",manageIntro:"Сейчас сервис запускает система (launchd, Docker или ты сам). Чтобы здесь появились кнопки Старт / Стоп — укажи, чем его запускать.",mStart:"Команда запуска",mStop:"Команда остановки",mCwd:"Папка",mStopHint:"необязательно — оставь пустым, и я просто освобожу порт",mCwdHint:"необязательно — где запускать",mAskAI:"Не знаешь команду? Спроси свой ИИ",mSave:"Включить управление",mSaved:"Управление включено — кнопки Старт/Стоп добавлены",kaTip:"Перезапущу автоматически, если упадёт",managedTip:"Запускает система — панель только следит",mAskPrompt:"Как запустить и остановить сервис «{n}» (порт {p}) на моём Mac? Дай точную команду запуска и команду остановки, чтобы вставить в панель управления localhost.",
    whatIs:"что это?",protected:"защищён — не трогай",kaEnabling:"Включаю автозапуск…",kaDisabling:"Выключаю…",sysPort:"системный порт",killDanger:"⚠️ Порт {p} — {d}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.",killSafe:"Освободить порт {p}? Процесс будет остановлен.",askAIPrompt:"Что за процесс «{cmd}» слушает порт {port} на моей машине? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.",askAICopied:"Промпт скопирован — вставь своему ИИ",wi_askLabel:"Промпт для твоего ИИ-агента",wi_copyBtn:"Скопировать промпт",wi_port:"Порт {x} —",wi_system:"Похоже на часть macOS или фоновую службу. Лучше не трогать.",wi_db:"Похоже на базу данных. Если убить — можно потерять несохранённые данные. Осторожно.",wi_app:"Запущенное приложение (браузер, редактор и т.п.). Обычно достаточно закрыть само приложение.",wi_dev:"Сервер или инструмент разработки (Node, Python, Vite…). Обычно можно спокойно остановить или перезапустить.",wi_agent:"Локальный ИИ-агент или инструмент. Можно остановить, если не используешь.",wi_unknown:"Точно определить не вышло. Если не уверен — спроси своего ИИ перед остановкой.",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",cat_web:"веб / фронтенд",cat_api:"API / бэкенд",cat_worker:"воркер / очередь",cat_docker:"контейнер",cat_monitoring:"мониторинг",cat_tunnel:"туннель",changeCat:"Сменить категорию",catAuto:"Авто-определение",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",dragHint:"Потяни, чтобы изменить порядок",prevLoading:"Загрузка превью…",blockedTitle:"Сервис не разрешает превью",blockedBody:"Этот сервис запрещает показ в окне — это его настройка безопасности, не ошибка панели. Открой в новой вкладке.",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
    tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку — открыть сервис с телефона или поделиться",provPick:"Чем поделиться:",provCf:"Cloudflare — сразу, адрес меняется",provNgrok:"ngrok — стабильный адрес (скоро)",provDomain:"Свой домен (скоро)",provSoonMsg:"Скоро — нужен твой бесплатный аккаунт, делаем"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
@@ -678,7 +687,7 @@ const isVps=s=>/vps|впс|server|серв|cloud/i.test(s.host||'');
 const isBot=s=>s.kind==='bot'||(Array.isArray(s.bots)&&s.bots.length>0);
 function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&typeof b==='object'?b.status:'')==='on')?'up':''):(s.up?'up':'down');
   const restart=`<button class="btn btn-soft" onclick="act('${jsq(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>`;
-  const ka=`<button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" onclick="toggleKeepAlive('${jsq(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>`;
+  const ka=`<button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" title="${esc(t('kaTip'))}" onclick="toggleKeepAlive('${jsq(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>`;
   const ctrls = bot
     ? (s.port&&s.url?`<div class="row" style="margin-top:4px"><a class="btn btn-soft" href="${safeUrl(s.url)}" target="_blank" rel="noopener">${icon('eye')} health</a></div>`:'')
     : s.control
@@ -687,7 +696,8 @@ function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&ty
     ? `<div class="row" style="margin-top:4px">${toggleBtn(s)}${restart}${ka}
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
       <button class="btn btn-accent" onclick="togglePreview('${jsq(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`
-    : `<div class="row" style="margin-top:4px"><span class="note" style="margin:0">${t('managed')}</span>
+    : `<div class="row" style="margin-top:4px"><span class="note" title="${esc(t('managedTip'))}" style="margin:0">${t('managed')}</span>
+      <button class="btn btn-soft" title="${esc(t('manageTitle'))}" onclick="openManage('${jsq(s.name)}')">${icon('wrench')} ${t('manageBtn')}</button>
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
       <button class="btn btn-accent" style="margin-left:auto" onclick="togglePreview('${jsq(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`;
   const tunnel=s.tunnel?`<div class="urlrow"><span class="tag">${icon('phone')} ${t('phone')}</span>
@@ -739,6 +749,28 @@ function openWhatIs(d){ const col=catColor(d.cat);
   $('wi-copy').onclick=()=>navigator.clipboard.writeText(prompt).then(()=>toast(t('askAICopied')));
   $('whatisModal').classList.add('show'); }
 function closeWhatIs(){ $('whatisModal').classList.remove('show'); }
+/* «Управлять отсюда» — задать команды старта/стопа понятным диалогом (с примерами + помощь ИИ) */
+function openManage(name){ const s=DATA.find(x=>x.name===name); if(!s)return;
+  $('mg-title').textContent=t('manageTitle');
+  $('mg-body').innerHTML=`
+    <div class="note" style="margin:0 0 2px">${esc(t('manageIntro'))}</div>
+    <div><label>${t('mStart')}</label><input id="mg-start" placeholder="npm run dev · docker start name · ./run.sh" value="${esc(s.startCmd||'')}"/></div>
+    <div class="frow">
+      <div><label>${t('mStop')}</label><input id="mg-stop" placeholder="${esc(t('mStopHint'))}" value="${esc(s.stopCmd||'')}"/></div>
+      <div><label>${t('mCwd')}</label><input id="mg-cwd" placeholder="~/projects/app" value="${esc(s.cwd||'')}"/></div>
+    </div>
+    <button class="btn btn-soft" style="align-self:flex-start;font-size:12px;padding:6px 11px" onclick="manageAskAI('${jsq(name)}')">${icon('bot')} ${t('mAskAI')}</button>
+    <div class="row" style="justify-content:flex-end;margin-top:2px">
+      <button class="btn btn-soft" onclick="closeManage()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveManage('${jsq(name)}')">${icon('keepalive')} ${t('mSave')}</button>
+    </div>`;
+  $('manageModal').classList.add('show'); }
+function closeManage(){ $('manageModal').classList.remove('show'); }
+function manageAskAI(name){ const s=DATA.find(x=>x.name===name); if(!s)return;
+  const p=t('mAskPrompt').replace('{n}',s.name).replace('{p}',s.port||'?');
+  navigator.clipboard.writeText(p).then(()=>toast(t('askAICopied'))).catch(()=>{}); }
+async function saveManage(name){ const j=await api('/api/service-setcmd',{name,startCmd:$('mg-start').value,stopCmd:$('mg-stop').value,cwd:$('mg-cwd').value});
+  if(j.ok){ closeManage(); toast('✅ '+t('mSaved')); lastSig=''; load(); } else toast('⛔️ '+(j.error||'')); }
 function catMenu(d){ return `<div class="menu catmenu" data-menu="cat:${d.port}">
       <div class="menucap">${t('changeCat')}</div>
       ${CATS.map(c=>`<button onclick="setCat('${jsq(d.command)}',${d.port},'${c}')">${icon(catIcon(c))} ${t('cat_'+c)}</button>`).join('')}
