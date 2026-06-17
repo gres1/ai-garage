@@ -223,6 +223,11 @@
   .mbox{ background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.4); display:flex; flex-direction:column; }
   .mbox.viewer{ width:min(1200px,95vw); height:min(800px,90vh); }
   .mbox.form{ width:min(460px,95vw); padding:0; }
+  .mbox.info{ width:min(480px,95vw); padding:0; }
+  .wi-prompt{ width:100%; min-height:82px; border:1px solid var(--line); border-radius:11px; padding:10px 12px;
+    font-size:12.5px; font-family:inherit; line-height:1.45; color:var(--txt); background:var(--bg2); resize:vertical; outline:none; }
+  .wi-prompt:focus{ border-color:var(--blue); box-shadow:0 0 0 4px rgba(0,113,227,.1); }
+  .wi-ask{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--mut); margin-bottom:5px; }
   .mbar{ display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid var(--line); }
   .mbar .t{ font-weight:650; font-size:15px; } .mbar a{ color:var(--blue); font-size:12px; text-decoration:none; }
   .mbox.viewer iframe{ flex:1; border:0; width:100%; }
@@ -335,6 +340,15 @@
     </div>
   </div>
 
+  <!-- модалка «что это?» -->
+  <div class="modal" id="whatisModal" onclick="if(event.target===this)closeWhatIs()">
+    <div class="mbox info">
+      <div class="mbar"><span class="t" id="wi-title"></span><div class="spacer"></div>
+        <button class="btn btn-soft" onclick="closeWhatIs()" data-i="close">Закрыть</button></div>
+      <div class="fbody" id="wi-body"></div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -351,7 +365,7 @@ const DICT={
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
    discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all to my services",secLocal:"This Mac",secVps:"VPS",secBots:"Bots",keepAlive:"Keep alive",kaOn:"Staying on",
-   whatIs:"What is it?",protected:"protected — don't touch",kaEnabling:"Enabling keep-alive…",kaDisabling:"Disabling…",sysPort:"system port",killDanger:"⚠️ Port {p} — {d}. Kill the process? DATA LOSS possible.",killSafe:"Free port {p}? The process will be stopped.",askAIPrompt:"What is the process «{cmd}» listening on port {port} on my machine? Is it safe, do I need it, can I kill it? Explain simply.",askAICopied:"Prompt copied — paste it to your AI",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",dragHint:"Drag to reorder",prevLoading:"Loading preview…",blockedTitle:"Preview blocked by the service",blockedBody:"This service doesn't allow being shown inside a frame — that's its own security setting, not a panel error. Open it in a new tab instead.",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
+   whatIs:"What is it?",protected:"protected — don't touch",kaEnabling:"Enabling keep-alive…",kaDisabling:"Disabling…",sysPort:"system port",killDanger:"⚠️ Port {p} — {d}. Kill the process? DATA LOSS possible.",killSafe:"Free port {p}? The process will be stopped.",askAIPrompt:"What is the process «{cmd}» listening on port {port} on my machine? Is it safe, do I need it, can I kill it? Explain simply.",askAICopied:"Prompt copied — paste it to your AI",wi_askLabel:"Prompt for your AI agent",wi_copyBtn:"Copy prompt",wi_port:"Port {x} —",wi_system:"Looks like part of macOS or a background service. Safer to leave it alone.",wi_db:"Looks like a database. Killing it can lose unsaved data — be careful.",wi_app:"An app you're running (browser, editor, etc.). Closing the app itself is usually enough.",wi_dev:"A development server or tool (Node, Python, Vite…). Usually safe to stop or restart.",wi_agent:"An AI agent or tool running locally. Safe to stop if you're not using it.",wi_unknown:"Couldn't identify it for sure. If unsure, ask your AI before stopping it.",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",dragHint:"Drag to reorder",prevLoading:"Loading preview…",blockedTitle:"Preview blocked by the service",blockedBody:"This service doesn't allow being shown inside a frame — that's its own security setting, not a panel error. Open it in a new tab instead.",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
    tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link — open this service from your phone or share it",provPick:"Choose how to share:",provCf:"Cloudflare — instant, link changes",provNgrok:"ngrok — stable address (soon)",provDomain:"Your own domain (soon)",provSoonMsg:"Coming next — needs your free account; we're building it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
@@ -361,7 +375,7 @@ const DICT={
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
    discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить все в мои сервисы",secLocal:"Этот Mac",secVps:"VPS",secBots:"Боты",keepAlive:"Держать включённым",kaOn:"Держится",
-   whatIs:"что это?",protected:"защищён — не трогай",kaEnabling:"Включаю автозапуск…",kaDisabling:"Выключаю…",sysPort:"системный порт",killDanger:"⚠️ Порт {p} — {d}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.",killSafe:"Освободить порт {p}? Процесс будет остановлен.",askAIPrompt:"Что за процесс «{cmd}» слушает порт {port} на моей машине? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.",askAICopied:"Промпт скопирован — вставь своему ИИ",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",dragHint:"Потяни, чтобы изменить порядок",prevLoading:"Загрузка превью…",blockedTitle:"Сервис не разрешает превью",blockedBody:"Этот сервис запрещает показ в окне — это его настройка безопасности, не ошибка панели. Открой в новой вкладке.",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
+   whatIs:"что это?",protected:"защищён — не трогай",kaEnabling:"Включаю автозапуск…",kaDisabling:"Выключаю…",sysPort:"системный порт",killDanger:"⚠️ Порт {p} — {d}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.",killSafe:"Освободить порт {p}? Процесс будет остановлен.",askAIPrompt:"Что за процесс «{cmd}» слушает порт {port} на моей машине? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.",askAICopied:"Промпт скопирован — вставь своему ИИ",wi_askLabel:"Промпт для твоего ИИ-агента",wi_copyBtn:"Скопировать промпт",wi_port:"Порт {x} —",wi_system:"Похоже на часть macOS или фоновую службу. Лучше не трогать.",wi_db:"Похоже на базу данных. Если убить — можно потерять несохранённые данные. Осторожно.",wi_app:"Запущенное приложение (браузер, редактор и т.п.). Обычно достаточно закрыть само приложение.",wi_dev:"Сервер или инструмент разработки (Node, Python, Vite…). Обычно можно спокойно остановить или перезапустить.",wi_agent:"Локальный ИИ-агент или инструмент. Можно остановить, если не используешь.",wi_unknown:"Точно определить не вышло. Если не уверен — спроси своего ИИ перед остановкой.",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",dragHint:"Потяни, чтобы изменить порядок",prevLoading:"Загрузка превью…",blockedTitle:"Сервис не разрешает превью",blockedBody:"Этот сервис запрещает показ в окне — это его настройка безопасности, не ошибка панели. Открой в новой вкладке.",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
    tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку — открыть сервис с телефона или поделиться",provPick:"Чем поделиться:",provCf:"Cloudflare — сразу, адрес меняется",provNgrok:"ngrok — стабильный адрес (скоро)",provDomain:"Свой домен (скоро)",provSoonMsg:"Скоро — нужен твой бесплатный аккаунт, делаем"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
@@ -685,7 +699,28 @@ function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&ty
     ${ctrls}<div class="prevwrap" data-prev="${esc(s.name)}"></div></div>`; }
 
 const catColor=c=>({system:'#8a8a8e',db:'#e8503a',app:'#0a84ff',dev:'#30b14a',agent:'#a06bff',unknown:'#8a8a8e'}[c]||'#8a8a8e');
-function askAI(cmd,port){ copy(t('askAIPrompt').replace('{cmd}',cmd).replace('{port}',port)); toast(t('askAICopied')); }
+const DB_NAMES={5432:'PostgreSQL',5433:'PostgreSQL',3306:'MySQL',27017:'MongoDB',6379:'Redis',5984:'CouchDB',9200:'Elasticsearch',1433:'SQL Server',11211:'Memcached'};
+function explainProc(d){ let s=t('wi_'+d.cat)||t('wi_unknown');
+  const known=DB_NAMES[d.port]; if(known) s=t('wi_port').replace('{x}',known)+' '+s; return s; }
+/* «что это?» — модалка с локальным объяснением + готовым промптом для ИИ (вместо улетающего тоста) */
+function askAI(port){ const d=(_lastDisc||[]).find(x=>x.port==port); if(!d)return; openWhatIs(d); }
+function openWhatIs(d){ const col=catColor(d.cat);
+  const prompt=t('askAIPrompt').replace('{cmd}',d.command).replace('{port}',d.port);
+  $('wi-title').textContent=d.command+' :'+d.port;
+  $('wi-body').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="catb" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)"><span class="dot"></span>${icon(catIcon(d.cat))} ${t('cat_'+d.cat)}</span>
+      <span style="color:var(--faint);font-size:12px">PID ${d.pid}</span>
+      ${d.safe===false?`<span class="guard">${icon('shield')} ${t('protected')}</span>`:''}</div>
+    <div class="note" style="margin:0">${esc(explainProc(d))}</div>
+    <div>
+      <div class="wi-ask"><span>${icon('bot')} ${t('wi_askLabel')}</span></div>
+      <textarea class="wi-prompt" readonly onclick="this.select()">${esc(prompt)}</textarea>
+      <button class="btn btn-primary" id="wi-copy" style="width:100%;margin-top:9px;justify-content:center">${icon('copy')} ${t('wi_copyBtn')}</button>
+    </div>`;
+  $('wi-copy').onclick=()=>navigator.clipboard.writeText(prompt).then(()=>toast(t('askAICopied')));
+  $('whatisModal').classList.add('show'); }
+function closeWhatIs(){ $('whatisModal').classList.remove('show'); }
 function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const mk='disc'+d.port;
   return `<div class="card disc${unsafe?' guarded':''}">
     <div class="top"><span class="pulse up"></span><span class="cmd">${esc(d.command)}</span>
@@ -694,7 +729,7 @@ function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const
     <div class="pid" style="margin:2px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
     <div class="row">
       <button class="btn btn-primary" title="${esc(t('saveHint'))}" onclick="saveDiscovered(${d.port},'${jsq(d.command)}')">${icon('plus')} ${t('saveBtn')}</button>
-      <button class="btn btn-soft" onclick="askAI('${jsq(d.command)}',${d.port})">${icon('help')} ${t('whatIs')}</button>
+      <button class="btn btn-soft" onclick="askAI(${d.port})">${icon('help')} ${t('whatIs')}</button>
       ${unsafe
         ? `<button class="btn btn-soft" onclick="toggleMenu(event,'${mk}')">${icon('more')} ${t('moreBtn')}</button>`
         : `<button class="btn btn-soft" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>`}</div>
