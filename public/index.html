@@ -7,13 +7,13 @@
 <link rel="icon" type="image/png" href="/favicon.png"/>
 <style>
   :root{
-    --bg:#f5f5f7; --bg2:#eceef1; --card:#ffffff; --txt:#2b303a; --mut:#5b606b; --faint:#8a8f99;
-    --line:rgba(43,48,58,.10);
-    /* палитра под логотип AI Garage: cyan-teal (статус/успех), amber (CTA), gunmetal (текст) */
-    --teal:#00ced1; --teal-neon:#1ff0f3; --teal-d:#0a8694; --green:#00ced1; --green-d:#0a8694;
-    --blue:#0a8694; --blue-d:#00ced1; --red:#ff453a;
-    --accent:#ff8a00; --accent-d:#e06d00;
-    --soft:#f3f4f6; --soft-h:#e5e7eb;
+    --bg:#f5fbe6; --bg2:#ebf2da; --card:#ffffff; --txt:#233d4d; --mut:#4d5e6a; --faint:#8a96a0;
+    --line:rgba(35,61,77,.12);
+    /* фирменная палитра (Color Hunt): кремовый фон #F5FBE6, тёмный teal #215E61, сине-серый #233D4D, оранжевый #FE7F2D */
+    --teal:#215e61; --teal-neon:#2d8488; --teal-d:#1a4d50; --green:#215e61; --green-d:#1a4d50;
+    --blue:#215e61; --blue-d:#2d8488; --red:#e5484d;
+    --accent:#fe7f2d; --accent-d:#ed6a15;
+    --soft:#eef3e2; --soft-h:#e3ebcf;
     --glass:rgba(255,255,255,.58); --glass-strong:rgba(255,255,255,.72); --glass-brd:rgba(255,255,255,.72);
     --ic-stop:#ff453a;
     --shadow:0 1px 1px rgba(20,20,45,.04), 0 12px 34px -14px rgba(25,25,60,.22);
@@ -25,10 +25,10 @@
   body{
     min-height:100vh; position:relative;
     background:
-      radial-gradient(820px 560px at 9% 3%, rgba(255,138,0,.10), transparent 55%),
-      radial-gradient(820px 560px at 93% 1%, rgba(0,229,255,.10), transparent 55%),
-      radial-gradient(900px 720px at 78% 110%, rgba(0,150,168,.08), transparent 55%),
-      linear-gradient(180deg,#f7f8fa,#eef0f4);
+      radial-gradient(820px 560px at 9% 3%, rgba(254,127,45,.09), transparent 55%),
+      radial-gradient(820px 560px at 93% 1%, rgba(33,94,97,.10), transparent 55%),
+      radial-gradient(900px 720px at 78% 110%, rgba(33,94,97,.06), transparent 55%),
+      linear-gradient(180deg,#f5fbe6,#eaf1d9);
     background-attachment:fixed;
     color:var(--txt); padding:30px 26px 80px;
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
@@ -36,7 +36,7 @@
   }
   /* живой ambient-glow за курсором (как pletor) */
   body::before{ content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
-    background:radial-gradient(440px circle at var(--gx,50%) var(--gy,-10%), rgba(255,138,0,.07), transparent 62%); }
+    background:radial-gradient(440px circle at var(--gx,50%) var(--gy,-10%), rgba(254,127,45,.07), transparent 62%); }
   header, .grid, #disc-wrap, #platwarn, #selftun{ position:relative; z-index:1; }
   .rounded{ font-family:ui-rounded,-apple-system,"SF Pro Rounded",sans-serif; }
   header{ max-width:1180px; margin:0 auto 24px; display:flex; align-items:center; gap:20px; flex-wrap:wrap;
@@ -44,8 +44,9 @@
     border:1px solid var(--glass-brd); border-radius:24px; padding:18px 22px; box-shadow:var(--shadow); }
   h1{ font-size:28px; letter-spacing:-.022em; margin:0; font-weight:700; line-height:1.1; }
   .sub{ color:var(--faint); font-size:13px; margin-top:3px; }
-  .logo{ height:58px; width:auto; flex:0 0 auto; filter:drop-shadow(0 4px 9px rgba(20,20,45,.20)); }
-  h1.brand{ color:var(--txt); } h1.brand span{ color:var(--teal-d); }
+  .logo{ height:67px; width:auto; flex:0 0 auto; filter:drop-shadow(0 4px 9px rgba(20,20,45,.18)); }
+  .brandblock{ margin-left:-8px; }   /* название вплотную к логотипу */
+  h1.brand{ color:var(--txt); letter-spacing:-.022em; }
   .ring{ position:relative; width:80px; height:80px; flex:0 0 auto; }
   .ring svg{ transform:rotate(-90deg); }
   #arc{ transition:stroke-dashoffset .7s cubic-bezier(.2,.7,.2,1); }
@@ -59,14 +60,14 @@
   .ctl{ display:flex; align-items:center; gap:8px; }
   .field{ border:1px solid var(--line); background:rgba(255,255,255,.75); backdrop-filter:blur(8px);
     border-radius:980px; padding:9px 14px; font-size:14px; color:var(--txt); outline:none; transition:.2s; font-family:inherit; }
-  .field:focus{ border-color:var(--accent); box-shadow:0 0 0 4px rgba(255,138,0,.14); }
+  .field:focus{ border-color:var(--accent); box-shadow:0 0 0 4px rgba(254,127,45,.14); }
   .search{ position:relative; }
   .search input{ padding-left:36px; width:210px; }
   .search input:focus{ width:240px; }
   .search svg{ position:absolute; left:13px; top:50%; transform:translateY(-50%); opacity:.4; }
   select.field{ cursor:pointer; padding-right:30px; }
   .btn-add{ background:var(--accent); color:#fff; border:none; border-radius:980px; padding:10px 16px;
-    font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 2px 10px rgba(255,138,0,.32); font-family:inherit; transition:.15s; }
+    font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 2px 10px rgba(254,127,45,.32); font-family:inherit; transition:.15s; }
   .btn-add:hover{ background:var(--accent-d); transform:translateY(-1px); }
   .pausebtn{ border:1px solid var(--line); background:rgba(255,255,255,.6); border-radius:980px;
     padding:9px 14px; font-size:13px; cursor:pointer; color:var(--mut); font-family:inherit; }
@@ -83,7 +84,7 @@
   /* перетаскивание: тянем за тело карточки (курсор-рука), кнопки/ссылки остаются кликабельными */
   .card[data-name]{ cursor:grab; touch-action:none; }
   .card.dragging{ cursor:grabbing; box-shadow:0 28px 60px -12px rgba(25,25,70,.42); transition:none; }
-  .card-placeholder{ border:2px dashed var(--teal-d); border-radius:var(--r); background:rgba(0,229,255,.06); box-sizing:border-box; }
+  .card-placeholder{ border:2px dashed var(--teal-d); border-radius:var(--r); background:rgba(33,94,97,.06); box-sizing:border-box; }
   body.dragging-active, body.dragging-active *{ cursor:grabbing !important; user-select:none; }
   .section{ grid-column:1/-1; display:flex; align-items:center; gap:8px; font-size:13px; font-weight:650; color:var(--mut); margin:8px 2px -4px; letter-spacing:.01em; cursor:pointer; user-select:none; }
   .section:first-child{ margin-top:0; }
@@ -99,7 +100,7 @@
   .botchip .ic{ width:13px; height:13px; }
   .botchip .bdot{ width:7px; height:7px; border-radius:50%; background:#c7c7cc; flex:0 0 auto; }
   .botchip.on .bdot{ background:var(--green); } .botchip.off .bdot{ background:var(--faint); } .botchip.unk .bdot{ background:#e8a33d; }
-  .agentb{ display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--accent); background:rgba(255,138,0,.10); border-radius:980px; padding:2px 8px; flex:0 0 auto; }
+  .agentb{ display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--accent); background:rgba(254,127,45,.10); border-radius:980px; padding:2px 8px; flex:0 0 auto; }
   .agentb .ic{ width:12px; height:12px; }
   .hostb.hostbtn{ border:none; cursor:pointer; font-family:inherit; } .hostb.hostbtn:hover{ background:#dcdce0; }
   .agentb.agentbtn{ border:none; cursor:pointer; font-family:inherit; } .agentb.agentbtn:hover{ filter:brightness(.96); }
@@ -108,11 +109,11 @@
   .menucap{ font-size:11px; color:var(--faint); padding:5px 10px 3px; font-weight:600; }
   /* спотлайт-блик, следующий за курсором (живой эффект, как pletor) */
   .card::after{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0; transition:opacity .35s;
-    background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%), rgba(255,138,0,.13), transparent 46%); }
+    background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%), rgba(254,127,45,.13), transparent 46%); }
   .card:hover::after{ opacity:1; }
   .card>*{ position:relative; z-index:1; }
   .card::before{ content:""; position:absolute; left:0; top:0; right:0; height:3px; background:var(--faint); opacity:.35; z-index:2; }
-  .card.up::before{ background:linear-gradient(90deg,var(--teal-neon),#7bf2ff); opacity:.95; }
+  .card.up::before{ background:linear-gradient(90deg,var(--green),var(--teal-neon)); opacity:.95; }
   .card.down::before{ background:linear-gradient(90deg,var(--red),#ff8a80); opacity:.9; }
   .top{ display:flex; align-items:center; gap:10px; }
   .pulse{ width:12px; height:12px; border-radius:50%; flex:0 0 auto; background:#c7c7cc; position:relative; }
@@ -123,7 +124,7 @@
   @keyframes ring{ 0%{ transform:scale(.6); opacity:.6 } 100%{ transform:scale(1.5); opacity:0 } }
   .name{ font-weight:650; font-size:15.5px; letter-spacing:-.01em; }
   .state{ font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:980px; }
-  .state.up{ color:var(--green-d); background:rgba(0,229,255,.16); }
+  .state.up{ color:var(--green-d); background:rgba(33,94,97,.16); }
   .state.down{ color:#b3261e; background:rgba(255,59,48,.12); }
   .hostb{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:3px 8px; border-radius:980px; background:var(--bg2); color:var(--mut); flex:0 0 auto; }
   .hostb .ic{ width:12px; height:12px; }
@@ -160,7 +161,7 @@
   .btn{ border:none; border-radius:980px; padding:8px 15px; font-size:13px; font-weight:550; cursor:pointer;
     transition:transform .12s ease, background .2s; font-family:inherit; }
   .btn:active{ transform:scale(.95); }
-  .btn-primary{ background:var(--accent); color:#fff; box-shadow:0 2px 10px rgba(255,138,0,.32); }
+  .btn-primary{ background:var(--accent); color:#fff; box-shadow:0 2px 10px rgba(254,127,45,.32); }
   .btn-primary:hover{ background:var(--accent-d); }
   .btn-soft{ background:rgba(20,20,45,.06); color:var(--txt); } .btn-soft:hover{ background:rgba(20,20,45,.11); }
   .btn-danger{ background:rgba(255,69,58,.12); color:var(--red); } .btn-danger:hover{ background:rgba(255,69,58,.2); }
@@ -215,7 +216,7 @@
   .thumb .prevover[data-state="blocked"] .po-load{ display:none; }
   .thumb .prevover[data-state="blocked"] .po-block{ display:flex; }
   .po-load{ display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--faint); }
-  .po-ico{ width:36px; height:36px; border-radius:11px; background:rgba(0,229,255,.14); color:var(--teal-d);
+  .po-ico{ width:36px; height:36px; border-radius:11px; background:rgba(33,94,97,.14); color:var(--teal-d);
     display:inline-flex; align-items:center; justify-content:center; }
   .po-ico .ic{ width:19px; height:19px; }
   .po-t{ font-weight:650; font-size:13px; color:var(--txt); }
@@ -231,7 +232,7 @@
   .mbox.info{ width:min(480px,95vw); padding:0; }
   .wi-prompt{ width:100%; min-height:82px; border:1px solid var(--line); border-radius:11px; padding:10px 12px;
     font-size:12.5px; font-family:inherit; line-height:1.45; color:var(--txt); background:var(--bg2); resize:vertical; outline:none; }
-  .wi-prompt:focus{ border-color:var(--blue); box-shadow:0 0 0 4px rgba(0,229,255,.2); }
+  .wi-prompt:focus{ border-color:var(--blue); box-shadow:0 0 0 4px rgba(33,94,97,.2); }
   .wi-ask{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--mut); margin-bottom:5px; }
   .mbar{ display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid var(--line); }
   .mbar .t{ font-weight:650; font-size:15px; } .mbar a{ color:var(--blue); font-size:12px; text-decoration:none; }
@@ -240,7 +241,7 @@
   .fbody label{ font-size:12px; color:var(--mut); display:block; margin-bottom:4px; }
   .fbody input, .fbody select{ width:100%; border:1px solid var(--line); border-radius:11px; padding:10px 12px;
     font-size:14px; font-family:inherit; outline:none; }
-  .fbody input:focus{ border-color:var(--blue); box-shadow:0 0 0 4px rgba(0,229,255,.2); }
+  .fbody input:focus{ border-color:var(--blue); box-shadow:0 0 0 4px rgba(33,94,97,.2); }
   .frow{ display:flex; gap:10px; } .frow>div{ flex:1; }
   .toast{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(10px);
     background:rgba(30,30,32,.95); color:#fff; padding:11px 18px; border-radius:12px; font-size:13px;
@@ -265,19 +266,19 @@
 <body>
   <header>
     <img class="logo" src="/logo.png" alt="AI Garage" onerror="this.remove()"/>
-    <div class="ring">
-      <svg width="80" height="80"><circle cx="40" cy="40" r="34" fill="none" stroke="#e6e6ea" stroke-width="8"/>
-        <circle id="arc" cx="40" cy="40" r="34" fill="none" stroke="var(--green)" stroke-width="8"
-          stroke-linecap="round" stroke-dasharray="214" stroke-dashoffset="214"/></svg>
-      <div class="num rounded"><b id="upn">0</b><span><span data-i="of">of</span> <span id="totn">0</span></span></div>
-    </div>
-    <div>
-      <h1 class="rounded brand">AI <span>Garage</span></h1>
+    <div class="brandblock">
+      <h1 class="rounded brand">AI Garage</h1>
       <div class="sub"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.5;vertical-align:-2px"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> 3s · <span id="ts"></span></div>
       <div class="legend">
         <div><span class="ld" style="background:var(--green)"></span> <span id="upc">0</span> <span data-i="working">работает</span></div>
         <div><span class="ld" style="background:var(--red)"></span> <span id="downc">0</span> <span data-i="stopped">выключено</span></div>
       </div>
+    </div>
+    <div class="ring">
+      <svg width="80" height="80"><circle cx="40" cy="40" r="34" fill="none" stroke="#e6e6ea" stroke-width="8"/>
+        <circle id="arc" cx="40" cy="40" r="34" fill="none" stroke="var(--green)" stroke-width="8"
+          stroke-linecap="round" stroke-dasharray="214" stroke-dashoffset="214"/></svg>
+      <div class="num rounded"><b id="upn">0</b><span><span data-i="of">of</span> <span id="totn">0</span></span></div>
     </div>
     <div class="spacer"></div>
     <div class="ctl">
