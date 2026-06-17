@@ -289,6 +289,23 @@ function checkEmbeddable(port) {
   });
 }
 
+// Угадать команды старта/стопа по живому процессу — чтобы не заставлять юзера писать их с нуля.
+function guessCmd(port) {
+  return new Promise((resolve) => {
+    execFile("lsof", ["-ti", `tcp:${port}`, "-sTCP:LISTEN"], (e, out) => {
+      const pid = (out || "").trim().split("\n")[0];
+      if (!pid) return resolve({ ok: true, start: "", stop: "" });
+      execFile("ps", ["-o", "command=", "-p", pid], (e2, cmd) => {
+        let start = (cmd || "").trim();
+        let stop = `lsof -ti:${port} | xargs kill`;
+        const m = start.match(/\/([^/]+)\.app\//);   // нативное .app → open/quit (понятнее, чем путь к бинарю)
+        if (m) { const app = m[1]; start = `open -a "${app}"`; stop = `osascript -e 'quit app "${app}"'`; }
+        resolve({ ok: true, start: start.slice(0, 500), stop });
+      });
+    });
+  });
+}
+
 function sendJson(res, code, obj) {
   res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(obj));
@@ -403,6 +420,12 @@ const server = http.createServer(async (req, res) => {
     const p = toPort(url.searchParams.get("port"));
     if (!p) return sendJson(res, 400, { ok: false, error: "некорректный порт" });
     return sendJson(res, 200, await checkEmbeddable(p));
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/guess-cmd") {
+    const p = toPort(url.searchParams.get("port"));
+    if (!p) return sendJson(res, 400, { ok: false });
+    return sendJson(res, 200, await guessCmd(p));
   }
 
   if (req.method === "POST" && ["/api/start", "/api/stop", "/api/restart"].includes(url.pathname)) {
