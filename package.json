@@ -1,6 +1,6 @@
 {
   "name": "ai-garage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI Garage — visual control panel for your localhost services, ports and tunnels — no terminal. See and stop everything running (even what AI agents left behind), free a stuck port, share a public link, on Mac and VPS.",
   "type": "module",
   "bin": {
