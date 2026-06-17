@@ -78,15 +78,10 @@
     transform:translateY(var(--lift,0)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
     transition:transform .18s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease; }
   .card:hover{ --lift:-6px; box-shadow:var(--shadow-h); }
-  .card.dragging{ opacity:.45; box-shadow:var(--shadow-h); }
-  /* ручка-хваталка: видно что карточку можно тянуть, тянем ТОЛЬКО за неё → не мешает кнопкам */
-  .draghandle{ position:absolute; left:1px; top:50%; transform:translateY(-50%); z-index:3;
-    display:inline-flex; align-items:center; justify-content:center; width:17px; height:38px; padding:0;
-    border:none; background:transparent; color:var(--faint); cursor:grab; opacity:0; transition:opacity .15s; touch-action:none; }
-  .card:hover .draghandle{ opacity:.5; }
-  .draghandle:hover{ opacity:1; }
-  .draghandle:active{ cursor:grabbing; }
-  .draghandle .ic{ width:16px; height:16px; pointer-events:none; }
+  /* перетаскивание: тянем за тело карточки (курсор-рука), кнопки/ссылки остаются кликабельными */
+  .card[data-name]{ cursor:grab; touch-action:none; }
+  .card.dragging{ cursor:grabbing; box-shadow:0 28px 60px -12px rgba(25,25,70,.42); transition:none; }
+  .card-placeholder{ border:2px dashed var(--teal-d); border-radius:var(--r); background:rgba(0,229,255,.06); box-sizing:border-box; }
   body.dragging-active, body.dragging-active *{ cursor:grabbing !important; user-select:none; }
   .section{ grid-column:1/-1; display:flex; align-items:center; gap:8px; font-size:13px; font-weight:650; color:var(--mut); margin:8px 2px -4px; letter-spacing:.01em; cursor:pointer; user-select:none; }
   .section:first-child{ margin-top:0; }
@@ -693,8 +688,7 @@ function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&ty
   const urls = (s.control||bot) ? '' : `<div class="urls"><div class="urlrow"><span class="badge">:${s.port||'—'}</span>
         <a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a><button class="icbtn" onclick="copy('${jsq(s.url)}')">${icon('copy')}</button></div>
       ${tunnel}</div>`;
-  return `<div class="card ${cls}${s.control?' ctrl':''}" data-name="${esc(s.name)}">
-    <button class="draghandle" aria-label="${esc(t('dragHint'))}" title="${esc(t('dragHint'))}" onpointerdown="dragStart(event)">${icon('grip')}</button>
+  return `<div class="card ${cls}${s.control?' ctrl':''}" data-name="${esc(s.name)}" onpointerdown="dragStart(event)">
     <div class="top"><span class="pulse ${cls}"></span><span class="name">${esc(s.name)}</span><span style="flex:1"></span>
       ${bot?`<button class="agentb agentbtn" title="${esc(t('changeAgent'))}" onclick="setAgent('${jsq(s.name)}')">${icon('bot')} ${esc(s.agent||'?')}<span class="caret">▾</span></button>`:(s.agent?`<span class="agentb">${icon('bot')} ${esc(s.agent)}</span>`:'')}
       <button class="hostb hostbtn" title="${esc(t('changeHost'))}" onclick="toggleMenu(event,'host:${esc(s.name)}')">${icon(bot?'bot':isVps(s)?'cloud':'monitor')} ${esc(s.host||DEVICE)}<span class="caret">▾</span></button>
@@ -781,23 +775,45 @@ async function persistOrder(){ const names=[...document.querySelectorAll('#grid 
   await api('/api/service-reorder',{order:names}); lastSig=''; load(); }
 function dragStart(e){
   if(e.button!==0) return;
-  e.preventDefault(); e.stopPropagation();
-  const handle=e.currentTarget, card=handle.closest('.card'); if(!card) return;
-  const sx=e.clientX, sy=e.clientY; let started=false;
-  try{ handle.setPointerCapture(e.pointerId); }catch{}
+  if(e.target.closest('button,a,input,select,textarea,.menu,.urlrow,.botchip,.icbtn')) return; // клики/ссылки не трогаем
+  const card=e.currentTarget;
+  const sx=e.clientX, sy=e.clientY;
+  const rect=card.getBoundingClientRect();
+  const offX=sx-rect.left, offY=sy-rect.top;       // где внутри карточки схватили — чтобы она «висела» под курсором ровно там
+  let started=false, ph=null;
+  try{ card.setPointerCapture(e.pointerId); }catch{}
+  const follow=(x,y)=>{ card.style.transform=`translate3d(${Math.round(x-offX)}px,${Math.round(y-offY)}px,0) scale(1.02)`; };
   const move=(ev)=>{
-    if(!started){ if(Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)<6) return;
-      started=true; _dragging=true; card.classList.add('dragging'); document.body.classList.add('dragging-active'); }
+    if(!started){
+      if(Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)<6) return;  // порог: отличить клик от перетаскивания
+      started=true; _dragging=true; document.body.classList.add('dragging-active');
+      ph=document.createElement('div'); ph.className='card-placeholder'; ph.style.height=rect.height+'px';
+      card.parentNode.insertBefore(ph, card);       // placeholder держит место в сетке (она не схлопывается)
+      card.classList.add('dragging');
+      card.style.width=rect.width+'px'; card.style.height=rect.height+'px';
+      card.style.position='fixed'; card.style.left='0'; card.style.top='0'; card.style.margin='0';
+      card.style.zIndex='1000'; card.style.pointerEvents='none';
+      document.body.appendChild(card);              // в body → fixed считается от экрана, карточка свободно летит
+    }
     ev.preventDefault();
-    card.style.pointerEvents='none'; const under=document.elementFromPoint(ev.clientX,ev.clientY); card.style.pointerEvents='';
+    follow(ev.clientX, ev.clientY);                 // карточка плавно следует за курсором (translate3d, GPU)
+    const under=document.elementFromPoint(ev.clientX, ev.clientY);
     const tgt=under&&under.closest&&under.closest('#grid .card');
-    if(tgt&&tgt!==card){ const r=tgt.getBoundingClientRect(); const after=(ev.clientY-r.top)/r.height>0.5; tgt.parentNode.insertBefore(card, after?tgt.nextSibling:tgt); }
+    if(tgt&&tgt!==ph){ const r=tgt.getBoundingClientRect(); const after=(ev.clientY-r.top)/r.height>0.5;
+      tgt.parentNode.insertBefore(ph, after?tgt.nextSibling:tgt); }
     autoScroll(ev.clientY);
   };
-  const up=()=>{ handle.removeEventListener('pointermove',move); handle.removeEventListener('pointerup',up); handle.removeEventListener('pointercancel',up);
+  const end=()=>{
+    card.removeEventListener('pointermove',move); card.removeEventListener('pointerup',end); card.removeEventListener('pointercancel',end);
     stopAutoScroll(); document.body.classList.remove('dragging-active');
-    if(started){ card.classList.remove('dragging'); _dragging=false; persistOrder(); } };
-  handle.addEventListener('pointermove',move); handle.addEventListener('pointerup',up); handle.addEventListener('pointercancel',up);
+    if(started){
+      ph.parentNode.insertBefore(card, ph); ph.remove();   // вернуть карточку в сетку на место placeholder
+      card.classList.remove('dragging');
+      ['position','left','top','width','height','zIndex','transform','pointerEvents','margin'].forEach(p=>card.style[p]=''); // снять все floating-стили → форма/цвет возвращаются
+      _dragging=false; persistOrder();
+    }
+  };
+  card.addEventListener('pointermove',move); card.addEventListener('pointerup',end); card.addEventListener('pointercancel',end);
 }
 
 function visible(){ const q=$('q').value.trim().toLowerCase(); return DATA.filter(s=>!q||s.name.toLowerCase().includes(q)); }
@@ -834,7 +850,7 @@ function updateHeader(){ const up=DATA.filter(s=>s.up).length,tot=DATA.length;
   animNum($('upn'),up); $('totn').textContent=tot; $('upc').textContent=up; $('downc').textContent=tot-up;
   const C=214; $('arc').style.strokeDashoffset=tot?C-(C*up/tot):C; }
 
-async function load(){ if(paused||document.hidden)return;
+async function load(){ if(paused||document.hidden||_dragging)return;   // во время перетаскивания не перерисовываем
   try{ const r=await fetch('/api/status'); const j=await r.json(); DATA=j.services; authOn=j.authOn; DEVICE=j.device||'Local';
     $('ts').textContent=new Date(j.ts).toLocaleTimeString();
     const sig=DATA.map(s=>s.name+s.hasControls+(s.tunnelManaged?1:0)+(s.tunnel||'')+(s.keepAlive?1:0)).join('|')+'#'+$('q').value;
