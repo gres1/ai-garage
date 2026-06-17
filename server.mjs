@@ -270,6 +270,25 @@ async function ensureTunnels() {
   } finally { _ensuring = false; }
 }
 
+// Можно ли встроить сервис в iframe? Браузер из-за cross-origin не различает «загрузилось» и
+// «заблокировано», поэтому проверяем заголовки сами (loopback-запрос к самому сервису).
+function checkEmbeddable(port) {
+  return new Promise((resolve) => {
+    const r = http.get({ host: "127.0.0.1", port, path: "/", timeout: 2500 }, (resp) => {
+      const xfo = String(resp.headers["x-frame-options"] || "").toLowerCase();
+      const csp = String(resp.headers["content-security-policy"] || "").toLowerCase();
+      resp.destroy();
+      let embeddable = true, reason = "";
+      if (xfo.includes("deny") || xfo.includes("sameorigin")) { embeddable = false; reason = "X-Frame-Options"; }
+      const m = csp.match(/frame-ancestors([^;]*)/);
+      if (m) { const v = m[1]; if (v.includes("'none'") || (!v.includes("*") && !/https?:/.test(v))) { embeddable = false; reason = "CSP frame-ancestors"; } }
+      resolve({ ok: true, embeddable, reason });
+    });
+    r.on("error", () => resolve({ ok: true, embeddable: true, reason: "unchecked" }));   // не проверили — даём iframe попробовать
+    r.on("timeout", () => { r.destroy(); resolve({ ok: true, embeddable: true, reason: "timeout" }); });
+  });
+}
+
 function sendJson(res, code, obj) {
   res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(obj));
@@ -362,6 +381,12 @@ const server = http.createServer(async (req, res) => {
       .map((d) => { const ti = tunnelInfoFrom(tun, tunAlive, d.port); const base = classifyProcess(d.command, d.port);
         return { ...d, ...applyCatOverride(d, base, catOverrides), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
     return sendJson(res, 200, { services: rows, discovered, platform: process.platform, device: DEVICE, ts: Date.now(), authOn: !!cfg.token, selfTunnel: (tunnelInfoFrom(tun, tunAlive, PORT) || {}).url || null });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/can-embed") {
+    const p = toPort(url.searchParams.get("port"));
+    if (!p) return sendJson(res, 400, { ok: false, error: "некорректный порт" });
+    return sendJson(res, 200, await checkEmbeddable(p));
   }
 
   if (req.method === "POST" && ["/api/start", "/api/stop", "/api/restart"].includes(url.pathname)) {

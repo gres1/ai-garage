@@ -637,9 +637,12 @@ function buildPreviewContent(w,name){ const s=DATA.find(x=>x.name===name); if(!s
       <button class="reload" title="${esc(t('reloadHint'))}" aria-label="${esc(t('reloadHint'))}" onclick="event.stopPropagation();reloadPreview('${jsq(name)}')">${icon('restart')}</button>
       <div class="expand">${t('expand')}</div></div>`;
   w.dataset.loaded='1';
-  const f=w.querySelector('iframe'), over=w.querySelector('.prevover'); let ok=false;
-  f.addEventListener('load',()=>{ ok=true; over.style.display='none'; });   // загрузилось → убрать оверлей, показать превью
-  setTimeout(()=>{ if(!ok) over.dataset.state='blocked'; },4000); }          // за 4с не загрузилось → сервис блокирует встраивание, объясняем (порог с запасом для тяжёлых дашбордов)
+  const f=w.querySelector('iframe'), over=w.querySelector('.prevover'); let ok=false, blockedByServer=false;
+  // сервер читает заголовки сервиса (X-Frame-Options/CSP): браузер из-за cross-origin не различает
+  // «загрузилось» и «заблокировано», поэтому решаем по заголовкам — иначе видна нативная ошибка.
+  if(s.port) fetch('/api/can-embed?port='+s.port).then(r=>r.json()).then(j=>{ if(j&&j.embeddable===false){ blockedByServer=true; over.dataset.state='blocked'; } }).catch(()=>{});
+  f.addEventListener('load',()=>{ if(!blockedByServer){ ok=true; over.style.display='none'; } });   // реально загрузилось → убрать оверлей
+  setTimeout(()=>{ if(!ok && !blockedByServer) over.dataset.state='blocked'; },4000); }          // фолбэк: ни загрузки, ни ответа сервера → объясняем
 function togglePreview(name){ const w=document.querySelector(`[data-prev="${CSS.escape(name)}"]`); if(!w)return;
   const open=w.classList.toggle('open');
   if(open){ openPrevs.add(name); if(!w.dataset.loaded) buildPreviewContent(w,name); }
