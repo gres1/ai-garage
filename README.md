@@ -1,94 +1,132 @@
 # 🎛 AI Garage
 
-Пульт для твоего localhost-парка — сервисы, порты, туннели и то, что наплодили ИИ-агенты. Без терминала: видишь всё что запущено, чистишь зомби-процессы и занятые порты в один клик, делаешь публичную ссылку, держишь сервисы включёнными — на Mac и VPS.
+**Mission control for your localhost — services, ports, tunnels, and the processes your AI agents left running.** No terminal: see everything that's up, kill a stuck port or a zombie process in one click, expose a service to your phone with a public link, keep services alive — on macOS (and VPS).
 
-**Запуск:** `npx ai-garage` → открой http://localhost:7777.
+[![npm version](https://img.shields.io/npm/v/ai-garage.svg)](https://www.npmjs.com/package/ai-garage)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![node >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](#requirements)
+[![zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#how-it-works)
 
-## Установка
 ```bash
-# сейчас (из репозитория):
-git clone https://github.com/gres1/ai-garage && cd ai-garage && node server.mjs
-# после публикации в npm заработает: npx ai-garage
+npx ai-garage
 ```
-Открой http://localhost:7777. Лицензия — **MIT** (бесплатно, можно форкать и использовать, в т.ч. коммерчески). Без зависимостей (нужен только Node ≥18).
 
-<!-- TODO до публикации: добавить docs/screenshot.png и GIF-демо -->
-**Безопасность:** сервер слушает только `127.0.0.1`, проверяет `Origin`/`Host` (анти-CSRF / анти-DNS-rebinding). Реестр `services.json` хранит команды запуска — кто имеет доступ на запись к нему, тот может выполнять код; не давай к нему доступ недоверенным процессам. Для доступа извне — задай токен в `~/.config/localhost-control/config.json`.
+Then open **http://localhost:7777**. That's it — no install, no config, no dependencies.
 
-## Возможности
-- 🟢/🔴 **Статус** каждого сервиса (проверка порта), автообновление каждые 3 сек.
-- ▶ ■ ⟳ **Старт / Стоп / Рестарт** в один клик (Apple-стиль).
-- 🌍 **12 языков** (EN, RU, ES, PT, FR, DE, IT, ZH, JA, KO, TR, UK) — переключатель в шапке.
-- 👁 **Живое превью** страницы прямо в карточке + крупный просмотр в модалке (без открытия вкладки).
-- 📱 **Ссылка туннеля** (cloudflared) парсится из лога, кнопка «Копировать».
-- ➕ **Добавить сервис из UI** — форма, без ручного редактирования JSON.
-- 🧹 **Освободить порт** — убить процесс, висящий на порту («port already in use»).
-- 🔎 Поиск, пауза автообновления, кольцо-сводка «сколько работает».
+<!-- TODO: add docs/demo.gif here -->
 
-## Как устроено
-- `server.mjs` — Node-сервер без зависимостей (только встроенные модули). Слушает **только `127.0.0.1:7777`**.
-- `public/index.html` — UI (vanilla, i18n).
-- Реестр сервисов: `~/.config/localhost-control/services.json`.
-- Конфиг (опц.): `~/.config/localhost-control/config.json`.
+---
 
-### API
-| Метод | Путь | Что делает |
-|---|---|---|
-| GET | `/api/status` | статус всех сервисов + ссылки туннелей |
-| POST | `/api/start \| /stop \| /restart` | `{name}` |
-| POST | `/api/kill-port` | `{port}` — освободить порт |
-| POST | `/api/service-add` | `{service}` — добавить в реестр |
-| POST | `/api/service-remove` | `{name}` — удалить из реестра |
+## Why
 
-### services.json
+You run a dozen local servers, dev environments and side processes. Then your **AI coding agents** (Claude Code, Cursor, …) spawn even more — and forget to clean them up. Soon a port is *"already in use"* and you don't know by what.
+
+AI Garage is a single pane of glass for all of it:
+
+- **See what's actually running** — saved services *and* every listening port auto-discovered, including the ones AI agents spawned.
+- **Free a stuck port in one click** — graceful `SIGTERM`, then `SIGKILL`, with a guard on system/database ports.
+- **Start / stop / restart / keep-alive** any service — without touching the terminal.
+- **Share to your phone** — a public link (cloudflared) in one click.
+
+## Features
+
+- 🟢🔴 **Live status** of every service (port check), auto-refreshing every 3s.
+- ▶ ■ ⟳ **Start / Stop / Restart** with one click; **Keep-alive** that the panel itself supervises (restarts a crashed service).
+- 🧹 **Free the port** — kill whatever holds it (the classic *"port already in use"*), with data-loss protection on DB/system ports.
+- 🔭 **Auto-discovery** — see every listening process you didn't add, classified (system / database / app / dev / AI-agent) so you don't kill the wrong thing.
+- 📱 **Public link** — expose a local port via cloudflared (ngrok & custom domains coming).
+- 👁 **Live preview** of a service right inside its card.
+- 🤖 **Bots & agents view** — group Telegram bots/agents by the agent backend they run on, with one-click "open in Telegram".
+- 🗂 **Sections** for *This Mac / VPS / Bots*, drag-to-reorder, rename, change device.
+- 🌍 **19 languages**, switchable in the header.
+- 🎨 Clean glass UI with a live cursor highlight.
+
+## Use with AI agents (MCP)
+
+AI Garage ships an **MCP server** so coding agents can drive it directly — list what's running, free a port, open a tunnel — instead of guessing with `lsof` and `kill -9`.
+
+Add it to your agent (Claude Code, Cursor, …):
+
+```json
+{
+  "mcpServers": {
+    "ai-garage": { "command": "npx", "args": ["-y", "-p", "ai-garage", "ai-garage-mcp"] }
+  }
+}
+```
+
+Tools exposed: `list_services`, `free_port`, `open_tunnel`, `close_tunnel`.
+The panel must be running (`npx ai-garage`); the MCP server talks to it locally.
+
+## How it works
+
+- `server.mjs` — a **zero-dependency** Node server (built-in modules only). Listens on **`127.0.0.1:7777`** only.
+- `public/index.html` — the whole UI (vanilla JS, i18n).
+- `mcp.mjs` — the zero-dependency MCP server.
+- Service registry: `~/.config/localhost-control/services.json`.
+- Optional config: `~/.config/localhost-control/config.json`.
+
+### Requirements
+Node ≥ 18, macOS (Linux/Windows partially work; keep-alive & some features are macOS-first). `cloudflared` is optional, only for public links.
+
+### `services.json`
 ```json
 {
   "name": "My App",
-  "type": "local | link",
+  "type": "local",
   "port": 3000,
   "url": "http://localhost:3000",
   "cwd": "~/projects/app",
   "startCmd": "npm run dev",
   "stopCmd": "lsof -ti:3000 | xargs kill",
-  "tunnelLog": "/tmp/cf-tunnel.log",
-  "tunnelRegex": "https://[a-z0-9-]+\\.trycloudflare\\.com",
-  "note": "что это"
+  "host": "Mac",
+  "note": "what it is"
 }
 ```
-- `local` — с кнопками Старт/Стоп (нужны `startCmd`/`stopCmd`/`cwd`).
-- `link` — только статус по порту + ссылка (сервис управляется снаружи: launchd-туннель, VPS).
+- `type: "local"` — has Start/Stop/Restart buttons (needs `startCmd`/`stopCmd`/`cwd`).
+- `type: "link"` — status + link only (managed elsewhere: a VPS, a launchd tunnel, …).
 
-## Безопасность
-- Сервер слушает **только loopback** (`127.0.0.1`) — из внешней сети недоступен по умолчанию.
-- ⚠️ Панель умеет запускать процессы — **не выставляй порт 7777 наружу** без защиты.
-- **Опциональный токен:** создай `~/.config/localhost-control/config.json`:
+### API
+| Method | Path | Body / purpose |
+|---|---|---|
+| GET  | `/api/status` | all services + discovered ports + tunnel URLs |
+| POST | `/api/start` \| `/stop` \| `/restart` | `{ name }` |
+| POST | `/api/kill-port` | `{ port }` — free a port |
+| POST | `/api/tunnel-start` \| `/tunnel-stop` | `{ port }` — public link |
+| POST | `/api/keepalive` | `{ name, enable }` |
+| POST | `/api/service-add` \| `/service-remove` \| `/service-rename` | manage the registry |
+
+## Security
+
+- The server binds to **loopback only** (`127.0.0.1`) — not reachable from your network by default.
+- **Anti-CSRF / anti-DNS-rebinding:** every mutating request is checked for a same-origin `Origin` and an allowed `Host`. *"localhost-only"* is **not** enough on its own — any open browser tab can POST to `localhost`; most localhost tools ignore this. AI Garage doesn't.
+- **Optional token** for sharing. Create `~/.config/localhost-control/config.json`:
   ```json
-  { "token": "длинная-случайная-строка" }
+  { "token": "a-long-random-string" }
   ```
-  Тогда все операции (старт/стоп/добавление) требуют этот токен — UI спросит его один раз и запомнит. Статус-просмотр остаётся открытым.
+  Then every action requires it (status view stays open).
+- ⚠️ The panel can run processes — **don't expose port 7777 to the internet without a token.**
+- The `services.json` registry stores start commands; whoever can write to it can run code. Don't give untrusted processes write access.
 
-## Под капотом — неочевидное (но важное)
-То, что обычно НЕ делают другие подобные инструменты — а зря:
-- **Ноль данных на наши серверы.** Всё работает локально на твоей машине, мы ничего не собираем и не видим. Нет облака — нет утечки.
-- **Защита от вкладки-злоумышленника.** «Только localhost» не спасает от CSRF — любая открытая вкладка браузера может слать запросы на `localhost`. Поэтому панель проверяет `Origin`/`Host` (анти-CSRF / анти-DNS-rebinding). Большинство localhost-инструментов это игнорируют — и их можно дёргать с чужого сайта.
-- **Освобождение порта не убивает базу данных насмерть.** Сначала мягкий `SIGTERM` (даёт Postgres/MySQL сохраниться), и только через 1.2с — `SIGKILL`. Плюс предупреждение на системных/БД-портах. Обычные «kill-port» бьют сразу `SIGKILL` — рискуя потерей данных.
-- **Keep-alive не зацикливает твои скрипты.** Перезапуск только при реальном краше (не при чистом выходе) — скрипт, уходящий в фон, не будет дёргаться каждые 10 секунд.
-- **Панель не убьёт сама себя** (порт 7777 защищён) и чистит за собой launchd-службы при удалении сервиса.
-- **Не потеряет твои сервисы.** Конфиг пишется атомарно (+бэкап) — даже обрыв в момент записи (а инструмент-то про «убить процесс») не сотрёт список.
-- **Ноль зависимостей.** Только встроенные модули Node — нечему «протухнуть» из npm и стать вектором атаки (supply-chain).
-- **Видит ВСЁ запущенное**, даже что ты не добавлял — включая процессы, которые наплодили ИИ-агенты.
+### Details that other tools skip
+- **Zero data leaves your machine.** No cloud, nothing collected — nothing to leak.
+- **Freeing a port won't nuke your database.** Soft `SIGTERM` first (lets Postgres/MySQL flush), `SIGKILL` only after 1.2s, plus a warning on system/DB ports. Naïve "kill-port" tools `SIGKILL` instantly.
+- **Keep-alive won't thrash your scripts.** The panel supervises and restarts a service only when its port is actually down.
+- **It won't kill itself** (port 7777 is guarded) and cleans up after itself.
+- **It won't lose your services.** The registry is written atomically (+ backup).
+- **Zero dependencies** = no npm supply-chain surface.
 
-## Управление панелью (launchd)
-```bash
-launchctl load -w ~/Library/LaunchAgents/com.jiga.localhost-control.plist     # включить
-launchctl unload ~/Library/LaunchAgents/com.jiga.localhost-control.plist      # выключить
-launchctl kickstart -k gui/$(id -u)/com.jiga.localhost-control                # перезапустить
-```
-Логи: `~/Library/Logs/localhost-control.log`.
+## Roadmap
 
-## Roadmap (Фаза 2)
-- **Менеджер туннелей из UI** — создавать cloudflared / `ssh -L` туннели кнопкой (сейчас — только как заранее заданные сервисы).
-- **Авторизация для шеринга** — токен + опц. basic-auth, инструкция по безопасной раздаче.
-- **Menubar-приложение (Tauri)** — нативная иконка в строке меню со сводным статусом, попап с карточками; webview переиспользует этот `index.html`, бэкенд-логику в Rust-команды.
-- **Публикация на GitHub** — лицензия MIT, EN+RU README, `services.example.json`, install-скрипт (`launchctl load`), GIF-демо, contributing для новых языков.
-- Уведомления при падении сервиса, иконки-favicon сервисов, перетаскивание карточек, «запустить всё».
+- Link-provider picker — **ngrok (stable URL)** & **custom domain**, alongside cloudflared.
+- "Mission control for agents" — read sessions from Cursor / Codex / Claude Code / Cline locally; connect task trackers (GitHub Issues, Notion).
+- Cross-machine view (VPS sessions) with a zero-backend reporter.
+- Menubar app (Tauri), drag-to-reorder polish, favicons, "start all".
+
+## Contributing
+
+Issues and PRs welcome — especially new UI languages (one object in `public/index.html`) and process-classification rules. MIT licensed: free to use, fork and ship, including commercially.
+
+## License
+
+[MIT](LICENSE) © Az
