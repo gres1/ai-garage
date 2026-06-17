@@ -198,8 +198,20 @@
     transform-origin:top left; border:0; pointer-events:none; background:#fff; }
   .thumb .expand{ position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.6); color:#fff;
     font-size:11px; padding:3px 8px; border-radius:7px; }
-  .thumb .blocked{ position:absolute; inset:0; display:none; align-items:center; justify-content:center;
-    text-align:center; color:var(--mut); font-size:12px; padding:0 20px; background:var(--bg2); }
+  /* оверлей превью: пока iframe грузится — «Загрузка», если сервис блокирует встраивание —
+     наше спокойное объяснение (а НЕ нативная браузерная ошибка, которая выглядит как наша поломка) */
+  .thumb .prevover{ position:absolute; inset:0; z-index:2; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:8px; padding:14px 18px; color:var(--mut); background:linear-gradient(180deg,#f5f6fa,#e8eaf1); }
+  .thumb .prevover .po-block{ display:none; flex-direction:column; align-items:center; gap:6px; }
+  .thumb .prevover[data-state="blocked"] .po-load{ display:none; }
+  .thumb .prevover[data-state="blocked"] .po-block{ display:flex; }
+  .po-load{ display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--faint); }
+  .po-ico{ width:36px; height:36px; border-radius:11px; background:rgba(10,132,255,.12); color:var(--blue);
+    display:inline-flex; align-items:center; justify-content:center; }
+  .po-ico .ic{ width:19px; height:19px; }
+  .po-t{ font-weight:650; font-size:13px; color:var(--txt); }
+  .po-d{ font-size:11.5px; line-height:1.45; max-width:270px; }
+  .po-btn{ margin-top:3px; font-size:12px; padding:6px 13px; }
 
   .modal{ position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(6px); display:none;
     align-items:center; justify-content:center; z-index:50; padding:24px; }
@@ -333,7 +345,7 @@ const DICT={
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
    discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all to my services",secLocal:"This Mac",secVps:"VPS",secBots:"Bots",keepAlive:"Keep alive",kaOn:"Staying on",
-   whatIs:"What is it?",protected:"protected — don't touch",kaEnabling:"Enabling keep-alive…",kaDisabling:"Disabling…",sysPort:"system port",killDanger:"⚠️ Port {p} — {d}. Kill the process? DATA LOSS possible.",killSafe:"Free port {p}? The process will be stopped.",askAIPrompt:"What is the process «{cmd}» listening on port {port} on my machine? Is it safe, do I need it, can I kill it? Explain simply.",askAICopied:"Prompt copied — paste it to your AI",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",dragHint:"Drag to reorder",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
+   whatIs:"What is it?",protected:"protected — don't touch",kaEnabling:"Enabling keep-alive…",kaDisabling:"Disabling…",sysPort:"system port",killDanger:"⚠️ Port {p} — {d}. Kill the process? DATA LOSS possible.",killSafe:"Free port {p}? The process will be stopped.",askAIPrompt:"What is the process «{cmd}» listening on port {port} on my machine? Is it safe, do I need it, can I kill it? Explain simply.",askAICopied:"Prompt copied — paste it to your AI",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",dragHint:"Drag to reorder",prevLoading:"Loading preview…",blockedTitle:"Preview blocked by the service",blockedBody:"This service doesn't allow being shown inside a frame — that's its own security setting, not a panel error. Open it in a new tab instead.",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
    tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link — open this service from your phone or share it",provPick:"Choose how to share:",provCf:"Cloudflare — instant, link changes",provNgrok:"ngrok — stable address (soon)",provDomain:"Your own domain (soon)",provSoonMsg:"Coming next — needs your free account; we're building it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
@@ -343,7 +355,7 @@ const DICT={
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
    discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить все в мои сервисы",secLocal:"Этот Mac",secVps:"VPS",secBots:"Боты",keepAlive:"Держать включённым",kaOn:"Держится",
-   whatIs:"что это?",protected:"защищён — не трогай",kaEnabling:"Включаю автозапуск…",kaDisabling:"Выключаю…",sysPort:"системный порт",killDanger:"⚠️ Порт {p} — {d}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.",killSafe:"Освободить порт {p}? Процесс будет остановлен.",askAIPrompt:"Что за процесс «{cmd}» слушает порт {port} на моей машине? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.",askAICopied:"Промпт скопирован — вставь своему ИИ",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",dragHint:"Потяни, чтобы изменить порядок",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
+   whatIs:"что это?",protected:"защищён — не трогай",kaEnabling:"Включаю автозапуск…",kaDisabling:"Выключаю…",sysPort:"системный порт",killDanger:"⚠️ Порт {p} — {d}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.",killSafe:"Освободить порт {p}? Процесс будет остановлен.",askAIPrompt:"Что за процесс «{cmd}» слушает порт {port} на моей машине? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.",askAICopied:"Промпт скопирован — вставь своему ИИ",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",dragHint:"Потяни, чтобы изменить порядок",prevLoading:"Загрузка превью…",blockedTitle:"Сервис не разрешает превью",blockedBody:"Этот сервис запрещает показ в окне — это его настройка безопасности, не ошибка панели. Открой в новой вкладке.",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
    tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку — открыть сервис с телефона или поделиться",provPick:"Чем поделиться:",provCf:"Cloudflare — сразу, адрес меняется",provNgrok:"ngrok — стабильный адрес (скоро)",provDomain:"Свой домен (скоро)",provSoonMsg:"Скоро — нужен твой бесплатный аккаунт, делаем"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
@@ -583,19 +595,26 @@ document.addEventListener('click',closeMenus);
 function buildPreviewContent(w,name){ const s=DATA.find(x=>x.name===name); if(!s)return; const u=safeUrl(s.url);
   w.innerHTML=`<div class="thumb" onclick="openViewer('${jsq(name)}')">
       <iframe sandbox="allow-same-origin allow-scripts allow-forms" src="${u}"></iframe>
+      <div class="prevover" data-state="loading">
+        <div class="po-load">${icon('spin','spin')} <span>${t('prevLoading')}</span></div>
+        <div class="po-block">
+          <span class="po-ico">${icon('monitor')}</span>
+          <div class="po-t">${t('blockedTitle')}</div>
+          <div class="po-d">${t('blockedBody')}</div>
+          <a class="btn btn-accent po-btn" href="${u}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${icon('link')} ${t('openTab')}</a>
+        </div></div>
       <button class="reload" title="${esc(t('reloadHint'))}" aria-label="${esc(t('reloadHint'))}" onclick="event.stopPropagation();reloadPreview('${jsq(name)}')">${icon('restart')}</button>
-      <div class="expand">${t('expand')}</div></div>
-    <div class="prevhint" style="display:none">${icon('help')} ${t('prevHint')} · <a onclick="event.stopPropagation()" href="${u}" target="_blank" rel="noopener">${t('openTab')}</a></div>`;
+      <div class="expand">${t('expand')}</div></div>`;
   w.dataset.loaded='1';
-  const f=w.querySelector('iframe'), hint=w.querySelector('.prevhint'); let ok=false;
-  f.addEventListener('load',()=>{ ok=true; hint.style.display='none'; w.classList.remove('has-hint'); });
-  setTimeout(()=>{ if(!ok){ hint.style.display='flex'; w.classList.add('has-hint'); } },4500); }
+  const f=w.querySelector('iframe'), over=w.querySelector('.prevover'); let ok=false;
+  f.addEventListener('load',()=>{ ok=true; over.style.display='none'; });   // загрузилось → убрать оверлей, показать превью
+  setTimeout(()=>{ if(!ok) over.dataset.state='blocked'; },4000); }          // за 4с не загрузилось → сервис блокирует встраивание, объясняем (порог с запасом для тяжёлых дашбордов)
 function togglePreview(name){ const w=document.querySelector(`[data-prev="${CSS.escape(name)}"]`); if(!w)return;
   const open=w.classList.toggle('open');
   if(open){ openPrevs.add(name); if(!w.dataset.loaded) buildPreviewContent(w,name); }
   else openPrevs.delete(name); }
 function reloadPreview(name){ const w=document.querySelector(`[data-prev="${CSS.escape(name)}"]`); if(!w)return;
-  const f=w.querySelector('iframe'); if(f){ const s=DATA.find(x=>x.name===name); const u=safeUrl(s.url); f.src=u==='#'?u:u+(u.includes('?')?'&':'?')+'_r='+Date.now(); toast(t('reloading')); } }
+  buildPreviewContent(w,name); toast(t('reloading')); }   // пересобираем: iframe перезапрашивается, оверлей снова «Загрузка»
 function openViewer(name){ const s=DATA.find(x=>x.name===name); if(!s)return;
   $('v-title').textContent=s.name; $('v-link').href=safeUrl(s.url); $('v-frame').src=safeUrl(s.url); $('viewer').classList.add('show'); }
 function closeViewer(){ $('viewer').classList.remove('show'); $('v-frame').src='about:blank'; }
