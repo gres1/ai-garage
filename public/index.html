@@ -544,13 +544,29 @@ async function setHost(name,host){ const j=await api('/api/service-sethost',{nam
 async function setHostPrompt(name){ const cur=(DATA.find(x=>x.name===name)||{}).host||''; const h=prompt(t('changeHost'),cur); closeMenus(); if(h===null)return; const v=h.trim(); if(!v)return; setHost(name,v); }
 async function setAgent(name){ const cur=(DATA.find(x=>x.name===name)||{}).agent||''; const a=prompt(t('agentPrompt'),cur); if(a===null)return; const j=await api('/api/service-setagent',{name,agent:a.trim()}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
 
-/* меню на карточке */
-function toggleMenu(e,name){ e.stopPropagation(); closeMenus(); const m=document.querySelector(`[data-menu="${CSS.escape(name)}"]`); if(!m)return; m.classList.add('open');
-  const b=(e.currentTarget||e.target).getBoundingClientRect(); m.style.position='fixed'; m.style.right='auto'; m.style.bottom='auto';
+/* меню на карточке. ВАЖНО: .card имеет transform + preserve-3d, а .grid — perspective,
+   из-за чего position:fixed у вложенного меню отсчитывается ОТ КАРТОЧКИ, а не от экрана,
+   и меню уезжает за пределы видимого. Лечится выносом меню в <body> на время показа (портал). */
+let _portalMenu=null, _portalHome=null;
+function toggleMenu(e,name){ e.stopPropagation();
+  const m=document.querySelector(`[data-menu="${CSS.escape(name)}"]`);
+  const reopen = m && m===_portalMenu;                 // повторный клик по той же кнопке → закрыть
+  closeMenus();
+  if(!m || reopen) return;
+  _portalMenu=m; _portalHome={parent:m.parentNode, next:m.nextSibling};
+  document.body.appendChild(m); m.classList.add('open');
+  m.style.position='fixed'; m.style.right='auto'; m.style.bottom='auto';
+  const b=(e.currentTarget||e.target).getBoundingClientRect();
   const mh=m.offsetHeight||160, mw=m.offsetWidth||210;
   let top=b.bottom+6; if(top+mh>innerHeight-8) top=Math.max(8,b.top-mh-6);
   m.style.top=top+'px'; m.style.left=Math.max(8,Math.min(b.left, innerWidth-mw-8))+'px'; }
-function closeMenus(){ document.querySelectorAll('.menu.open').forEach(m=>m.classList.remove('open')); }
+function closeMenus(){ document.querySelectorAll('.menu.open').forEach(m=>m.classList.remove('open'));
+  if(_portalMenu){ const m=_portalMenu, home=_portalHome; _portalMenu=null; _portalHome=null;
+    m.style.position=m.style.top=m.style.left=m.style.right=m.style.bottom='';
+    if(home&&home.parent&&home.parent.isConnected){
+      try{ home.parent.insertBefore(m,(home.next&&home.next.parentNode===home.parent)?home.next:null); }
+      catch{ home.parent.appendChild(m); } }
+    else m.remove(); } }
 document.addEventListener('click',closeMenus);
 
 /* превью */
@@ -647,9 +663,13 @@ function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const
         : `<button class="btn btn-soft" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>`}</div>
     ${unsafe?`<div class="menu" data-menu="${mk}" style="top:auto;bottom:14px;right:14px">
       <button class="del" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')} :${d.port}</button></div>`:''}</div>`; }
+let lastDiscSig='';
 function renderDiscovered(list){ const w=$('disc-wrap');
-  if(!list||!list.length){ w.style.display='none'; return; }
-  w.style.display='block'; $('disc-n').textContent=list.length; $('disc-grid').innerHTML=list.map(dcard).join(''); }
+  if(!list||!list.length){ w.style.display='none'; lastDiscSig=''; return; }
+  w.style.display='block'; $('disc-n').textContent=list.length;
+  const sig=list.map(d=>d.port+d.cat+d.command).join('|');   // без изменений не перерисовываем — иначе открытое меню «улетает» каждые 3с
+  if(sig===lastDiscSig) return; lastDiscSig=sig; closeMenus();
+  $('disc-grid').innerHTML=list.map(dcard).join(''); }
 async function saveDiscovered(port,command){
   const s={name:command+' :'+port, type:'link', port, url:'http://localhost:'+port, host:DEVICE, note:t('discNote')};
   const j=await api('/api/service-add',{service:s}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
@@ -686,7 +706,7 @@ const SECTIONS=[
   {ic:'cloud',   label:()=>t('secVps'),   test:s=>!isBot(s)&&isVps(s)},
   {ic:'bot',     label:()=>t('secBots'),  test:s=>isBot(s)},
 ];
-function render(){ const vis=visible(); let html='';
+function render(){ closeMenus(); const vis=visible(); let html='';
   for(const g of SECTIONS){ const items=vis.filter(g.test); if(!items.length)continue;
     html+=`<div class="section">${icon(g.ic)} ${g.label()} <span class="secn">${items.length}</span></div>`+items.map(card).join(''); }
   if(!html && !$('q').value.trim()) html=`<div class="empty"><div class="emptyt">${t('emptyTitle')}</div><div class="emptyh">${t('emptyHint')}</div></div>`;
