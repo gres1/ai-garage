@@ -46,6 +46,23 @@ async function loadConfig() {
   try { return JSON.parse(await readFile(CONFIG_PATH, "utf8")); } catch { return {}; }
 }
 
+// Пользовательские правки категорий для обнаруженных процессов (если авто-классификация ошиблась).
+// Ключ — команда:порт; переживает смену pid. Системные/БД порты остаются защищёнными даже после правки.
+const ALLOWED_CATS = new Set(["system", "db", "app", "dev", "agent", "unknown", "web", "api", "worker", "docker", "monitoring", "tunnel"]);
+const CAT_PATH = join(CFG_DIR, "catoverrides.json");
+const catKey = (command, port) => `${String(command).slice(0, 60)}:${port}`;
+async function loadCatOverrides() { try { return JSON.parse(await readFile(CAT_PATH, "utf8")); } catch { return {}; } }
+async function saveCatOverrides(ov) { await mkdir(CFG_DIR, { recursive: true }); await writeFile(CAT_PATH, JSON.stringify(ov, null, 2)); }
+function applyCatOverride(d, base, overrides) {
+  const ov = overrides[catKey(d.command, d.port)];
+  if (!ov || !ALLOWED_CATS.has(ov)) return base;
+  // правка меняет ЯРЛЫК, но защиту от kill НЕ снимает: если процесс изначально опознан как
+  // небезопасный (system по имени, БД, низкий порт) — он остаётся guarded, какой бы ярлык ни выбрали.
+  const newlyUnsafe = ov === "system" || ov === "db" || d.port < 1024 || DB_PORTS.has(d.port);
+  const safe = base.safe === false ? false : !newlyUnsafe;
+  return { cat: ov, label: base.label, safe, catOverridden: true };
+}
+
 function portUp(port) {
   return new Promise((resolve) => {
     const p = toPort(port);
@@ -340,8 +357,10 @@ const server = http.createServer(async (req, res) => {
       };
     }));
     const registeredPorts = new Set(services.map((s) => s.port).filter(Boolean));
+    const catOverrides = await loadCatOverrides();
     const discovered = all.filter((d) => !registeredPorts.has(d.port) && d.port !== PORT)
-      .map((d) => { const ti = tunnelInfoFrom(tun, tunAlive, d.port); return { ...d, ...classifyProcess(d.command, d.port), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
+      .map((d) => { const ti = tunnelInfoFrom(tun, tunAlive, d.port); const base = classifyProcess(d.command, d.port);
+        return { ...d, ...applyCatOverride(d, base, catOverrides), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
     return sendJson(res, 200, { services: rows, discovered, platform: process.platform, device: DEVICE, ts: Date.now(), authOn: !!cfg.token, selfTunnel: (tunnelInfoFrom(tun, tunAlive, PORT) || {}).url || null });
   }
 
@@ -476,6 +495,20 @@ const server = http.createServer(async (req, res) => {
       await saveServices(list);
       return { ok: true, note: "агент обновлён" };
     }));
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/cat-override") {
+    const { command, port, cat } = await readBody(req);
+    const p = toPort(port);
+    if (!command || !p) return sendJson(res, 400, { ok: false, error: "некорректные параметры" });
+    const c = typeof cat === "string" ? cat.trim() : "";
+    const ov = await loadCatOverrides();
+    const key = catKey(command, p);
+    if (c === "auto") delete ov[key];                         // вернуть авто-классификацию
+    else if (ALLOWED_CATS.has(c)) ov[key] = c;
+    else return sendJson(res, 400, { ok: false, error: "неизвестная категория" });
+    await saveCatOverrides(ov);
+    return sendJson(res, 200, { ok: true, note: "категория обновлена" });
   }
 
   res.writeHead(404); res.end("not found");

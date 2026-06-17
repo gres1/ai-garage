@@ -179,6 +179,10 @@
     box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--cat) 22%, transparent); }
   .catb .ic{ width:13px; height:13px; }
   .catb .dot{ width:6px; height:6px; border-radius:50%; flex:0 0 auto; background:var(--cat); }
+  .catb.catbtn{ border:none; cursor:pointer; font-family:inherit; }
+  .catb.catbtn:hover{ filter:brightness(.96); }
+  .catb .caret{ font-size:9px; opacity:.6; margin-left:1px; }
+  .catmenu{ max-height:300px; overflow-y:auto; }
   .guard{ display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; color:var(--red); margin-left:8px; letter-spacing:.01em; }
   .guard .ic{ width:12px; height:12px; }
   .card.disc.guarded{ border-color:rgba(255,69,58,.45); }
@@ -365,7 +369,7 @@ const DICT={
    fTypeLink:"link (status only)",fPort:"Port",fStart:"Start command",fStop:"Stop command",fCwd:"Folder",
    fNote:"Note",fHost:"Device (Mac / VPS / custom)",cancel:"Cancel",save:"Save",needToken:"Access token required",tokenPrompt:"Enter access token",
    discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all to my services",secLocal:"This Mac",secVps:"VPS",secBots:"Bots",keepAlive:"Keep alive",kaOn:"Staying on",
-   whatIs:"What is it?",protected:"protected — don't touch",kaEnabling:"Enabling keep-alive…",kaDisabling:"Disabling…",sysPort:"system port",killDanger:"⚠️ Port {p} — {d}. Kill the process? DATA LOSS possible.",killSafe:"Free port {p}? The process will be stopped.",askAIPrompt:"What is the process «{cmd}» listening on port {port} on my machine? Is it safe, do I need it, can I kill it? Explain simply.",askAICopied:"Prompt copied — paste it to your AI",wi_askLabel:"Prompt for your AI agent",wi_copyBtn:"Copy prompt",wi_port:"Port {x} —",wi_system:"Looks like part of macOS or a background service. Safer to leave it alone.",wi_db:"Looks like a database. Killing it can lose unsaved data — be careful.",wi_app:"An app you're running (browser, editor, etc.). Closing the app itself is usually enough.",wi_dev:"A development server or tool (Node, Python, Vite…). Usually safe to stop or restart.",wi_agent:"An AI agent or tool running locally. Safe to stop if you're not using it.",wi_unknown:"Couldn't identify it for sure. If unsure, ask your AI before stopping it.",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",dragHint:"Drag to reorder",prevLoading:"Loading preview…",blockedTitle:"Preview blocked by the service",blockedBody:"This service doesn't allow being shown inside a frame — that's its own security setting, not a panel error. Open it in a new tab instead.",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
+   whatIs:"What is it?",protected:"protected — don't touch",kaEnabling:"Enabling keep-alive…",kaDisabling:"Disabling…",sysPort:"system port",killDanger:"⚠️ Port {p} — {d}. Kill the process? DATA LOSS possible.",killSafe:"Free port {p}? The process will be stopped.",askAIPrompt:"What is the process «{cmd}» listening on port {port} on my machine? Is it safe, do I need it, can I kill it? Explain simply.",askAICopied:"Prompt copied — paste it to your AI",wi_askLabel:"Prompt for your AI agent",wi_copyBtn:"Copy prompt",wi_port:"Port {x} —",wi_system:"Looks like part of macOS or a background service. Safer to leave it alone.",wi_db:"Looks like a database. Killing it can lose unsaved data — be careful.",wi_app:"An app you're running (browser, editor, etc.). Closing the app itself is usually enough.",wi_dev:"A development server or tool (Node, Python, Vite…). Usually safe to stop or restart.",wi_agent:"An AI agent or tool running locally. Safe to stop if you're not using it.",wi_unknown:"Couldn't identify it for sure. If unsure, ask your AI before stopping it.",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",cat_web:"web / frontend",cat_api:"API / backend",cat_worker:"worker / queue",cat_docker:"container",cat_monitoring:"monitoring",cat_tunnel:"tunnel",changeCat:"Change category",catAuto:"Auto-detect",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",dragHint:"Drag to reorder",prevLoading:"Loading preview…",blockedTitle:"Preview blocked by the service",blockedBody:"This service doesn't allow being shown inside a frame — that's its own security setting, not a panel error. Open it in a new tab instead.",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
    tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link — open this service from your phone or share it",provPick:"Choose how to share:",provCf:"Cloudflare — instant, link changes",provNgrok:"ngrok — stable address (soon)",provDomain:"Your own domain (soon)",provSoonMsg:"Coming next — needs your free account; we're building it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
@@ -375,7 +379,7 @@ const DICT={
    fTypeLink:"ссылка (только статус)",fPort:"Порт",fStart:"Команда старта",fStop:"Команда стопа",fCwd:"Папка",
    fNote:"Заметка",fHost:"Устройство (Mac / VPS / своё)",cancel:"Отмена",save:"Сохранить",needToken:"Нужен токен доступа",tokenPrompt:"Введи токен доступа",
    discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить все в мои сервисы",secLocal:"Этот Mac",secVps:"VPS",secBots:"Боты",keepAlive:"Держать включённым",kaOn:"Держится",
-   whatIs:"что это?",protected:"защищён — не трогай",kaEnabling:"Включаю автозапуск…",kaDisabling:"Выключаю…",sysPort:"системный порт",killDanger:"⚠️ Порт {p} — {d}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.",killSafe:"Освободить порт {p}? Процесс будет остановлен.",askAIPrompt:"Что за процесс «{cmd}» слушает порт {port} на моей машине? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.",askAICopied:"Промпт скопирован — вставь своему ИИ",wi_askLabel:"Промпт для твоего ИИ-агента",wi_copyBtn:"Скопировать промпт",wi_port:"Порт {x} —",wi_system:"Похоже на часть macOS или фоновую службу. Лучше не трогать.",wi_db:"Похоже на базу данных. Если убить — можно потерять несохранённые данные. Осторожно.",wi_app:"Запущенное приложение (браузер, редактор и т.п.). Обычно достаточно закрыть само приложение.",wi_dev:"Сервер или инструмент разработки (Node, Python, Vite…). Обычно можно спокойно остановить или перезапустить.",wi_agent:"Локальный ИИ-агент или инструмент. Можно остановить, если не используешь.",wi_unknown:"Точно определить не вышло. Если не уверен — спроси своего ИИ перед остановкой.",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",dragHint:"Потяни, чтобы изменить порядок",prevLoading:"Загрузка превью…",blockedTitle:"Сервис не разрешает превью",blockedBody:"Этот сервис запрещает показ в окне — это его настройка безопасности, не ошибка панели. Открой в новой вкладке.",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
+   whatIs:"что это?",protected:"защищён — не трогай",kaEnabling:"Включаю автозапуск…",kaDisabling:"Выключаю…",sysPort:"системный порт",killDanger:"⚠️ Порт {p} — {d}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.",killSafe:"Освободить порт {p}? Процесс будет остановлен.",askAIPrompt:"Что за процесс «{cmd}» слушает порт {port} на моей машине? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.",askAICopied:"Промпт скопирован — вставь своему ИИ",wi_askLabel:"Промпт для твоего ИИ-агента",wi_copyBtn:"Скопировать промпт",wi_port:"Порт {x} —",wi_system:"Похоже на часть macOS или фоновую службу. Лучше не трогать.",wi_db:"Похоже на базу данных. Если убить — можно потерять несохранённые данные. Осторожно.",wi_app:"Запущенное приложение (браузер, редактор и т.п.). Обычно достаточно закрыть само приложение.",wi_dev:"Сервер или инструмент разработки (Node, Python, Vite…). Обычно можно спокойно остановить или перезапустить.",wi_agent:"Локальный ИИ-агент или инструмент. Можно остановить, если не используешь.",wi_unknown:"Точно определить не вышло. Если не уверен — спроси своего ИИ перед остановкой.",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",cat_web:"веб / фронтенд",cat_api:"API / бэкенд",cat_worker:"воркер / очередь",cat_docker:"контейнер",cat_monitoring:"мониторинг",cat_tunnel:"туннель",changeCat:"Сменить категорию",catAuto:"Авто-определение",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",dragHint:"Потяни, чтобы изменить порядок",prevLoading:"Загрузка превью…",blockedTitle:"Сервис не разрешает превью",blockedBody:"Этот сервис запрещает показ в окне — это его настройка безопасности, не ошибка панели. Открой в новой вкладке.",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
    tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку — открыть сервис с телефона или поделиться",provPick:"Чем поделиться:",provCf:"Cloudflare — сразу, адрес меняется",provNgrok:"ngrok — стабильный адрес (скоро)",provDomain:"Свой домен (скоро)",provSoonMsg:"Скоро — нужен твой бесплатный аккаунт, делаем"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
@@ -535,10 +539,16 @@ const ICONS={
  pencil:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
  warn:'<path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".7" fill="var(--ic,currentColor)" stroke="none"/>',
  grip:'<circle cx="9" cy="6" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="15" cy="6" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="9" cy="12" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="15" cy="12" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="9" cy="18" r="1.3" fill="var(--ic,currentColor)" stroke="none"/><circle cx="15" cy="18" r="1.3" fill="var(--ic,currentColor)" stroke="none"/>',
- chevron:'<polyline points="6 9 12 15 18 9"/>'
+ chevron:'<polyline points="6 9 12 15 18 9"/>',
+ globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18"/>',
+ server:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><circle cx="7" cy="7.5" r=".7" fill="var(--ic,currentColor)" stroke="none"/><circle cx="7" cy="16.5" r=".7" fill="var(--ic,currentColor)" stroke="none"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
+ container:'<rect x="3" y="8" width="18" height="11" rx="1.5"/><path d="M7 8V6M12 8V6M17 8V6"/><line x1="3" y1="13" x2="21" y2="13"/>',
+ gauge:'<path d="M3.5 18a9 9 0 1 1 17 0"/><line x1="12" y1="14" x2="16" y2="9"/><circle cx="12" cy="14" r="1.4" fill="var(--ic,currentColor)" stroke="none"/>'
 };
 const icon=(n,cls='',sw=2)=>`<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="var(--ic,currentColor)" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`;
-const catIcon=c=>({system:'cpu',db:'database',app:'box',dev:'wrench',agent:'bot',unknown:'help'}[c]||'help');
+const catIcon=c=>({system:'cpu',db:'database',app:'box',dev:'wrench',agent:'bot',unknown:'help',
+  web:'globe',api:'server',worker:'gear',docker:'container',monitoring:'gauge',tunnel:'link'}[c]||'help');
 const toast=m=>{const e=$('toast');e.textContent=m;e.classList.add('show');clearTimeout(e._);e._=setTimeout(()=>e.classList.remove('show'),2200);};
 const copy=v=>navigator.clipboard.writeText(v).then(()=>toast(t('copied')+': '+v));
 
@@ -586,6 +596,7 @@ async function renameService(name){ const nn=prompt(t('renamePrompt'),name); if(
 async function setHost(name,host){ const j=await api('/api/service-sethost',{name,host}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); lastSig=''; load(); }
 async function setHostPrompt(name){ const cur=(DATA.find(x=>x.name===name)||{}).host||''; const h=prompt(t('changeHost'),cur); closeMenus(); if(h===null)return; const v=h.trim(); if(!v)return; setHost(name,v); }
 async function setAgent(name){ const cur=(DATA.find(x=>x.name===name)||{}).agent||''; const a=prompt(t('agentPrompt'),cur); if(a===null)return; const j=await api('/api/service-setagent',{name,agent:a.trim()}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
+async function setCat(command,port,cat){ closeMenus(); const j=await api('/api/cat-override',{command,port,cat}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastDiscSig=''; load(); }
 
 /* меню на карточке. ВАЖНО: .card имеет transform + preserve-3d, а .grid — perspective,
    из-за чего position:fixed у вложенного меню отсчитывается ОТ КАРТОЧКИ, а не от экрана,
@@ -698,7 +709,9 @@ function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&ty
     ${urls}
     ${ctrls}<div class="prevwrap" data-prev="${esc(s.name)}"></div></div>`; }
 
-const catColor=c=>({system:'#8a8a8e',db:'#e8503a',app:'#0a84ff',dev:'#30b14a',agent:'#a06bff',unknown:'#8a8a8e'}[c]||'#8a8a8e');
+const catColor=c=>({system:'#8a8a8e',db:'#e8503a',app:'#0a84ff',dev:'#30b14a',agent:'#a06bff',unknown:'#8a8a8e',
+  web:'#00b8d4',api:'#5e5ce6',worker:'#ff9f0a',docker:'#0db7ed',monitoring:'#34c759',tunnel:'#ff5a1f'}[c]||'#8a8a8e');
+const CATS=['web','api','worker','app','dev','agent','db','docker','monitoring','tunnel','system','unknown'];
 const DB_NAMES={5432:'PostgreSQL',5433:'PostgreSQL',3306:'MySQL',27017:'MongoDB',6379:'Redis',5984:'CouchDB',9200:'Elasticsearch',1433:'SQL Server',11211:'Memcached'};
 function explainProc(d){ let s=t('wi_'+d.cat)||t('wi_unknown');
   const known=DB_NAMES[d.port]; if(known) s=t('wi_port').replace('{x}',known)+' '+s; return s; }
@@ -721,11 +734,15 @@ function openWhatIs(d){ const col=catColor(d.cat);
   $('wi-copy').onclick=()=>navigator.clipboard.writeText(prompt).then(()=>toast(t('askAICopied')));
   $('whatisModal').classList.add('show'); }
 function closeWhatIs(){ $('whatisModal').classList.remove('show'); }
+function catMenu(d){ return `<div class="menu catmenu" data-menu="cat:${d.port}">
+      <div class="menucap">${t('changeCat')}</div>
+      ${CATS.map(c=>`<button onclick="setCat('${jsq(d.command)}',${d.port},'${c}')">${icon(catIcon(c))} ${t('cat_'+c)}</button>`).join('')}
+      <button onclick="setCat('${jsq(d.command)}',${d.port},'auto')">${icon('restart')} ${t('catAuto')}</button></div>`; }
 function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const mk='disc'+d.port;
   return `<div class="card disc${unsafe?' guarded':''}">
     <div class="top"><span class="pulse up"></span><span class="cmd">${esc(d.command)}</span>
       <span class="hostb">:${d.port}</span></div>
-    <div style="margin:7px 0 3px"><span class="catb" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)"><span class="dot"></span>${icon(catIcon(d.cat))} ${t('cat_'+d.cat)}</span>${unsafe?`<span class="guard">${icon('shield')} ${t('protected')}</span>`:''}</div>
+    <div style="margin:7px 0 3px"><button class="catb catbtn" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)" title="${esc(t('changeCat'))}" onclick="toggleMenu(event,'cat:${d.port}')"><span class="dot"></span>${icon(catIcon(d.cat))} ${t('cat_'+d.cat)}<span class="caret">▾</span></button>${unsafe?`<span class="guard">${icon('shield')} ${t('protected')}</span>`:''}</div>
     <div class="pid" style="margin:2px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
     <div class="row">
       <button class="btn btn-primary" title="${esc(t('saveHint'))}" onclick="saveDiscovered(${d.port},'${jsq(d.command)}')">${icon('plus')} ${t('saveBtn')}</button>
@@ -733,7 +750,8 @@ function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const
       ${unsafe
         ? `<button class="btn btn-soft" onclick="toggleMenu(event,'${mk}')">${icon('more')} ${t('moreBtn')}</button>`
         : `<button class="btn btn-soft" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')}</button>`}</div>
-    ${unsafe?`<div class="menu" data-menu="${mk}" style="top:auto;bottom:14px;right:14px">
+    ${catMenu(d)}
+    ${unsafe?`<div class="menu" data-menu="${mk}">
       <button class="del" onclick="killPort(${d.port})">${icon('zap')} ${t('freePort')} :${d.port}</button></div>`:''}</div>`; }
 let lastDiscSig='', _lastDisc=[];
 function renderDiscovered(list){ _lastDisc=list||[]; const w=$('disc-wrap'), head=$('disc-head'), grid=$('disc-grid');
