@@ -1,0 +1,7 @@
+public/IMG_*.PNG
+public/IMG_*.png
+public/*Palette*.png
+public/.DS_Store
+.DS_Store
+docs/
+.playwright-mcp/
