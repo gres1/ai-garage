@@ -4,8 +4,8 @@
 import http from "node:http";
 import { exec, execFile, spawn } from "node:child_process";
 import { readFile, writeFile, mkdir, unlink, stat, rename, readdir } from "node:fs/promises";
-import { openSync, readFileSync } from "node:fs";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { openSync, readFileSync, existsSync } from "node:fs";
+import { createHash, timingSafeEqual, randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { homedir, hostname } from "node:os";
@@ -17,6 +17,26 @@ const CFG_DIR = join(homedir(), ".config", "localhost-control");
 const DEVICE = process.platform === "darwin" ? "Mac" : process.platform === "win32" ? "PC" : process.platform === "linux" ? "Linux" : (hostname() || "Local");
 const SERVICES_PATH = join(CFG_DIR, "services.json");
 const CONFIG_PATH = join(CFG_DIR, "config.json");
+
+// Доступ с телефона: фактический адрес привязки и кешированный Tailscale-IP (заполняются на старте)
+let BIND_HOST = "127.0.0.1";
+let TS_IP = null;
+
+// Каталог public/: обычный node → рядом с server.mjs; bun-compiled sidecar → __dirname виртуальный (/$bunfs),
+// поэтому: явный --assets/env (передаёт Tauri), иначе папка рядом с исполняемым файлом, иначе __dirname, иначе cwd.
+function resolvePublicDir() {
+  const ai = process.argv.indexOf("--assets");
+  const cands = [
+    ai >= 0 ? process.argv[ai + 1] : null,
+    process.env.AIGARAGE_ASSETS || null,
+    join(dirname(process.execPath), "public"),
+    join(__dirname, "public"),
+    join(process.cwd(), "public"),
+  ].filter(Boolean);
+  for (const d of cands) { try { if (existsSync(join(d, "index.html"))) return d; } catch {} }
+  return join(__dirname, "public");
+}
+const PUBLIC_DIR = resolvePublicDir();
 
 const expandHome = (p) => (p && p.startsWith("~") ? join(homedir(), p.slice(1)) : p);
 // Безопасность: порт — только целое 1..65535 (иначе null)
@@ -44,6 +64,26 @@ function withLock(fn) {
 }
 async function loadConfig() {
   try { return JSON.parse(await readFile(CONFIG_PATH, "utf8")); } catch { return {}; }
+}
+const genToken = () => randomBytes(24).toString("base64url");
+async function persistConfig(patch) {
+  await mkdir(CFG_DIR, { recursive: true });
+  const next = { ...(await loadConfig()), ...patch };
+  const tmp = CONFIG_PATH + ".tmp";
+  await writeFile(tmp, JSON.stringify(next, null, 2));
+  await rename(tmp, CONFIG_PATH);                            // атомарно, как saveServices
+  return next;
+}
+// Tailscale IPv4 (100.x) для приватного bind. Встроенный CLI GUI-приложения тоже отвечает на `ip -4`.
+async function tailscaleIp() {
+  let bin = null;
+  for (const b of ["/Applications/Tailscale.app/Contents/MacOS/Tailscale", "/usr/local/bin/tailscale", "/opt/homebrew/bin/tailscale"]) if (await fileExists(b)) { bin = b; break; }
+  if (!bin) bin = await new Promise((r) => exec("command -v tailscale 2>/dev/null", (e, out) => r((out || "").trim() || null)));
+  if (!bin) return null;
+  return new Promise((r) => execFile(bin, ["ip", "-4"], (e, out) => {
+    const line = (out || "").split("\n").map((s) => s.trim()).find((s) => /^100\./.test(s));
+    r(line || null);
+  }));
 }
 
 // Пользовательские правки категорий для обнаруженных процессов (если авто-классификация ошиблась).
@@ -341,11 +381,16 @@ const server = http.createServer(async (req, res) => {
     || (Array.isArray(cfg.allowedHosts) && cfg.allowedHosts.map((h) => String(h).toLowerCase()).includes(host));
   if (!hostOk) { res.writeHead(403); return res.end("bad host"); }
   const isMutation = req.method === "POST";
-  // Анти-CSRF: на мутациях Origin должен быть наш (пустой — для curl/CLI)
+  // Анти-CSRF: на мутациях hostname из Origin должен совпадать с уже провалидированным host
+  // (hostOk выше допускает loopback/Tailscale/LAN/allowedHosts). Сравниваем только hostname (без порта).
+  // Пустой Origin (curl/CLI) — ок.
   if (isMutation) {
     const o = req.headers.origin;
-    if (o && o !== `http://localhost:${PORT}` && o !== `http://127.0.0.1:${PORT}`) {
-      return sendJson(res, 403, { ok: false, error: "запрещённый источник (CSRF)" });
+    if (o) {
+      let oHost = ""; try { oHost = new URL(o).hostname.toLowerCase(); } catch {}
+      if (oHost !== host && !["localhost", "127.0.0.1"].includes(oHost)) {
+        return sendJson(res, 403, { ok: false, error: "запрещённый источник (CSRF)" });
+      }
     }
   }
   // Опциональный токен: если задан в config.json — мутации требуют заголовок (constant-time сравнение).
@@ -359,7 +404,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && url.pathname === "/") {
     try {
-      const html = await readFile(join(__dirname, "public", "index.html"), "utf8");
+      const html = await readFile(join(PUBLIC_DIR, "index.html"), "utf8");
       res.writeHead(200, {
         "Content-Type": "text/html; charset=utf-8",
         "X-Frame-Options": "DENY",
@@ -374,13 +419,13 @@ const server = http.createServer(async (req, res) => {
   // Статика из public/ (logo и пр.) — только GET, с защитой от path traversal
   if (req.method === "GET" && url.pathname !== "/" && !url.pathname.startsWith("/api/")) {
     const safe = url.pathname.replace(/\.\.+/g, "").replace(/^\/+/, "");
-    const pub = join(__dirname, "public");
+    const pub = PUBLIC_DIR;
     const fp = join(pub, safe);
     if (fp.startsWith(pub)) {
       try {
         const data = await readFile(fp);
         const ext = (safe.split(".").pop() || "").toLowerCase();
-        const types = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", svg: "image/svg+xml", webp: "image/webp", ico: "image/x-icon", gif: "image/gif" };
+        const types = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", svg: "image/svg+xml", webp: "image/webp", ico: "image/x-icon", gif: "image/gif", js: "text/javascript; charset=utf-8", css: "text/css; charset=utf-8" };
         res.writeHead(200, { "Content-Type": types[ext] || "application/octet-stream", "Cache-Control": "max-age=3600", "X-Content-Type-Options": "nosniff" });
         return res.end(data);
       } catch {}
@@ -413,7 +458,9 @@ const server = http.createServer(async (req, res) => {
     const discovered = all.filter((d) => !registeredPorts.has(d.port) && d.port !== PORT)
       .map((d) => { const ti = tunnelInfoFrom(tun, tunAlive, d.port); const base = classifyProcess(d.command, d.port);
         return { ...d, ...applyCatOverride(d, base, catOverrides), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
-    return sendJson(res, 200, { services: rows, discovered, platform: process.platform, device: DEVICE, ts: Date.now(), authOn: !!cfg.token, selfTunnel: (tunnelInfoFrom(tun, tunAlive, PORT) || {}).url || null });
+    return sendJson(res, 200, { services: rows, discovered, platform: process.platform, device: DEVICE, ts: Date.now(), authOn: !!cfg.token,
+      selfTunnel: (tunnelInfoFrom(tun, tunAlive, PORT) || {}).url || null,
+      access: cfg.access || "off", tsIp: TS_IP, lanUrl: BIND_HOST !== "127.0.0.1" ? `http://${BIND_HOST}:${PORT}` : null });
   }
 
   if (req.method === "GET" && url.pathname === "/api/can-embed") {
@@ -453,6 +500,24 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST" && url.pathname === "/api/tunnel-stop") {
     const { port } = await readBody(req);
     return sendJson(res, 200, await stopTunnel(port));
+  }
+
+  // Режим доступа с телефона: off | tailscale | public. Меняет config.json (мутация → уже под токеном, если он есть).
+  if (req.method === "POST" && url.pathname === "/api/access") {
+    const { mode } = await readBody(req);
+    if (!["off", "tailscale", "public"].includes(mode)) return sendJson(res, 400, { ok: false, error: "неизвестный режим" });
+    const patch = { access: mode };
+    if ((mode === "tailscale" || mode === "public") && !cfg.token) patch.token = genToken();   // форс-токен за пределами loopback
+    await persistConfig(patch);
+    if (mode === "tailscale") TS_IP = await tailscaleIp().catch(() => null);                    // обновить кеш без рестарта
+    if (mode === "public") await startTunnel(PORT);
+    if (mode === "off") await stopTunnel(PORT);
+    return sendJson(res, 200, {
+      ok: true, mode, tsIp: TS_IP,
+      token: patch.token || cfg.token || null,                  // отдаём токен вызывающему (включение — с доверенной панели)
+      needRestart: mode === "tailscale",                        // rebind сокета требует перезапуска панели
+      note: mode === "tailscale" ? "перезапусти панель, чтобы привязаться к Tailscale" : "применено",
+    });
   }
 
   if (req.method === "POST" && url.pathname === "/api/keepalive") {
@@ -596,6 +661,20 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(404); res.end("not found");
 });
 
-server.listen(PORT, "127.0.0.1", () => console.log(`AI Garage → http://localhost:${PORT}`));
-ensureTunnels(); ensureKeepAlive();                         // восстановить туннели и поднять keep-alive сервисы при старте
-setInterval(() => { ensureTunnels().catch(() => {}); ensureKeepAlive().catch(() => {}); }, 12000);  // и держать их живыми
+// Старт с учётом режима доступа (config.json → access): tailscale → bind на 100.x (приватно, не в LAN),
+// иначе loopback. Выход за loopback ИЛИ public-режим требуют токена — генерируем и сохраняем, если его нет.
+(async () => {
+  const cfg = await loadConfig();
+  TS_IP = await tailscaleIp().catch(() => null);
+  if (cfg.access === "tailscale") {
+    if (TS_IP) BIND_HOST = TS_IP;
+    else console.warn("AI Garage: Tailscale IP не найден — остаюсь на 127.0.0.1 (запущен ли Tailscale и залогинен?)");
+  }
+  if (BIND_HOST !== "127.0.0.1" || cfg.access === "public") {
+    if (!cfg.token) { const tk = genToken(); await persistConfig({ token: tk }); console.log(`AI Garage: сгенерирован токен доступа → ${tk}`); }
+  }
+  const shown = BIND_HOST === "127.0.0.1" ? "localhost" : BIND_HOST;
+  server.listen(PORT, BIND_HOST, () => console.log(`AI Garage → http://${shown}:${PORT}`));
+  ensureTunnels(); ensureKeepAlive();                       // восстановить туннели и поднять keep-alive сервисы при старте
+  setInterval(() => { ensureTunnels().catch(() => {}); ensureKeepAlive().catch(() => {}); }, 12000);  // и держать их живыми
+})();

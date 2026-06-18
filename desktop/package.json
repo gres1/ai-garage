@@ -1,0 +1,15 @@
+{
+  "name": "ai-garage-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI Garage menubar app (Tauri 2 shell over the Node panel) — not published to npm.",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "sidecar": "node ./build-sidecar.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

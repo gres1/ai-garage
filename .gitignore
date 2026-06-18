@@ -5,3 +5,8 @@ IMG_*.PNG
 IMG_*.png
 Color Hunt*.png
 docs/brand-source/
+
+# Tauri desktop build artifacts (rebuilt locally; not committed)
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+desktop/src-tauri/binaries/
