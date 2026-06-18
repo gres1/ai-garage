@@ -2,12 +2,13 @@ use std::net::TcpStream;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::path::BaseDirectory;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{
     ActivationPolicy, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
+use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_positioner::{Position, WindowExt};
 use tauri_plugin_shell::process::CommandChild;
 use tauri_plugin_shell::ShellExt;
@@ -75,18 +76,29 @@ pub fn run() {
                 });
             }
 
-            // 3) Tray-иконка + popover под ней (positioner), правый клик — меню Quit.
-            let icon = app.default_window_icon().cloned().expect("no default icon");
-            let quit = MenuItem::with_id(app, "quit", "Quit AI Garage", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&quit])?;
+            // 3) Tray-иконка (монохромный template — адаптируется к тёмному/светлому меню-бару, вшита в бинарь)
+            //    + popover под ней (positioner); меню: тогл автозапуска и выход.
+            let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))?;
+            let autostart_on = app.autolaunch().is_enabled().unwrap_or(false);
+            let launch_item = CheckMenuItem::with_id(app, "toggle-autostart", "Запускать при логине", true, autostart_on, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Выйти из AI Garage", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&launch_item, &quit])?;
+            let li = launch_item.clone();
             TrayIconBuilder::with_id("main-tray")
-                .icon(icon)
-                .icon_as_template(false)
+                .icon(tray_icon)
+                .icon_as_template(true)
                 .menu(&menu)
                 .show_menu_on_left_click(false)
-                .on_menu_event(|app, ev| {
-                    if ev.id().as_ref() == "quit" {
-                        app.exit(0);
+                .on_menu_event(move |app, ev| {
+                    match ev.id().as_ref() {
+                        "quit" => app.exit(0),
+                        "toggle-autostart" => {
+                            let al = app.autolaunch();
+                            let now = al.is_enabled().unwrap_or(false);
+                            let _ = if now { al.disable() } else { al.enable() };
+                            let _ = li.set_checked(!now);
+                        }
+                        _ => {}
                     }
                 })
                 .on_tray_icon_event(|tray, event| {
