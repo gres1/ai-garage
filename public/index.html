@@ -261,7 +261,46 @@
     .ctl{ flex-wrap:wrap; }
     .frow{ flex-direction:column; }
     .mbox.viewer{ width:100vw; height:100vh; border-radius:0; }
+    .lvgrid{ grid-template-columns:1fr !important; }
+    #livebar{ gap:7px; }
   }
+  /* ── Live view (стена живых превью) ── */
+  #livebar, #live{ display:none; }
+  body.live #livebar{ display:flex; } body.live #live{ display:grid; }
+  body.live #grid, body.live #disc-wrap, body.live #selftun, body.live #platwarn{ display:none !important; }
+  #livebar{ max-width:1180px; margin:0 auto 14px; align-items:center; gap:10px; flex-wrap:wrap; position:relative; z-index:30;
+    background:var(--glass-strong); backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%);
+    border:1px solid var(--glass-brd); border-radius:16px; padding:8px 14px; box-shadow:var(--shadow); }
+  .lvsub{ font-size:12px; color:var(--faint); }
+  .lvseg{ display:inline-flex; background:rgba(20,20,45,.06); border-radius:980px; padding:2px; }
+  .lvseg button{ border:none; background:none; padding:5px 11px; border-radius:980px; font:inherit; font-size:13px; cursor:pointer; color:var(--mut); }
+  .lvseg button.on{ background:#fff; color:var(--txt); box-shadow:0 1px 4px rgba(0,0,0,.08); font-weight:650; }
+  .lvpickwrap{ position:relative; }
+  .lvpick{ position:absolute; right:0; top:115%; z-index:200; background:#fff; border:1px solid var(--line); border-radius:14px;
+    box-shadow:var(--shadow-h); padding:8px; min-width:260px; max-height:60vh; overflow:auto; display:none; }
+  .lvpick.open{ display:block; }
+  .lvpick label{ display:flex; align-items:center; gap:9px; padding:7px 9px; border-radius:9px; cursor:pointer; font-size:13px; color:var(--txt); }
+  .lvpick label:hover{ background:rgba(20,20,45,.05); }
+  .lvpick .dot{ width:8px; height:8px; border-radius:50%; background:#c7c7cc; flex:0 0 auto; } .lvpick .dot.up{ background:var(--teal-neon); }
+  .lvgrid{ max-width:1180px; margin:0 auto; padding-bottom:30px; gap:14px; align-content:start; grid-template-columns:repeat(var(--lvcols,2),1fr); }
+  .lvtile{ background:var(--glass); border:1px solid var(--glass-brd); border-radius:16px; overflow:hidden; display:flex; flex-direction:column;
+    min-height:var(--lvtileh,420px); box-shadow:var(--shadow); }
+  .lvtbar{ display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--line); flex:0 0 auto; }
+  .lvtbar .pulse{ width:9px; height:9px; border-radius:50%; background:#c7c7cc; flex:0 0 auto; } .lvtbar .pulse.up{ background:var(--teal-neon); } .lvtbar .pulse.down{ background:var(--red); }
+  .lvtbar .nm{ font-weight:650; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lvtbar .pt{ font-size:11px; color:var(--faint); font-family:ui-monospace,Menlo,monospace; }
+  .lvtbar a{ color:var(--blue); font-size:12px; text-decoration:none; }
+  .lvtbar .x{ border:none; background:rgba(20,20,45,.06); width:24px; height:24px; border-radius:7px; cursor:pointer; color:var(--mut); display:inline-flex; align-items:center; justify-content:center; }
+  .lvtbar .x:hover{ background:var(--red); color:#fff; } .lvtbar .x .ic{ width:13px; height:13px; }
+  .lvframe{ position:relative; flex:1; background:var(--bg2); overflow:hidden; }
+  .lvframe iframe{ position:absolute; top:0; left:0; width:calc(100%/var(--lvzoom,.75)); height:calc(100%/var(--lvzoom,.75));
+    border:0; background:#fff; transform:scale(var(--lvzoom,.75)); transform-origin:top left; }
+  .lvov{ position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:9px; text-align:center; color:var(--mut); font-size:13px; padding:0 26px; background:var(--bg2); }
+  .lvframe.lvloading .lvov.load{ display:flex; } .lvframe.lvblocked .lvov.block{ display:flex; }
+  .lvov.block .ic{ width:32px; height:32px; opacity:.5; }
+  .lvspin{ width:26px; height:26px; border:3px solid rgba(20,20,45,.12); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
+  .lvov .bt{ font-weight:650; color:var(--txt); font-size:14px; } .lvov .bb{ max-width:330px; line-height:1.45; }
+  .lvempty{ grid-column:1/-1; text-align:center; color:var(--mut); padding:60px 20px; line-height:1.6; }
 </style>
 </head>
 <body>
@@ -283,6 +322,7 @@
     </div>
     <div class="spacer"></div>
     <div class="ctl">
+      <button class="pausebtn" id="modebtn" onclick="setMode(MODE==='live'?'list':'live')" title="Список ⇄ Live view"></button>
       <button class="btn-add" onclick="openForm()" data-i="addService">+ Сервис</button>
       <div class="search">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
@@ -297,6 +337,18 @@
   <div id="platwarn" style="display:none;max-width:1180px;margin:0 auto 16px;background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.3);border-radius:14px;padding:12px 16px;font-size:13px;color:#9a6a00"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg> <span data-i="macOnly">AI Garage рассчитан на macOS.</span></div>
 
   <div id="selftun" style="display:none;max-width:1180px;margin:0 auto 16px;background:rgba(255,159,10,.13);border:1px solid rgba(255,159,10,.32);border-radius:14px;padding:10px 14px;font-size:13px;color:#9a6a00"></div>
+
+  <div id="livebar">
+    <span class="lvsub" data-i="lvCols">колонки</span>
+    <div class="lvseg" id="lvcols"><button data-c="1">1</button><button data-c="2" class="on">2</button><button data-c="3">3</button><button data-c="4">4</button></div>
+    <span class="lvsub" data-i="lvZoom">зум</span>
+    <div class="lvseg"><button id="lvzout" title="−">−</button><span id="lvzlbl" style="padding:5px 7px;font-size:13px;font-weight:650;min-width:44px;text-align:center">75%</span><button id="lvzin" title="+">+</button></div>
+    <span class="spacer"></span>
+    <span class="lvsub" id="lvcnt"></span>
+    <div class="lvpickwrap"><button class="btn btn-soft" id="lvpickbtn">▦ <span data-i="lvServices">Сервисы</span> ▾</button><div class="lvpick" id="lvpick"></div></div>
+    <button class="btn btn-soft" id="lvfsbtn" onclick="lvToggleFS()">⛶ <span id="lvfslbl" data-i="lvFull">Во весь экран</span></button>
+  </div>
+  <div class="lvgrid" id="live"></div>
 
   <div class="grid" id="grid"></div>
 
@@ -395,6 +447,7 @@ const DICT={
    discovered:"Discovered",discHint:"(running, not saved)",saveBtn:"Add to mine",saveHint:"Pin it: add to your services with Start/Stop/link buttons",moreBtn:"More",discNote:"discovered",saveAll:"Add all to my services",secLocal:"This Mac",secVps:"VPS",secBots:"Bots",keepAlive:"Keep alive",kaOn:"Staying on",manageBtn:"Add Start/Stop",manageTitle:"Add Start/Stop to this service",manageIntro:"This service is started by the system (launchd, Docker, or you). The panel tries to detect the command automatically — just check it and save. Then Start / Stop buttons appear here.",mStartPh:"the panel will try to fill this in…",mGuessed:"Detected from the running process — check it, then save",mStart:"Start command",mStop:"Stop command",mCwd:"Folder",mStopHint:"optional — leave empty and I'll just free the port",mCwdHint:"optional — where to run it",mAskAI:"Don't know the command? Ask your AI",mSave:"Enable control",mSaved:"Control enabled — Start/Stop buttons added",kaTip:"I'll restart it automatically if it crashes",managedTip:"Started by the system — the panel only monitors it",mAskPrompt:"How do I start and stop the service «{n}» (port {p}) on my Mac? Give me the exact start command and stop command I can paste into a localhost control panel.",
    whatIs:"What is it?",protected:"protected — don't touch",kaEnabling:"Enabling keep-alive…",kaDisabling:"Disabling…",sysPort:"system port",killDanger:"⚠️ Port {p} — {d}. Kill the process? DATA LOSS possible.",killSafe:"Free port {p}? The process will be stopped.",askAIPrompt:"What is the process «{cmd}» listening on port {port} on my machine? Is it safe, do I need it, can I kill it? Explain simply.",askAICopied:"Prompt copied — paste it to your AI",wi_askLabel:"Prompt for your AI agent",wi_copyBtn:"Copy prompt",wi_port:"Port {x} —",wi_system:"Looks like part of macOS or a background service. Safer to leave it alone.",wi_db:"Looks like a database. Killing it can lose unsaved data — be careful.",wi_app:"An app you're running (browser, editor, etc.). Closing the app itself is usually enough.",wi_dev:"A development server or tool (Node, Python, Vite…). Usually safe to stop or restart.",wi_agent:"An AI agent or tool running locally. Safe to stop if you're not using it.",wi_unknown:"Couldn't identify it for sure. If unsure, ask your AI before stopping it.",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",cat_web:"web / frontend",cat_api:"API / backend",cat_worker:"worker / queue",cat_docker:"container",cat_monitoring:"monitoring",cat_tunnel:"tunnel",changeCat:"Change category",catAuto:"Auto-detect",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",dragHint:"Drag to reorder",prevLoading:"Loading preview…",blockedTitle:"Preview blocked by the service",blockedBody:"This service doesn't allow being shown inside a frame — that's its own security setting, not a panel error. Open it in a new tab instead.",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
    phoneBtn:"Phone",phoneTitle:"Open on your phone",phoneIntro:"Choose how to reach this panel from your phone. Tailscale keeps it private to your devices; a public link is shareable but exposed (token-protected).",modeOff:"Off",modeTs:"Tailscale (private)",modePublic:"Public link",tsHint:"Open this address in the Tailscale app on your phone (same account).",tsMissing:"Tailscale not detected — is the app running and logged in?",publicHint:"Public link via Cloudflare — works from any network.",scanQr:"Scan with your phone camera",restartApply:"Restart AI Garage to apply the Tailscale binding.",tokenLabel:"Token",
+   modeList:"List",modeLive:"Live view",lvCols:"columns",lvZoom:"zoom",lvServices:"Services",lvFull:"Fullscreen",lvExit:"Exit",lvOnWall:"on the wall",lvEmpty:"Nothing selected — click “Services” and pick what to show.",
    tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link — open this service from your phone or share it",provPick:"Choose how to share:",provCf:"Cloudflare — instant, link changes",provNgrok:"ngrok — stable address (soon)",provDomain:"Your own domain (soon)",provSoonMsg:"Coming next — needs your free account; we're building it"},
  ru:{title:"AI Garage",of:"из",working:"работает",stopped:"выключено",addService:"+ Сервис",
    start:"Старт",stop:"Стоп",restart:"Рестарт",preview:"Превью",managed:"управляется снаружи",phone:"телефон",
@@ -406,6 +459,7 @@ const DICT={
    discovered:"Обнаружено",discHint:"(запущено, не сохранено)",saveBtn:"В мои сервисы",saveHint:"Закрепить: добавить в список с кнопками Старт/Стоп/ссылка",moreBtn:"Ещё",discNote:"обнаружено",saveAll:"Добавить все в мои сервисы",secLocal:"Этот Mac",secVps:"VPS",secBots:"Боты",keepAlive:"Держать включённым",kaOn:"Держится",manageBtn:"Добавить Старт/Стоп",manageTitle:"Добавить Старт/Стоп этому сервису",manageIntro:"Этот сервис запускает система (launchd, Docker или ты сам). Панель сама попробует определить команду — тебе останется проверить и сохранить. После этого здесь появятся кнопки Старт / Стоп.",mStartPh:"панель попробует заполнить сама…",mGuessed:"Определили по запущенному процессу — проверь и сохрани",mStart:"Команда запуска",mStop:"Команда остановки",mCwd:"Папка",mStopHint:"необязательно — оставь пустым, и я просто освобожу порт",mCwdHint:"необязательно — где запускать",mAskAI:"Не знаешь команду? Спроси свой ИИ",mSave:"Включить управление",mSaved:"Управление включено — кнопки Старт/Стоп добавлены",kaTip:"Перезапущу автоматически, если упадёт",managedTip:"Запускает система — панель только следит",mAskPrompt:"Как запустить и остановить сервис «{n}» (порт {p}) на моём Mac? Дай точную команду запуска и команду остановки, чтобы вставить в панель управления localhost.",
    whatIs:"что это?",protected:"защищён — не трогай",kaEnabling:"Включаю автозапуск…",kaDisabling:"Выключаю…",sysPort:"системный порт",killDanger:"⚠️ Порт {p} — {d}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.",killSafe:"Освободить порт {p}? Процесс будет остановлен.",askAIPrompt:"Что за процесс «{cmd}» слушает порт {port} на моей машине? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.",askAICopied:"Промпт скопирован — вставь своему ИИ",wi_askLabel:"Промпт для твоего ИИ-агента",wi_copyBtn:"Скопировать промпт",wi_port:"Порт {x} —",wi_system:"Похоже на часть macOS или фоновую службу. Лучше не трогать.",wi_db:"Похоже на базу данных. Если убить — можно потерять несохранённые данные. Осторожно.",wi_app:"Запущенное приложение (браузер, редактор и т.п.). Обычно достаточно закрыть само приложение.",wi_dev:"Сервер или инструмент разработки (Node, Python, Vite…). Обычно можно спокойно остановить или перезапустить.",wi_agent:"Локальный ИИ-агент или инструмент. Можно остановить, если не используешь.",wi_unknown:"Точно определить не вышло. Если не уверен — спроси своего ИИ перед остановкой.",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",cat_web:"веб / фронтенд",cat_api:"API / бэкенд",cat_worker:"воркер / очередь",cat_docker:"контейнер",cat_monitoring:"мониторинг",cat_tunnel:"туннель",changeCat:"Сменить категорию",catAuto:"Авто-определение",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",dragHint:"Потяни, чтобы изменить порядок",prevLoading:"Загрузка превью…",blockedTitle:"Сервис не разрешает превью",blockedBody:"Этот сервис запрещает показ в окне — это его настройка безопасности, не ошибка панели. Открой в новой вкладке.",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
    phoneBtn:"Телефон",phoneTitle:"Открыть на телефоне",phoneIntro:"Выбери, как заходить в панель с телефона. Tailscale — приватно, только твои устройства; публичная ссылка — можно поделиться, но открыта в интернет (защищена токеном).",modeOff:"Выкл",modeTs:"Tailscale (приватно)",modePublic:"Публичная ссылка",tsHint:"Открой этот адрес в приложении Tailscale на телефоне (тот же аккаунт).",tsMissing:"Tailscale не найден — запущен ли он и залогинен?",publicHint:"Публичная ссылка через Cloudflare — работает из любой сети.",scanQr:"Наведи камеру телефона",restartApply:"Перезапусти AI Garage, чтобы применить привязку к Tailscale.",tokenLabel:"Токен",
+   modeList:"Список",modeLive:"Live view",lvCols:"колонки",lvZoom:"зум",lvServices:"Сервисы",lvFull:"Во весь экран",lvExit:"Свернуть",lvOnWall:"на стене",lvEmpty:"Никого не выбрано — нажми «Сервисы» и отметь, что показать.",
    tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку — открыть сервис с телефона или поделиться",provPick:"Чем поделиться:",provCf:"Cloudflare — сразу, адрес меняется",provNgrok:"ngrok — стабильный адрес (скоро)",provDomain:"Свой домен (скоро)",provSoonMsg:"Скоро — нужен твой бесплатный аккаунт, делаем"},
  es:{title:"Control Localhost",of:"de",working:"activo",stopped:"apagado",addService:"+ Servicio",
    start:"Iniciar",stop:"Detener",restart:"Reiniciar",preview:"Vista",managed:"gestionado externamente",phone:"móvil",
@@ -615,6 +669,58 @@ function renderPhone(){ const b=$('phone-body'); if(!b) return;
   b.innerHTML=h; }
 function openPhone(){ renderPhone(); $('phoneModal').classList.add('show'); }
 function closePhone(){ $('phoneModal').classList.remove('show'); }
+
+/* ── Live view: стена живых превью (переключаемый режим, тот же порт 7777) ── */
+let MODE=localStorage.getItem('lc-mode')||'list';
+let lvChosen=new Set(), lvZoom=.75, lvReady=false, lvMemSig=''; const LV_KEY='lc-wall-chosen';
+const lvServices=()=>DATA.filter(s=>s.url);
+function setMode(m){ MODE=m; localStorage.setItem('lc-mode',m); document.body.classList.toggle('live',m==='live');
+  const mb=$('modebtn'); if(mb) mb.innerHTML=(m==='live'?icon('server')+' '+t('modeList'):icon('eye')+' '+t('modeLive'));
+  closeMenus();
+  if(m==='live' && DATA.length && !lvReady){ lvReady=true; buildWall(); } }
+function buildWall(){ const all=lvServices();
+  const saved=JSON.parse(localStorage.getItem(LV_KEY)||'null');
+  lvChosen = saved ? new Set(saved) : new Set(all.filter(s=>s.up).map(s=>s.name));   // первый раз — все запущенные
+  lvChosen = new Set([...lvChosen].filter(n=>all.some(s=>s.name===n)));
+  renderLvPick(); renderWall(); }
+function renderLvPick(){ const p=$('lvpick'); if(!p) return;
+  p.innerHTML=lvServices().map(s=>`<label><input type="checkbox" ${lvChosen.has(s.name)?'checked':''} onchange="toggleLvSvc('${jsq(s.name)}',this.checked)"><span class="dot ${s.up?'up':''}"></span>${esc(s.name)}<span class="pt" style="margin-left:auto;color:var(--faint)">:${s.port||'—'}</span></label>`).join('')||`<div style="padding:10px;color:var(--faint)">${t('emptyTitle')}</div>`; }
+function toggleLvSvc(name,on){ on?lvChosen.add(name):lvChosen.delete(name); localStorage.setItem(LV_KEY,JSON.stringify([...lvChosen])); renderWall(); }
+function lvTile(s){ const u=safeUrl(s.url);
+  return `<div class="lvtile">
+    <div class="lvtbar"><span class="pulse ${s.up?'up':'down'}"></span>
+      <span class="nm" title="${esc(s.name)}">${esc(s.name)}</span><span class="pt">:${s.port||''}</span>
+      <span class="spacer" style="flex:1"></span>
+      <a href="${u}" target="_blank" rel="noopener">${t('openTab')}</a>
+      <button class="x" title="${esc(t('exposedOff'))}" onclick="toggleLvSvc('${jsq(s.name)}',false)">${icon('x')}</button></div>
+    <div class="lvframe lvloading" data-port="${s.port||''}" data-name="${esc(s.name)}">
+      <iframe sandbox="allow-same-origin allow-scripts allow-forms" src="${u}" loading="lazy"></iframe>
+      <div class="lvov load"><div class="lvspin"></div>${t('prevLoading')}</div>
+      <div class="lvov block">${icon('monitor')}<div class="bt">${t('blockedTitle')}</div><div class="bb">${t('blockedBody')}</div>
+        <a class="btn btn-accent" href="${u}" target="_blank" rel="noopener" style="margin-top:4px">${icon('link')} ${t('openTab')}</a></div>
+    </div></div>`; }
+function renderWall(){ const g=$('live'); if(!g) return; const list=lvServices().filter(s=>lvChosen.has(s.name));
+  lvMemSig=list.map(s=>s.name).join('|');
+  const c=$('lvcnt'); if(c) c.textContent=list.length?list.length+' '+t('lvOnWall'):'';
+  g.innerHTML=list.length?list.map(lvTile).join(''):`<div class="lvempty">${t('lvEmpty')}</div>`;
+  setupLvFrames(); }
+function setupLvFrames(){ document.querySelectorAll('#live .lvframe').forEach(fr=>{
+  const f=fr.querySelector('iframe'); if(!f||fr.dataset.set) return; fr.dataset.set='1';
+  const port=fr.dataset.port;
+  // ИСТОЧНИК ПРАВДЫ — can-embed (same-origin, надёжно). blocked СТРОГО по embeddable:false; НИКАКОГО таймаута
+  // (иначе медленный сервис вроде Hermes ложно метится «заблокирован»). embeddable:true → держим спиннер сколько надо.
+  if(port) fetch('/api/can-embed?port='+port).then(r=>r.json()).then(j=>{ if(j&&j.embeddable===false){ fr.classList.remove('lvloading'); fr.classList.add('lvblocked'); } }).catch(()=>{});
+  f.addEventListener('load',()=>{ if(!fr.classList.contains('lvblocked')){ fr.classList.remove('lvloading'); fr.classList.add('lvloaded'); } });
+}); }
+function lvApplyZoom(){ document.documentElement.style.setProperty('--lvzoom',lvZoom); const l=$('lvzlbl'); if(l) l.textContent=Math.round(lvZoom*100)+'%'; }
+function lvToggleFS(){ const el=$('live'); if(document.fullscreenElement){ document.exitFullscreen&&document.exitFullscreen(); } else if(el&&el.requestFullscreen){ el.requestFullscreen(); } }
+function lvOnPoll(){ if(MODE!=='live') return;
+  if(!lvReady){ if(DATA.length){ lvReady=true; buildWall(); } return; }
+  renderLvPick();                                            // освежить точки/список в пикере (без трогания iframe)
+  const list=lvServices().filter(s=>lvChosen.has(s.name));
+  const sig=list.map(s=>s.name).join('|');
+  if(sig!==lvMemSig){ renderWall(); }                        // изменился состав стены → пересобрать
+  else list.forEach(s=>{ const fr=document.querySelector(`#live .lvframe[data-name="${CSS.escape(s.name)}"]`); if(fr){ const p=fr.parentNode.querySelector('.pulse'); if(p) p.className='pulse '+(s.up?'up':'down'); } }); }
 
 /* язык */
 function fillLangs(){ $('lang').innerHTML=Object.entries(LANGS).map(([k,v])=>`<option value="${k}" ${k===lang?'selected':''}>${v}</option>`).join(''); }
@@ -969,6 +1075,7 @@ async function load(){ if(paused||document.hidden||_dragging)return;   // во �
     $('platwarn').style.display=(j.platform&&j.platform!=='darwin')?'block':'none';
     const stn=$('selftun'); if(j.selfTunnel){ stn.style.display='block'; stn.innerHTML=`${icon('cloud')} <b>${t('exposed')}</b> · <a href="${safeUrl(j.selfTunnel)}" target="_blank" rel="noopener" style="color:#9a6a00;word-break:break-all">${esc(j.selfTunnel)}</a> <button class="btn btn-soft" style="margin-left:8px;font-size:12px;padding:4px 10px" onclick="tunnelStop(7777)">${t('exposedOff')}</button>`; } else stn.style.display='none';
     if($('phoneModal') && $('phoneModal').classList.contains('show')) renderPhone();
+    lvOnPoll();
   }catch(e){ $('ts').textContent='—'; } }
 
 /* живой эффект: спотлайт за курсором на карточках + ambient-glow всей страницы */
@@ -983,7 +1090,18 @@ addEventListener('pointermove',e=>{ _e=e; if(_raf)return; _raf=requestAnimationF
     c.style.setProperty('--ry',((mx-.5)*6.5).toFixed(2)+'deg'); c.style.setProperty('--rx',((.5-my)*6.5).toFixed(2)+'deg'); } }); },{passive:true});
 
 if(!IS_LOCAL){ const pb=$('phonebtn'); if(pb) pb.style.display='none'; }   // с телефона доступ настраивать незачем
-$('pause').innerHTML=icon('pause'); fillLangs(); applyI18n(); toggleCmd(); load(); setInterval(load,3000);
+/* Live view — обработчики контролов */
+$('lvcols')&&$('lvcols').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
+  [...$('lvcols').children].forEach(x=>x.classList.toggle('on',x===b));
+  document.documentElement.style.setProperty('--lvcols',b.dataset.c);
+  document.documentElement.style.setProperty('--lvtileh', b.dataset.c==='1'?'72vh':b.dataset.c==='2'?'430px':'320px'); });
+$('lvzin')&&$('lvzin').addEventListener('click',()=>{ lvZoom=Math.min(1.5,+(lvZoom+0.1).toFixed(2)); lvApplyZoom(); });
+$('lvzout')&&$('lvzout').addEventListener('click',()=>{ lvZoom=Math.max(0.4,+(lvZoom-0.1).toFixed(2)); lvApplyZoom(); });
+$('lvpickbtn')&&$('lvpickbtn').addEventListener('click',e=>{ e.stopPropagation(); $('lvpick').classList.toggle('open'); });
+document.addEventListener('click',e=>{ const p=$('lvpick'); if(p&&!p.contains(e.target)&&e.target!==$('lvpickbtn')&&!($('lvpickbtn')&&$('lvpickbtn').contains(e.target))) p.classList.remove('open'); });
+document.addEventListener('fullscreenchange',()=>{ const l=$('lvfslbl'); if(l) l.textContent=document.fullscreenElement?t('lvExit'):t('lvFull'); });
+lvApplyZoom();
+$('pause').innerHTML=icon('pause'); fillLangs(); applyI18n(); toggleCmd(); setMode(MODE); load(); setInterval(load,3000);
 </script>
 </body>
 </html>
