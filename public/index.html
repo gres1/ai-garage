@@ -82,7 +82,7 @@
     transition:transform .18s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease; }
   .card:hover{ --lift:-6px; box-shadow:var(--shadow-h); }
   /* перетаскивание: тянем за тело карточки (курсор-рука), кнопки/ссылки остаются кликабельными */
-  .card[data-name]{ cursor:grab; touch-action:none; }
+  .card[data-name]{ cursor:grab; touch-action:pan-y; }   /* тач: вертикальный скролл свободен, драг — по long-press */
   .card.dragging{ cursor:grabbing; box-shadow:0 28px 60px -12px rgba(25,25,70,.42); transition:none; }
   .card-placeholder{ border:2px dashed var(--teal-d); border-radius:var(--r); background:rgba(33,94,97,.06); box-sizing:border-box; }
   body.dragging-active, body.dragging-active *{ cursor:grabbing !important; user-select:none; }
@@ -288,7 +288,7 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
         <input class="field" id="q" oninput="render()"/>
       </div>
-      <button class="pausebtn" id="phonebtn" onclick="openPhone()" aria-label="phone"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="7" y="2" width="10" height="20" rx="2.5"/><line x1="11" y1="18" x2="13" y2="18"/></svg> <span data-i="phoneBtn">Телефон</span></button>
+      <button class="pausebtn" id="phonebtn" onclick="openPhone()" aria-label="phone"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="7" y="2" width="10" height="20" rx="2.5"/><line x1="11" y1="18" x2="13" y2="18"/></svg> <span data-i="phoneBtn">Телефон</span> <span style="font-size:9px;font-weight:800;letter-spacing:.03em;color:#fff;background:var(--accent);border-radius:5px;padding:1px 5px;vertical-align:1px">PRO</span></button>
       <select class="field" id="lang" onchange="setLang(this.value)"></select>
       <button class="pausebtn" id="pause" aria-label="пауза" onclick="togglePause()"></button>
     </div>
@@ -533,6 +533,7 @@ const t=k=>(DICT[lang]&&DICT[lang][k])||DICT.en[k]||k;
 
 let DATA=[]; let paused=false; let authOn=false; let lastSig=''; let DEVICE='Local'; const openPrevs=new Set();
 let ACCESS='off',TS_IP=null,LAN_URL=null,SELF_TUNNEL=null,LAST_TOKEN=null;
+const IS_LOCAL=['localhost','127.0.0.1','[::1]'].includes(location.hostname);   // панель открыта на самом маке (а не с телефона удалённо)
 const $=id=>document.getElementById(id);
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* экранирование для JS-строкового контекста внутри onclick="fn('...')" — \uXXXX безопасно и в JS, и в HTML-атрибуте */
@@ -739,13 +740,13 @@ function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&ty
     : s.hasControls
     ? `<div class="row" style="margin-top:4px">${toggleBtn(s)}${restart}${ka}
       ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
-      <button class="btn btn-accent" onclick="togglePreview('${jsq(s.name)}')">${icon('eye')} ${t('preview')}</button></div>`
+      ${IS_LOCAL?`<button class="btn btn-accent" onclick="togglePreview('${jsq(s.name)}')">${icon('eye')} ${t('preview')}</button>`:''}</div>`
     : `<div style="margin-top:4px">
       <div class="note" title="${esc(t('managedTip'))}" style="margin:0 0 7px">${t('managed')}</div>
       <div class="row">
         <button class="btn btn-soft" title="${esc(t('manageTitle'))}" onclick="openManage('${jsq(s.name)}')">${icon('wrench')} ${t('manageBtn')}</button>
         ${tunnelBtn(s.port,s.tunnelManaged,s.tunnel,s.tunnelError)}
-        <button class="btn btn-accent" onclick="togglePreview('${jsq(s.name)}')">${icon('eye')} ${t('preview')}</button>
+        ${IS_LOCAL?`<button class="btn btn-accent" onclick="togglePreview('${jsq(s.name)}')">${icon('eye')} ${t('preview')}</button>`:''}
       </div></div>`;
   const tunnel=s.tunnel?`<div class="urlrow"><span class="tag">${icon('phone')} ${t('phone')}</span>
       <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a><button class="icbtn" onclick="copy('${jsq(s.tunnel)}')">${icon('copy')}</button></div>`:'';
@@ -875,17 +876,26 @@ function _dragCleanup(){                              // снять зависш
   document.body.classList.remove('dragging-active'); _dragging=false;
 }
 function dragStart(e){
-  if(e.button!==0) return;
   if(e.target.closest('button,a,input,select,textarea,.menu,.urlrow,.botchip,.icbtn')) return; // клики/ссылки не трогаем
+  const isTouch = e.pointerType==='touch';
+  if(!isTouch && e.button!==0) return;
   const card=e.currentTarget;
   const sx=e.clientX, sy=e.clientY;
   const rect=card.getBoundingClientRect();
   const offX=sx-rect.left, offY=sy-rect.top;       // где внутри карточки схватили — чтобы она «висела» под курсором ровно там
-  let started=false, ph=null;
+  // мышь — драг сразу; палец — только после long-press (иначе обычное движение = скролл страницы)
+  let started=false, ph=null, armed=!isTouch, dead=false, holdT=0;
   const follow=(x,y)=>{ card.style.transform=`translate3d(${Math.round(x-offX)}px,${Math.round(y-offY)}px,0) scale(1.02)`; };
+  const stop=()=>{
+    removeEventListener('pointermove',move); removeEventListener('pointerup',end);
+    removeEventListener('pointercancel',end); removeEventListener('blur',end); clearTimeout(holdT);
+  };
+  if(isTouch){ holdT=setTimeout(()=>{ if(!dead){ armed=true; try{ navigator.vibrate&&navigator.vibrate(12); }catch(_){} } }, 350); }
   const move=(ev)=>{
+    const dist=Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy);
+    if(!armed){ if(isTouch && dist>8){ dead=true; stop(); } return; }  // палец поехал до long-press → это скролл, отдаём браузеру
     if(!started){
-      if(Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)<6) return;  // порог: отличить клик от перетаскивания
+      if(dist<6) return;                            // порог: отличить клик от перетаскивания
       started=true; _dragging=true; document.body.classList.add('dragging-active');
       ph=document.createElement('div'); ph.className='card-placeholder'; ph.style.height=rect.height+'px';
       card.parentNode.insertBefore(ph, card);       // placeholder держит место в сетке (она не схлопывается)
@@ -905,8 +915,7 @@ function dragStart(e){
   };
   const end=()=>{
     // слушатели на WINDOW (а не на карточке): при переносе карточки в <body> capture терялся и pointerup не приходил → drag зависал
-    removeEventListener('pointermove',move); removeEventListener('pointerup',end);
-    removeEventListener('pointercancel',end); removeEventListener('blur',end);
+    stop();
     stopAutoScroll();
     if(started && ph && ph.parentNode){ ph.parentNode.insertBefore(card, ph); }  // вернуть карточку на место placeholder
     _dragCleanup();
@@ -973,6 +982,7 @@ addEventListener('pointermove',e=>{ _e=e; if(_raf)return; _raf=requestAnimationF
     c.style.setProperty('--mx',(mx*100).toFixed(1)+'%'); c.style.setProperty('--my',(my*100).toFixed(1)+'%');
     c.style.setProperty('--ry',((mx-.5)*6.5).toFixed(2)+'deg'); c.style.setProperty('--rx',((.5-my)*6.5).toFixed(2)+'deg'); } }); },{passive:true});
 
+if(!IS_LOCAL){ const pb=$('phonebtn'); if(pb) pb.style.display='none'; }   // с телефона доступ настраивать незачем
 $('pause').innerHTML=icon('pause'); fillLangs(); applyI18n(); toggleCmd(); load(); setInterval(load,3000);
 </script>
 </body>

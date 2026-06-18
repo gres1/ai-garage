@@ -15,6 +15,7 @@
         { "name": "binaries/ai-garage-server", "sidecar": true, "args": true }
       ]
     },
+    "shell:allow-open",
     "positioner:default",
     "autostart:allow-enable",
     "autostart:allow-disable",

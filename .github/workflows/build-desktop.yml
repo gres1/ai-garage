@@ -1,0 +1,57 @@
+# Сборка десктоп-приложения AI Garage под macOS / Linux / Windows.
+# Запуск: вручную (workflow_dispatch) или при пуше тега vX.Y.Z (тогда соберёт + создаст черновик релиза с артефактами).
+#
+# ПРИМЕЧАНИЯ (важно знать на первом прогоне):
+# - Серверная часть (server.mjs) пока «macOS-first»: lsof работает и на Linux, но keep-alive через launchd —
+#   только macOS. На Windows/Linux приложение соберётся и откроет панель, но часть фич сервера будет урезана.
+# - На первом реальном прогоне CI возможны мелкие правки (имя sidecar-бинаря под Windows .exe, системные зависимости).
+#   Это нормально для кросс-сборки — подкрутим по логам.
+name: Build desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest      # Apple Silicon
+          - platform: ubuntu-22.04
+          - platform: windows-latest
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux deps (webkit2gtk, tray)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build server sidecar (bun --compile)
+        shell: bash
+        run: node desktop/build-sidecar.mjs
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: desktop
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: "AI Garage ${{ github.ref_name }}"
+          releaseDraft: true
+          releaseBody: "Desktop builds (macOS / Linux / Windows). Собрано автоматически."
