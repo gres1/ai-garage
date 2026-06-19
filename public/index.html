@@ -301,6 +301,8 @@
   .lvspin{ width:26px; height:26px; border:3px solid rgba(20,20,45,.12); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
   .lvov .bt{ font-weight:650; color:var(--txt); font-size:14px; } .lvov .bb{ max-width:330px; line-height:1.45; }
   .lvempty{ grid-column:1/-1; text-align:center; color:var(--mut); padding:60px 20px; line-height:1.6; }
+  .lvtbar{ cursor:grab; touch-action:pan-y; } .lvtile.lvdrag{ opacity:.9; outline:2px solid var(--accent); box-shadow:var(--shadow-h); }
+  body.lvdragging{ user-select:none; } body.lvdragging .lvframe iframe{ pointer-events:none; }   /* перетаскивание плитки за шапку, не задевая iframe */
 </style>
 </head>
 <body>
@@ -672,7 +674,7 @@ function closePhone(){ $('phoneModal').classList.remove('show'); }
 
 /* ── Live view: стена живых превью (переключаемый режим, тот же порт 7777) ── */
 let MODE=localStorage.getItem('lc-mode')||'list';
-let lvChosen=new Set(), lvZoom=.75, lvReady=false, lvMemSig=''; const LV_KEY='lc-wall-chosen';
+let lvChosen=new Set(), lvZoom=.75, lvReady=false, lvMemSig='', lvOrder=JSON.parse(localStorage.getItem('lc-wall-order')||'[]'); const LV_KEY='lc-wall-chosen', LV_ORDER='lc-wall-order';
 const lvServices=()=>DATA.filter(s=>s.url);
 function setMode(m){ MODE=m; localStorage.setItem('lc-mode',m); document.body.classList.toggle('live',m==='live');
   const mb=$('modebtn'); if(mb) mb.innerHTML=(m==='live'?icon('server')+' '+t('modeList'):icon('eye')+' '+t('modeLive'));
@@ -685,10 +687,38 @@ function buildWall(){ const all=lvServices();
   renderLvPick(); renderWall(); }
 function renderLvPick(){ const p=$('lvpick'); if(!p) return;
   p.innerHTML=lvServices().map(s=>`<label><input type="checkbox" ${lvChosen.has(s.name)?'checked':''} onchange="toggleLvSvc('${jsq(s.name)}',this.checked)"><span class="dot ${s.up?'up':''}"></span>${esc(s.name)}<span class="pt" style="margin-left:auto;color:var(--faint)">:${s.port||'—'}</span></label>`).join('')||`<div style="padding:10px;color:var(--faint)">${t('emptyTitle')}</div>`; }
-function toggleLvSvc(name,on){ on?lvChosen.add(name):lvChosen.delete(name); localStorage.setItem(LV_KEY,JSON.stringify([...lvChosen])); renderWall(); }
+function toggleLvSvc(name,on){ on?lvChosen.add(name):lvChosen.delete(name); localStorage.setItem(LV_KEY,JSON.stringify([...lvChosen])); lvReconcile(); }
+function lvSort(list){ return list.sort((a,b)=>{ const ia=lvOrder.indexOf(a.name), ib=lvOrder.indexOf(b.name); return (ia<0?1e6:ia)-(ib<0?1e6:ib); }); }
+// Инкрементально: убрать ушедшие плитки, добавить новые. iframe существующих НЕ пересоздаём (не перезагружаем соседей).
+function lvReconcile(){ const g=$('live'); if(!g) return;
+  const want=lvSort(lvServices().filter(s=>lvChosen.has(s.name)));
+  const wantNames=new Set(want.map(s=>s.name));
+  g.querySelectorAll('.lvframe').forEach(fr=>{ if(!wantNames.has(fr.dataset.name)){ const tl=fr.closest('.lvtile'); if(tl) tl.remove(); } });
+  const empty=g.querySelector('.lvempty'); if(want.length && empty) empty.remove();
+  const have=new Set([...g.querySelectorAll('.lvframe')].map(fr=>fr.dataset.name));
+  want.forEach(s=>{ if(!have.has(s.name)) g.insertAdjacentHTML('beforeend', lvTile(s)); });
+  setupLvFrames();
+  if(!want.length && !g.querySelector('.lvempty')) g.innerHTML=`<div class="lvempty">${t('lvEmpty')}</div>`;
+  lvMemSig=want.map(s=>s.name).join('|'); const c=$('lvcnt'); if(c) c.textContent=want.length?want.length+' '+t('lvOnWall'):''; }
+// Перетаскивание плитки за шапку (как карточки в списке). Двигаем DOM-узел → iframe НЕ перезагружается.
+function lvDragStart(e){ if(e.target.closest('a,button')) return;
+  const tile=e.currentTarget.closest('.lvtile'), grid=$('live'); if(!tile||!grid) return;
+  const isTouch=e.pointerType==='touch'; if(!isTouch&&e.button!==0) return;
+  const sx=e.clientX, sy=e.clientY; let started=false, armed=!isTouch, dead=false, holdT=0;
+  const stop=()=>{ removeEventListener('pointermove',mv); removeEventListener('pointerup',up); removeEventListener('pointercancel',up); clearTimeout(holdT); };
+  if(isTouch) holdT=setTimeout(()=>{ if(!dead) armed=true; },300);
+  const mv=(ev)=>{ const d=Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy);
+    if(!armed){ if(isTouch&&d>8){ dead=true; stop(); } return; }
+    if(!started){ if(d<6) return; started=true; document.body.classList.add('lvdragging'); tile.classList.add('lvdrag'); }
+    ev.preventDefault();
+    const under=document.elementFromPoint(ev.clientX,ev.clientY), t2=under&&under.closest&&under.closest('.lvtile');
+    if(t2&&t2!==tile&&t2.parentNode===grid){ const r=t2.getBoundingClientRect(); const after=(ev.clientX-r.left)/r.width>0.5; grid.insertBefore(tile, after?t2.nextSibling:t2); } };
+  const up=()=>{ stop(); document.body.classList.remove('lvdragging'); tile.classList.remove('lvdrag');
+    if(started){ lvOrder=[...grid.querySelectorAll('.lvtile .lvframe')].map(fr=>fr.dataset.name); localStorage.setItem(LV_ORDER,JSON.stringify(lvOrder)); } };
+  addEventListener('pointermove',mv); addEventListener('pointerup',up); addEventListener('pointercancel',up); }
 function lvTile(s){ const u=safeUrl(s.url);
   return `<div class="lvtile">
-    <div class="lvtbar"><span class="pulse ${s.up?'up':'down'}"></span>
+    <div class="lvtbar" onpointerdown="lvDragStart(event)"><span class="pulse ${s.up?'up':'down'}"></span>
       <span class="nm" title="${esc(s.name)}">${esc(s.name)}</span><span class="pt">:${s.port||''}</span>
       <span class="spacer" style="flex:1"></span>
       <a href="${u}" target="_blank" rel="noopener">${t('openTab')}</a>
@@ -699,7 +729,7 @@ function lvTile(s){ const u=safeUrl(s.url);
       <div class="lvov block">${icon('monitor')}<div class="bt">${t('blockedTitle')}</div><div class="bb">${t('blockedBody')}</div>
         <a class="btn btn-accent" href="${u}" target="_blank" rel="noopener" style="margin-top:4px">${icon('link')} ${t('openTab')}</a></div>
     </div></div>`; }
-function renderWall(){ const g=$('live'); if(!g) return; const list=lvServices().filter(s=>lvChosen.has(s.name));
+function renderWall(){ const g=$('live'); if(!g) return; const list=lvSort(lvServices().filter(s=>lvChosen.has(s.name)));
   lvMemSig=list.map(s=>s.name).join('|');
   const c=$('lvcnt'); if(c) c.textContent=list.length?list.length+' '+t('lvOnWall'):'';
   g.innerHTML=list.length?list.map(lvTile).join(''):`<div class="lvempty">${t('lvEmpty')}</div>`;
@@ -719,7 +749,7 @@ function lvOnPoll(){ if(MODE!=='live') return;
   renderLvPick();                                            // освежить точки/список в пикере (без трогания iframe)
   const list=lvServices().filter(s=>lvChosen.has(s.name));
   const sig=list.map(s=>s.name).join('|');
-  if(sig!==lvMemSig){ renderWall(); }                        // изменился состав стены → пересобрать
+  if(sig!==lvMemSig){ lvReconcile(); }                       // состав стены изменился → инкрементально (iframe существующих не трогаем)
   else list.forEach(s=>{ const fr=document.querySelector(`#live .lvframe[data-name="${CSS.escape(s.name)}"]`); if(fr){ const p=fr.parentNode.querySelector('.pulse'); if(p) p.className='pulse '+(s.up?'up':'down'); } }); }
 
 /* язык */
@@ -1089,7 +1119,7 @@ addEventListener('pointermove',e=>{ _e=e; if(_raf)return; _raf=requestAnimationF
     c.style.setProperty('--mx',(mx*100).toFixed(1)+'%'); c.style.setProperty('--my',(my*100).toFixed(1)+'%');
     c.style.setProperty('--ry',((mx-.5)*6.5).toFixed(2)+'deg'); c.style.setProperty('--rx',((.5-my)*6.5).toFixed(2)+'deg'); } }); },{passive:true});
 
-if(!IS_LOCAL){ const pb=$('phonebtn'); if(pb) pb.style.display='none'; }   // с телефона доступ настраивать незачем
+if(!IS_LOCAL){ const pb=$('phonebtn'); if(pb) pb.style.display='none'; const mbn=$('modebtn'); if(mbn) mbn.style.display='none'; MODE='list'; }   // с телефона: доступ настраивать незачем, а Live view не работает (localhost = сам телефон)
 /* Live view — обработчики контролов */
 $('lvcols')&&$('lvcols').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
   [...$('lvcols').children].forEach(x=>x.classList.toggle('on',x===b));
