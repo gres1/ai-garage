@@ -1,4 +1,6 @@
-# 🎛 AI Garage
+<p align="center"><img src="public/logo.png" width="96" alt="AI Garage" /></p>
+
+# AI Garage
 
 **Mission control for your localhost — services, ports, tunnels, and the processes your AI agents left running.** No terminal: see everything that's up, kill a stuck port or a zombie process in one click, expose a service to your phone with a public link, keep services alive — on macOS (and VPS).
 
