@@ -9,11 +9,13 @@
 [![node >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](#requirements)
 [![zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#how-it-works)
 
+## ▶︎ Run it — one command
+
 ```bash
 npx ai-garage
 ```
 
-Then open **http://localhost:7777**. That's it — no install, no config, no dependencies.
+Then open **http://localhost:7777** in your browser. That's it — no install, no config, no dependencies.
 
 <!-- TODO: add docs/demo.gif here -->
 
