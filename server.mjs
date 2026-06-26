@@ -163,6 +163,7 @@ function discoverPorts() {
 // CPU/RAM + рабочая папка процессов одним махом (по списку pid). Папка → человеческое имя сервиса.
 function procInfo(pids) {
   return new Promise((resolve) => {
+    if (process.platform === "win32") return resolve({});   // ps/lsof — только Unix; на Windows метрики не показываем
     const uniq = [...new Set(pids.filter((n) => Number.isInteger(n) && n > 0))];
     if (!uniq.length) return resolve({});
     const map = {};
