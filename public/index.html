@@ -244,6 +244,10 @@
     font-size:14px; font-family:inherit; outline:none; }
   .fbody input:focus{ border-color:var(--blue); box-shadow:0 0 0 4px rgba(33,94,97,.2); }
   .frow{ display:flex; gap:10px; } .frow>div{ flex:1; }
+  .hintpop{ position:fixed; z-index:70; max-width:300px; background:rgba(28,33,40,.97); color:#fff; padding:11px 14px;
+    border-radius:12px; font-size:12.5px; line-height:1.45; box-shadow:0 12px 34px rgba(0,0,0,.32); opacity:0;
+    transform:translateY(-4px); transition:opacity .18s, transform .18s; pointer-events:none; display:none; }
+  .hintpop.show{ opacity:1; transform:translateY(0); }
   .toast{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(10px);
     background:rgba(30,30,32,.95); color:#fff; padding:11px 18px; border-radius:12px; font-size:13px;
     opacity:0; transition:.25s; pointer-events:none; box-shadow:0 8px 30px rgba(0,0,0,.3); z-index:60; }
@@ -891,7 +895,18 @@ async function saveService(){
 /* Умная кнопка питания: одна Вкл/Выкл на любой сервис.
    Выкл: пока процесс жив — сперва запоминаем команду запуска (чтобы потом можно было включить), снимаем «держать включённым», затем стоп (по команде или просто освобождаем порт).
    Вкл: по команде; если её нет — пробуем угадать и сохранить; не вышло — дружелюбная форма. По умолчанию ставим «держать включённым». */
-async function togglePower(name){ const s=DATA.find(x=>x.name===name); if(!s) return; closeMenus(); toast('…');
+let _hintT=0;
+function hintAt(el, text){ if(!el) return toast(text);
+  clearTimeout(_hintT);
+  let h=document.getElementById('hintpop'); if(!h){ h=document.createElement('div'); h.id='hintpop'; h.className='hintpop'; document.body.appendChild(h); }
+  h.textContent=text; h.style.display='block'; h.classList.remove('show');
+  const r=el.getBoundingClientRect(), hw=h.offsetWidth, hh=h.offsetHeight;
+  let left=Math.max(8,Math.min(r.left+r.width/2-hw/2, innerWidth-hw-8));
+  let top=r.bottom+8; if(top+hh>innerHeight-8) top=r.top-hh-8;        // флип вверх если не влезает снизу
+  h.style.left=left+'px'; h.style.top=top+'px'; requestAnimationFrame(()=>h.classList.add('show'));
+  _hintT=setTimeout(()=>{ h.classList.remove('show'); }, 8000);      // держим 8с — успеть прочитать
+  setTimeout(()=>document.addEventListener('click', function cl(){ clearTimeout(_hintT); h.classList.remove('show'); document.removeEventListener('click',cl); }, {once:true}), 60); }
+async function togglePower(name,ev){ const s=DATA.find(x=>x.name===name); if(!s) return; const btn=ev&&(ev.currentTarget||ev.target); closeMenus(); toast('…');
   if(s.up){
     if(!s.startCmd && s.port){ const g=await fetch('/api/guess-cmd?port='+s.port).then(r=>r.json()).catch(()=>null); if(g&&g.start) await api('/api/service-setcmd',{name,startCmd:g.start,stopCmd:g.stop||''}); }
     if(s.keepAlive) await api('/api/keepalive',{name,enable:false});
@@ -902,7 +917,7 @@ async function togglePower(name){ const s=DATA.find(x=>x.name===name); if(!s) re
     if(s.startCmd) j=await api('/api/start',{name});
     else { const g = s.port ? await fetch('/api/guess-cmd?port='+s.port).then(r=>r.json()).catch(()=>null) : null;
       if(g&&g.start){ await api('/api/service-setcmd',{name,startCmd:g.start,stopCmd:g.stop||''}); j=await api('/api/start',{name}); }
-      else { toast(t('cantStart')); return; } }   // НЕ вылазит страшная форма — мягкая подсказка
+      else { hintAt(btn, t('cantStart')); return; } }   // мягкая подсказка у самой кнопки, держится 8с
     if(j&&j.ok) await api('/api/keepalive',{name,enable:true});   // по умолчанию держим включённым
     toast(j&&j.ok?'✅ '+t('turnOn'):'⛔️ '+((j&&j.error)||''));
   }
@@ -917,7 +932,7 @@ function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&ty
   const ctrls = bot
     ? (s.port&&s.url?`<div class="row" style="margin-top:4px"><a class="btn btn-soft" href="${safeUrl(s.url)}" target="_blank" rel="noopener">${icon('eye')} health</a></div>`:'')
     : `<div class="row" style="margin-top:4px">
-        <button class="btn ${s.up?'btn-soft':'btn-primary'}" ${s.up?'style="--ic:var(--ic-stop)"':''} onclick="togglePower('${jsq(s.name)}')">${icon(s.up?'stop':'play')} ${s.up?t('turnOff'):t('turnOn')}</button>
+        <button class="btn ${s.up?'btn-soft':'btn-primary'}" ${s.up?'style="--ic:var(--ic-stop)"':''} onclick="togglePower('${jsq(s.name)}',event)">${icon(s.up?'stop':'play')} ${s.up?t('turnOff'):t('turnOn')}</button>
         <button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" title="${esc(t('kaTip'))}" onclick="toggleKeepAlive('${jsq(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${t('keepAlive')}</button>
         ${IS_LOCAL?`<button class="btn btn-accent" onclick="togglePreview('${jsq(s.name)}')">${icon('eye')} ${t('preview')}</button>`:''}
       </div>`;
@@ -946,7 +961,7 @@ function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&ty
     ${s.note?`<div class="note">${esc(s.note)}</div>`:'<div style="height:5px"></div>'}
     ${(Array.isArray(s.bots)&&s.bots.length)?`<div class="bots">${s.bots.map(b=>{const o=(b&&typeof b==='object')?b:{user:b};const u=String(o.user||'').replace(/^@/,'');const st=o.status==='on'?'on':(o.status==='off'?'off':'unk');return `<a class="botchip ${st}" href="https://t.me/${encodeURIComponent(u)}" target="_blank" rel="noopener" title="${esc(o.name||'')}${o.tier==='advanced'?' · голос/реалтайм':''}"><span class="bdot"></span>@${esc(u)}${o.tier==='advanced'?` ${icon('zap')}`:''}</a>`;}).join('')}</div>`:''}
     ${urls}
-    ${(s.up&&metricsStr(s))?`<div class="pid" style="margin:-2px 0 8px;display:flex;align-items:center;gap:5px">${icon('cpu')} ${metricsStr(s)}</div>`:''}
+    ${(s.up&&metricsStr(s))?`<div class="pid" style="margin:-2px 0 8px;font-variant-numeric:tabular-nums">${metricsStr(s)}</div>`:''}
     ${ctrls}<div class="prevwrap" data-prev="${esc(s.name)}"></div></div>`; }
 
 const catColor=c=>({system:'#8a8a8e',db:'#e8503a',app:'#0a84ff',dev:'#30b14a',agent:'#a06bff',unknown:'#8a8a8e',
@@ -1008,7 +1023,7 @@ function catMenu(d){ return `<div class="menu catmenu" data-menu="cat:${d.port}"
       <div class="menucap">${t('changeCat')}</div>
       ${CATS.map(c=>`<button onclick="setCat('${jsq(d.command)}',${d.port},'${c}')">${icon(catIcon(c))} ${t('cat_'+c)}</button>`).join('')}
       <button onclick="setCat('${jsq(d.command)}',${d.port},'auto')">${icon('restart')} ${t('catAuto')}</button></div>`; }
-function metricsStr(o){ const p=[]; if(o.cpu!=null) p.push((o.cpu).toFixed(o.cpu<10?1:0)+'% CPU'); if(o.rss!=null) p.push(Math.round(o.rss/1024)+' MB'); return p.join(' · '); }
+function metricsStr(o){ const p=[]; if(o.rss!=null) p.push(Math.round(o.rss/1024)+' MB'); if(o.cpu!=null&&o.cpu>=1) p.push(Math.round(o.cpu)+'% CPU'); return p.join(' · '); }
 function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const mk='disc'+d.port; const proj=(d.proj&&d.proj!==d.command)?d.proj:null;
   return `<div class="card disc${unsafe?' guarded':''}">
     <div class="top"><span class="pulse up"></span><span class="cmd">${esc(proj||d.command)}</span>
