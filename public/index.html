@@ -946,6 +946,7 @@ function card(s){ const bot=isBot(s); const cls=bot?((s.bots||[]).some(b=>(b&&ty
     ${s.note?`<div class="note">${esc(s.note)}</div>`:'<div style="height:5px"></div>'}
     ${(Array.isArray(s.bots)&&s.bots.length)?`<div class="bots">${s.bots.map(b=>{const o=(b&&typeof b==='object')?b:{user:b};const u=String(o.user||'').replace(/^@/,'');const st=o.status==='on'?'on':(o.status==='off'?'off':'unk');return `<a class="botchip ${st}" href="https://t.me/${encodeURIComponent(u)}" target="_blank" rel="noopener" title="${esc(o.name||'')}${o.tier==='advanced'?' · голос/реалтайм':''}"><span class="bdot"></span>@${esc(u)}${o.tier==='advanced'?` ${icon('zap')}`:''}</a>`;}).join('')}</div>`:''}
     ${urls}
+    ${(s.up&&metricsStr(s))?`<div class="pid" style="margin:-2px 0 8px;display:flex;align-items:center;gap:5px">${icon('cpu')} ${metricsStr(s)}</div>`:''}
     ${ctrls}<div class="prevwrap" data-prev="${esc(s.name)}"></div></div>`; }
 
 const catColor=c=>({system:'#8a8a8e',db:'#e8503a',app:'#0a84ff',dev:'#30b14a',agent:'#a06bff',unknown:'#8a8a8e',
@@ -1007,12 +1008,13 @@ function catMenu(d){ return `<div class="menu catmenu" data-menu="cat:${d.port}"
       <div class="menucap">${t('changeCat')}</div>
       ${CATS.map(c=>`<button onclick="setCat('${jsq(d.command)}',${d.port},'${c}')">${icon(catIcon(c))} ${t('cat_'+c)}</button>`).join('')}
       <button onclick="setCat('${jsq(d.command)}',${d.port},'auto')">${icon('restart')} ${t('catAuto')}</button></div>`; }
-function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const mk='disc'+d.port;
+function metricsStr(o){ const p=[]; if(o.cpu!=null) p.push((o.cpu).toFixed(o.cpu<10?1:0)+'% CPU'); if(o.rss!=null) p.push(Math.round(o.rss/1024)+' MB'); return p.join(' · '); }
+function dcard(d){ const col=catColor(d.cat); const unsafe=d.safe===false; const mk='disc'+d.port; const proj=(d.proj&&d.proj!==d.command)?d.proj:null;
   return `<div class="card disc${unsafe?' guarded':''}">
-    <div class="top"><span class="pulse up"></span><span class="cmd">${esc(d.command)}</span>
+    <div class="top"><span class="pulse up"></span><span class="cmd">${esc(proj||d.command)}</span>
       <span class="hostb">:${d.port}</span></div>
     <div style="margin:7px 0 3px"><button class="catb catbtn" style="--cat:${col};--cat-bg:color-mix(in srgb, ${col} 12%, #fff)" title="${esc(t('changeCat'))}" onclick="toggleMenu(event,'cat:${d.port}')"><span class="dot"></span>${icon(catIcon(d.cat))} ${t('cat_'+d.cat)}<span class="caret">▾</span></button>${unsafe?`<span class="guard">${icon('shield')} ${t('protected')}</span>`:''}</div>
-    <div class="pid" style="margin:2px 0 10px">PID ${d.pid} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
+    <div class="pid" style="margin:2px 0 10px">${proj?esc(d.command)+' · ':''}PID ${d.pid}${metricsStr(d)?' · '+metricsStr(d):''} · <a href="http://localhost:${d.port}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">localhost:${d.port}</a></div>
     <div class="row">
       <button class="btn btn-primary" title="${esc(t('saveHint'))}" onclick="saveDiscovered(${d.port},'${jsq(d.command)}')">${icon('plus')} ${t('saveBtn')}</button>
       <button class="btn btn-soft" onclick="askAI(${d.port})">${icon('help')} ${t('whatIs')}</button>
