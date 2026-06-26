@@ -160,6 +160,33 @@ function discoverPorts() {
   });
 }
 
+// CPU/RAM + рабочая папка процессов одним махом (по списку pid). Папка → человеческое имя сервиса.
+function procInfo(pids) {
+  return new Promise((resolve) => {
+    const uniq = [...new Set(pids.filter((n) => Number.isInteger(n) && n > 0))];
+    if (!uniq.length) return resolve({});
+    const map = {};
+    execFile("ps", ["-o", "pid=,%cpu=,%mem=,rss=", "-p", uniq.join(",")], (e, out) => {
+      (out || "").trim().split("\n").forEach((line) => {
+        const m = line.trim().split(/\s+/);
+        if (m.length >= 4) map[+m[0]] = { cpu: +m[1], mem: +m[2], rss: +m[3] };   // rss в KB
+      });
+      // cwd всех pid одним lsof (-Fpn: строки p<pid> и n<path>) → имя папки проекта
+      execFile("lsof", ["-a", "-d", "cwd", "-Fpn", "-p", uniq.join(",")], (e2, o2) => {
+        let cur = null;
+        (o2 || "").split("\n").forEach((l) => {
+          if (l[0] === "p") cur = +l.slice(1);
+          else if (l[0] === "n" && cur) {
+            const dir = l.slice(1), name = dir.split("/").filter(Boolean).pop();
+            if (name && name !== cur + "") (map[cur] = map[cur] || {}).project = name;
+          }
+        });
+        resolve(map);
+      });
+    });
+  });
+}
+
 // Распознавание процессов: чтобы юзер понимал что это и не убил нужное
 const KNOWN = {
   system: ["controlce", "rapportd", "mdnsrespo", "launchd", "sharingd", "spotlight", "syspolicy", "nsurlsess", "apsd", "cfprefsd", "secd", "trustd", "remoted", "coreaudio", "bluetoothd"],
@@ -436,6 +463,8 @@ const server = http.createServer(async (req, res) => {
     const services = await loadServices();
     const all = await discoverPorts();                       // один lsof на весь запрос
     const listening = new Set(all.map((d) => d.port));
+    const byPort = new Map(all.map((d) => [d.port, d]));
+    const pinfo = await procInfo(all.map((d) => d.pid));     // CPU/RAM + имя папки по pid
     const tun = await loadTun();                             // супервизор туннелей — на таймере (не в каждом статусе), чтобы не молотить
     const tunAlive = await aliveTunnelPorts();
     const kaSet = await loadKA();
@@ -451,13 +480,15 @@ const server = http.createServer(async (req, res) => {
         kind: s.kind || null,
         bots: Array.isArray(s.bots) ? s.bots : null,
         agent: s.agent || null,
+        ...(() => { const pi = pinfo[byPort.get(toPort(s.port))?.pid] || {}; return { cpu: pi.cpu ?? null, mem: pi.mem ?? null, rss: pi.rss ?? null }; })(),
       };
     }));
     const registeredPorts = new Set(services.map((s) => s.port).filter(Boolean));
     const catOverrides = await loadCatOverrides();
     const discovered = all.filter((d) => !registeredPorts.has(d.port) && d.port !== PORT)
       .map((d) => { const ti = tunnelInfoFrom(tun, tunAlive, d.port); const base = classifyProcess(d.command, d.port);
-        return { ...d, ...applyCatOverride(d, base, catOverrides), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
+        const pi = pinfo[d.pid] || {};
+        return { ...d, proj: pi.project || null, cpu: pi.cpu ?? null, mem: pi.mem ?? null, rss: pi.rss ?? null, ...applyCatOverride(d, base, catOverrides), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
     return sendJson(res, 200, { services: rows, discovered, platform: process.platform, device: DEVICE, ts: Date.now(), authOn: !!cfg.token,
       selfTunnel: (tunnelInfoFrom(tun, tunAlive, PORT) || {}).url || null,
       access: cfg.access || "off", tsIp: TS_IP, lanUrl: BIND_HOST !== "127.0.0.1" ? `http://${BIND_HOST}:${PORT}` : null });
