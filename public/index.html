@@ -421,6 +421,20 @@
     </div>
   </div>
 
+  <!-- универсальная мини-модалка (замена prompt/confirm) -->
+  <div class="modal" id="uiModal" onclick="if(event.target===this)uiClose(null)">
+    <div class="mbox form" style="width:min(420px,95vw)">
+      <div class="mbar"><span class="t" id="ui-title"></span></div>
+      <div class="fbody">
+        <input id="ui-input" placeholder="" />
+        <div class="row" style="justify-content:flex-end;margin-top:2px">
+          <button class="btn btn-soft" onclick="uiClose(null)" data-i="cancel">Отмена</button>
+          <button class="btn btn-primary" id="ui-ok">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- модалка «Управлять отсюда» -->
   <div class="modal" id="manageModal" onclick="if(event.target===this)closeManage()">
     <div class="mbox form">
@@ -639,9 +653,21 @@ const copy=v=>navigator.clipboard.writeText(v).then(()=>toast(t('copied')+': '+v
 function token(){ return localStorage.getItem('lc-token')||''; }
 async function api(path,body){
   const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','x-control-token':token()},body:JSON.stringify(body||{})});
-  if(r.status===401){ const tk=prompt(t('tokenPrompt')); if(tk){ localStorage.setItem('lc-token',tk); return api(path,body);} toast(t('needToken')); return {ok:false}; }
+  if(r.status===401){ const tk=await uiPrompt(t('tokenPrompt')); if(tk){ localStorage.setItem('lc-token',tk); return api(path,body);} toast(t('needToken')); return {ok:false}; }
   return r.json();
 }
+/* мини-модалки вместо нативных prompt/confirm — в десктоп-приложении (Tauri webview) нативные не работают */
+let _uiResolve=null;
+function uiClose(val){ const m=$('uiModal'); if(m) m.classList.remove('show'); const r=_uiResolve; _uiResolve=null; if(r) r(val); }
+function uiPrompt(title,opts){ opts=opts||{}; return new Promise(res=>{ _uiResolve=res;
+  $('ui-title').textContent=title||''; const inp=$('ui-input'); inp.style.display='block'; inp.value=opts.value||''; inp.placeholder=opts.placeholder||'';
+  $('ui-ok').onclick=()=>uiClose(inp.value);
+  $('uiModal').classList.add('show'); setTimeout(()=>{ inp.focus(); try{ inp.select(); }catch(_){} },30);
+  inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); uiClose(inp.value); } else if(e.key==='Escape') uiClose(null); }; }); }
+function uiConfirm(message){ return new Promise(res=>{ _uiResolve=res;
+  $('ui-title').textContent=message||''; const inp=$('ui-input'); inp.style.display='none';
+  $('ui-ok').onclick=()=>uiClose(true);
+  $('uiModal').classList.add('show'); }); }
 
 /* ── Доступ с телефона ── */
 /* токен из #token (пришёл по QR) → в localStorage, и сразу убрать из URL (на сервер/в логи не попадает) */
@@ -769,7 +795,7 @@ const SYS_PORTS={5432:'PostgreSQL',3306:'MySQL',27017:'MongoDB',6379:'Redis',598
 async function killPort(port){
   const danger = port<1024 ? t('sysPort') : (SYS_PORTS[port]||'');
   const msg = danger ? t('killDanger').replace('{p}',port).replace('{d}',danger) : t('killSafe').replace('{p}',port);
-  if(!confirm(msg)) { closeMenus(); return; }
+  if(!await uiConfirm(msg)) { closeMenus(); return; }
   const j=await api('/api/kill-port',{port}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); setTimeout(load,800); }
 async function tunnelStart(port,provider){ toast(t('tunnelUp')); const j=await api('/api/tunnel-start',{port,provider:provider||'cloudflared'}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; setTimeout(load,1500); }
 function provSoon(){ toast(t('provSoonMsg')); }
@@ -784,11 +810,11 @@ function tunnelBtn(port,managed,url,err){ if(!port) return '';
       <button onclick="closeMenus();tunnelStart(${port},'cloudflared')">${icon('cloud')} ${t('provCf')}</button>
       <button onclick="closeMenus();provSoon()">${icon('link')} ${t('provNgrok')}</button>
       <button onclick="closeMenus();provSoon()">${icon('monitor')} ${t('provDomain')}</button></div></span>`; }
-async function delService(name){ if(!confirm(t('confirmDel')))return; const j=await api('/api/service-remove',{name}); toast(j.ok?'✅':'⛔️'); lastSig=''; load(); }
-async function renameService(name){ const nn=prompt(t('renamePrompt'),name); if(nn===null)return; const v=nn.trim(); if(!v||v===name){closeMenus();return;} const j=await api('/api/service-rename',{name,newName:v}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); lastSig=''; load(); }
+async function delService(name){ if(!await uiConfirm(t('confirmDel')))return; const j=await api('/api/service-remove',{name}); toast(j.ok?'✅':'⛔️'); lastSig=''; load(); }
+async function renameService(name){ const nn=await uiPrompt(t('renamePrompt'),{value:name}); if(nn===null)return; const v=nn.trim(); if(!v||v===name){closeMenus();return;} const j=await api('/api/service-rename',{name,newName:v}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); lastSig=''; load(); }
 async function setHost(name,host){ const j=await api('/api/service-sethost',{name,host}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); closeMenus(); lastSig=''; load(); }
-async function setHostPrompt(name){ const cur=(DATA.find(x=>x.name===name)||{}).host||''; const h=prompt(t('changeHost'),cur); closeMenus(); if(h===null)return; const v=h.trim(); if(!v)return; setHost(name,v); }
-async function setAgent(name){ const cur=(DATA.find(x=>x.name===name)||{}).agent||''; const a=prompt(t('agentPrompt'),cur); if(a===null)return; const j=await api('/api/service-setagent',{name,agent:a.trim()}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
+async function setHostPrompt(name){ const cur=(DATA.find(x=>x.name===name)||{}).host||''; closeMenus(); const h=await uiPrompt(t('changeHost'),{value:cur}); if(h===null)return; const v=h.trim(); if(!v)return; setHost(name,v); }
+async function setAgent(name){ const cur=(DATA.find(x=>x.name===name)||{}).agent||''; const a=await uiPrompt(t('agentPrompt'),{value:cur}); if(a===null)return; const j=await api('/api/service-setagent',{name,agent:a.trim()}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastSig=''; load(); }
 async function setCat(command,port,cat){ closeMenus(); const j=await api('/api/cat-override',{command,port,cat}); toast(j.ok?'✅ '+(j.note||''):'⛔️ '+(j.error||'')); lastDiscSig=''; load(); }
 
 /* меню на карточке. ВАЖНО: .card имеет transform + preserve-3d, а .grid — perspective,
