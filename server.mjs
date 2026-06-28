@@ -493,7 +493,7 @@ const server = http.createServer(async (req, res) => {
         control: !!s.control,
         kind: s.kind || null,
         bots: Array.isArray(s.bots) ? s.bots : null,
-        agent: s.agent || null, health,
+        agent: s.agent || null, health, logPath: s.logPath || null,
         ...(() => { const pi = pinfo[byPort.get(toPort(s.port))?.pid] || {}; return { cpu: pi.cpu ?? null, mem: pi.mem ?? null, rss: pi.rss ?? null }; })(),
       };
     }));
@@ -518,6 +518,26 @@ const server = http.createServer(async (req, res) => {
     const p = toPort(url.searchParams.get("port"));
     if (!p) return sendJson(res, 400, { ok: false });
     return sendJson(res, 200, await guessCmd(p));
+  }
+
+  // Последние строки лог-файла сервиса (для кнопки «Логи» — без терминала)
+  if (req.method === "GET" && url.pathname === "/api/logs") {
+    const name = url.searchParams.get("name");
+    const services = await loadServices();
+    const svc = services.find((s) => s.name === name);
+    if (!svc || !svc.logPath) return sendJson(res, 404, { ok: false, error: "у сервиса нет лог-файла" });
+    try {
+      const data = await readFile(expandHome(svc.logPath), "utf8");
+      const tail = data.split("\n").slice(-120).join("\n").slice(-20000);
+      return sendJson(res, 200, { ok: true, log: tail || "(лог пуст)" });
+    } catch (e) { return sendJson(res, 200, { ok: false, error: "лог недоступен: " + e.message }); }
+  }
+
+  // Перелогин Claude CLI: открываем Terminal с командой `claude login` (фиксированная, не из ввода).
+  if (req.method === "POST" && url.pathname === "/api/claude-relogin") {
+    if (process.platform !== "darwin") return sendJson(res, 200, { ok: false, error: "только macOS" });
+    exec(`osascript -e 'tell application "Terminal" to activate' -e 'tell application "Terminal" to do script "claude login"'`, () => {});
+    return sendJson(res, 200, { ok: true, note: "Терминал открыт — войди в Claude" });
   }
 
   if (req.method === "POST" && ["/api/start", "/api/stop", "/api/restart"].includes(url.pathname)) {
