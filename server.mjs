@@ -363,7 +363,7 @@ function botHealth(port) {
   return new Promise((resolve) => {
     const req = http.get({ host: "127.0.0.1", port, path: "/health", timeout: 1500 }, (r) => {
       let body = ""; r.on("data", (c) => (body += c));
-      r.on("end", () => { try { const j = JSON.parse(body); resolve({ ok: true, uptime: j.uptime_sec ?? null, count: j.bots_count ?? null, names: j.bot_names || null }); } catch { resolve({ ok: r.statusCode < 400 }); } });
+      r.on("end", () => { try { const j = JSON.parse(body); resolve({ ok: true, uptime: j.uptime_sec ?? null, count: j.bots_count ?? null, names: j.bot_names || null, claude: j.claude || null }); } catch { resolve({ ok: r.statusCode < 400 }); } });
     });
     req.on("error", () => resolve(null));
     req.on("timeout", () => { req.destroy(); resolve(null); });
