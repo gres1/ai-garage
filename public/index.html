@@ -915,7 +915,7 @@ async function togglePower(name,ev){ const s=DATA.find(x=>x.name===name); if(!s)
     toast(j.ok?'✅ '+t('turnOff'):'⛔️ '+(j.error||''));
   } else {
     let j;
-    if(s.startCmd) j=await api('/api/start',{name});
+    if(s.hasControls) j=await api('/api/start',{name});   // у сервиса уже есть команда (на сервере) — стартуем ею
     else { const g = s.port ? await fetch('/api/guess-cmd?port='+s.port).then(r=>r.json()).catch(()=>null) : null;
       if(g&&g.start){ await api('/api/service-setcmd',{name,startCmd:g.start,stopCmd:g.stop||''}); j=await api('/api/start',{name}); }
       else { hintAt(btn, t('cantStart')); return; } }   // мягкая подсказка у самой кнопки, держится 8с
@@ -931,7 +931,7 @@ function card(s){ const bot=isBot(s); const cls=bot?(s.health?(s.health.ok?'up':
   const ka=`<button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" title="${esc(t('kaTip'))}" onclick="toggleKeepAlive('${jsq(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>`;
   // Единый набор для всех не-ботов: одна Вкл/Выкл + «Держать включённым» + Preview. Остальное — в меню ⋮.
   const ctrls = bot
-    ? `<div class="row" style="margin-top:4px;align-items:center;gap:8px">${s.health?`<span class="state ${s.health.ok?'up':'down'}">${s.health.ok?t('botLive'):t('botDown')}${s.health.uptime?' · '+fmtUptime(s.health.uptime):''}</span>`:''}${(s.health&&s.health.claude&&s.health.claude.auth_failed)?`<span class="state down" title="${esc(t('claudeAuthTip'))}">${icon('warn')} ${t('claudeAuth')}</span>`:''}${(s.port&&s.url)?`<a class="btn btn-soft" href="${safeUrl(s.url)}" target="_blank" rel="noopener">${icon('eye')} health</a>`:''}</div>`
+    ? `<div class="row" style="margin-top:4px;align-items:center;gap:8px">${s.health?`<span class="state ${s.health.ok?'up':'down'}">${s.health.ok?t('botLive'):t('botDown')}${s.health.uptime?' · '+fmtUptime(s.health.uptime):''}</span>`:''}${(s.health&&s.health.claude&&s.health.claude.auth_failed)?`<span class="state down" title="${esc(t('claudeAuthTip'))}">${icon('warn')} ${t('claudeAuth')}</span>`:''}</div>`
     : `<div class="row" style="margin-top:4px">
         <button class="btn ${s.up?'btn-soft':'btn-primary'}" ${s.up?'style="--ic:var(--ic-stop)"':''} onclick="togglePower('${jsq(s.name)}',event)">${icon(s.up?'stop':'play')} ${s.up?t('turnOff'):t('turnOn')}</button>
         <button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" title="${esc(t('kaTip'))}" onclick="toggleKeepAlive('${jsq(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${t('keepAlive')}</button>
