@@ -358,6 +358,18 @@ function checkEmbeddable(port) {
 }
 
 // Угадать команды старта/стопа по живому процессу — чтобы не заставлять юзера писать их с нуля.
+// Живой статус бота: читаем его /health (многие боты его отдают). null — если не отвечает (упал).
+function botHealth(port) {
+  return new Promise((resolve) => {
+    const req = http.get({ host: "127.0.0.1", port, path: "/health", timeout: 1500 }, (r) => {
+      let body = ""; r.on("data", (c) => (body += c));
+      r.on("end", () => { try { const j = JSON.parse(body); resolve({ ok: true, uptime: j.uptime_sec ?? null, count: j.bots_count ?? null, names: j.bot_names || null }); } catch { resolve({ ok: r.statusCode < 400 }); } });
+    });
+    req.on("error", () => resolve(null));
+    req.on("timeout", () => { req.destroy(); resolve(null); });
+  });
+}
+
 function guessCmd(port) {
   return new Promise((resolve) => {
     execFile("lsof", ["-ti", `tcp:${port}`, "-sTCP:LISTEN"], (e, out) => {
@@ -471,6 +483,7 @@ const server = http.createServer(async (req, res) => {
     const kaSet = await loadKA();
     const rows = await Promise.all(services.map(async (s) => {
       const ti = tunnelInfoFrom(tun, tunAlive, s.port);
+      const health = (s.kind === "bot" && s.port && listening.has(toPort(s.port))) ? await botHealth(s.port) : null;
       return {
         name: s.name, type: s.type, port: s.port, url: s.url, note: s.note || "", host: s.host || DEVICE,
         up: !!s.port && listening.has(toPort(s.port)), tunnel: ti?.url || await tunnelUrl(s),
@@ -480,7 +493,7 @@ const server = http.createServer(async (req, res) => {
         control: !!s.control,
         kind: s.kind || null,
         bots: Array.isArray(s.bots) ? s.bots : null,
-        agent: s.agent || null,
+        agent: s.agent || null, health,
         ...(() => { const pi = pinfo[byPort.get(toPort(s.port))?.pid] || {}; return { cpu: pi.cpu ?? null, mem: pi.mem ?? null, rss: pi.rss ?? null }; })(),
       };
     }));
