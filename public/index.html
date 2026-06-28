@@ -934,7 +934,6 @@ function card(s){ const bot=isBot(s); const cls=bot?(s.health?(s.health.ok?'up':
     ? `<div class="row" style="margin-top:4px;align-items:center;gap:8px">${s.health?`<span class="state ${s.health.ok?'up':'down'}">${s.health.ok?t('botLive'):t('botDown')}${s.health.uptime?' · '+fmtUptime(s.health.uptime):''}</span>`:''}${(s.health&&s.health.claude&&s.health.claude.auth_failed)?`<span class="state down" title="${esc(t('claudeAuthTip'))}">${icon('warn')} ${t('claudeAuth')}</span>`:''}</div>`
     : `<div class="row" style="margin-top:4px">
         <button class="btn ${s.up?'btn-soft':'btn-primary'}" ${s.up?'style="--ic:var(--ic-stop)"':''} onclick="togglePower('${jsq(s.name)}',event)">${icon(s.up?'stop':'play')} ${s.up?t('turnOff'):t('turnOn')}</button>
-        <button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" title="${esc(t('kaTip'))}" onclick="toggleKeepAlive('${jsq(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${t('keepAlive')}</button>
         ${IS_LOCAL?`<button class="btn btn-accent" onclick="togglePreview('${jsq(s.name)}')">${icon('eye')} ${t('preview')}</button>`:''}
       </div>`;
   const tunnel=s.tunnel?`<div class="urlrow"><span class="tag">${icon('phone')} ${t('phone')}</span>
@@ -954,6 +953,7 @@ function card(s){ const bot=isBot(s); const cls=bot?(s.health?(s.health.ok?'up':
       <button onclick="setHostPrompt('${jsq(s.name)}')">${icon('pencil')} ${t('other')}</button></div>
     <div class="menu" data-menu="${esc(s.name)}">
       ${s.port?`<button onclick="closeMenus();act('${jsq(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>`:''}
+      ${(s.port&&!s.control&&!bot)?`<button onclick="closeMenus();toggleKeepAlive('${jsq(s.name)}',${!s.keepAlive})" title="${esc(t('kaTip'))}">${icon('keepalive')} ${s.keepAlive?'✓ '+t('kaOn'):t('keepAlive')}</button>`:''}
       ${s.port?(s.tunnelManaged?`<button onclick="closeMenus();tunnelStop(${s.port})">${icon('x')} ${t('tunnelStop')}</button>`:`<button onclick="closeMenus();tunnelStart(${s.port},'cloudflared')">${icon('link')} ${t('tunnelStart')}</button>`):''}
       ${(s.port&&!s.control)?`<button onclick="killPort(${s.port})">${icon('zap')} ${t('freePort')} :${s.port}</button>`:''}
       ${(!s.startCmd&&s.port&&!s.control)?`<button onclick="closeMenus();openManage('${jsq(s.name)}')">${icon('wrench')} ${t('configureRun')}</button>`:''}
