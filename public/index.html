@@ -1162,20 +1162,7 @@ const collapsed=new Set(JSON.parse(localStorage.getItem('lc-collapsed')||'[]'));
 function toggleSection(key){ collapsed.has(key)?collapsed.delete(key):collapsed.add(key);
   localStorage.setItem('lc-collapsed',JSON.stringify([...collapsed]));
   if(key==='disc') renderDiscovered(_lastDisc); else { lastSig=''; render(); } }
-// Закреплённая сверху карточка статуса Claude CLI — самый частый источник проблем у ботов.
-function claudeStatusCard(){
-  const withClaude=DATA.filter(s=>isBot(s)&&s.health&&s.health.claude);
-  if(!withClaude.length) return '';
-  const anyFail=withClaude.some(s=>s.health.claude.auth_failed);
-  const allOk=withClaude.every(s=>s.health.claude.ok && !s.health.claude.auth_failed);
-  const cls=anyFail?'down':(allOk?'up':'');
-  const label=anyFail?t('claudeDown'):(allOk?t('claudeOk'):t('claudeUnknown'));
-  return `<div class="card claudecard ${cls}">
-    <div class="top"><span class="pulse ${cls}"></span><span class="name">${icon('bot')} ${t('claudeStatus')}</span><span style="flex:1"></span>
-      <span class="state ${cls}">${t('claudeMac')}: ${label}</span></div>
-    ${anyFail?`<div class="row" style="margin-top:8px"><button class="btn btn-primary" onclick="claudeRelogin()">${icon('bot')} ${t('reloginClaude')} (Mac)</button></div>`:''}</div>`;
-}
-function render(){ closeMenus(); const vis=visible(); let html=claudeStatusCard();
+function render(){ closeMenus(); const vis=visible(); let html='';
   for(const g of SECTIONS){ const items=vis.filter(g.test); if(!items.length)continue;
     const col=collapsed.has(g.key);
     html+=`<div class="section${col?' collapsed':''}" onclick="toggleSection('${g.key}')"><span class="seccaret">${icon('chevron')}</span>${icon(g.ic)} ${g.label()} <span class="secn">${items.length}</span></div>`
