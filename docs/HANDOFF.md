@@ -22,10 +22,20 @@
 ## ✋ TODO пользователя (Az делает сам — завести в Linear, когда MCP вернётся)
 1. **Apple Developer аккаунт** ($99/год, developer.apple.com) — чтобы подписать десктоп: иначе при установке Mac пугает «приложение от неизвестного разработчика». После оплаты — прислать, агент пропишет подпись.
 2. **Запушить код в GitHub** (одна команда, агента песочница не пускает): открыть Терминал →
-   `cd ~/Documents/App/localhost-control && git push --force origin feat/desktop-tauri-phone-access:main`
+   `cd ~/Documents/App/localhost-control && git push origin HEAD:main` (на 2026-06-30 это fast-forward, force НЕ нужен; история уже чиста от Claude — см. Сделано 2026-06-30).
 3. **npm publish** новой версии — когда добьём UX: `cd ~/Documents/App/localhost-control && npm publish` (сначала агент поднимет version).
 4. **composio login** (для Higgsfield-видео на лендинг): `composio upgrade && composio login`.
 5. **VPS always-online** (опц.) — решить, нужна ли копия панели на VPS 24/7; потребует дать агенту SSH-доступ (отдельно объяснить по шагам).
+
+## Сделано (2026-06-30)
+- **Карточка бота — полировка (Mac, #6,7,8,11,12):** красная карточка при `claude.auth_failed` (даже при HTTP 200); кнопка **«Пинг-тест»** (реальный sendMessage через Telegram Bot API, config-driven: `pingEnv`/`pingChatId` + `bots[].tokenKey` в services.json — БЕЗ хардкода в продукте); **live-логи** (попап авто-обновляется 1.5с); **macOS-уведомление** при переходе auth ok→fail (`notifyAuthFailIfNeeded`); закреплённая сверху **«Claude CLI»** карточка (`claudeStatusCard()`). Проверено playwright на статик-сервере. Коммит `789b474`. VPS-сторона (#9 re-deploy, #12 VPS-статус) — отложена (нужен SSH + фича «Подключения»).
+- **Личный конфиг:** в `~/.config/localhost-control/services.json` у Mac-бота прописаны `pingEnv=~/.mcp-servers/azz-bot/.env`, `pingChatId=5843091959` (из state-файлов бота; агентский 110110069 был неверный), `tokenKey` CHAT_BOT_TOKEN/VAULT_BOT_TOKEN.
+- **CI пофикшен** (`73d1c72`): причина exit 127 — в `desktop/` не ставились npm-зависимости; добавлен `npm install` + node 22. Windows может ещё потребовать правки имени sidecar `.exe` по логам нового прогона.
+- **guessCmd** (`ebbedae`): не выдаёт `open -a` для CLI-серверов на dev-портах (грабли ATLAS), реальную команду оборачивает в `nohup … &`.
+- **GitHub / Claude — ВЫЯСНЕНО:** поле «автор» и тела коммитов на ветке уже чисты (трейлеры `Co-Authored-By: Claude` были только в бэкап-рефах `refs/original/`). Реальный remote через API: контрибьютор только `gres1`. «claude» в боковой панели = устаревший кэш виджета GitHub. **Действие:** просто `git push origin HEAD:main` (fast-forward, force НЕ нужен) → кэш пересчитается.
+- **Higgsfield:** composio залогинен, но tool-API даёт 401 → нужен одноразовый `composio login` (пользователь). Демо-видео пользователь пишет через Recordy; Higgsfield — под лого-заставку/hero-фон (промпты в чате + заметке запуска).
+- **Obsidian:** план запуска сохранён — `Projects/localhost-control/Запуск и продвижение — AI Garage.md` (шот-лист GIF, демо-промпт, каналы Show HN/PH/Reddit/MCP-реестры), ссылка добавлена в `00 — ЧИТАТЬ`.
+- **Чтобы УВИДЕТЬ новую карточку:** `:7777` сейчас отдаёт старый бандл из `.app` (sidecar). Быстрый превью: выйти из AI Garage → `cd ~/Documents/App/localhost-control && node server.mjs` → открыть localhost:7777 (отдаёт живой public/index.html). Для постоянного — пересобрать десктоп (см. «Нюансы»).
 
 ## Сделано (последняя сессия, 2026-06-28)
 - **Бот-карточка = пульт агента (Mac, «Фаза 1»):** `azz-bot (Mac)` теперь type=local — кнопки **Вкл/Выкл/Рестарт** (launchctl bootstrap/bootout/kickstart), **«Логи»** (попап, `GET /api/logs?name=` тейлит `logPath`), **«Перелогинить Claude»** (`POST /api/claude-relogin` → `osascript` открывает Terminal с `claude login`; показывается когда Claude разлогинен). Живой статус из бота `/health` (uptime) + статус Claude.
