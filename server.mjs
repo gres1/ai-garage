@@ -2,6 +2,7 @@
 // Localhost Control — лёгкая панель управления локальными сервисами.
 // Без зависимостей: только встроенные модули Node. Слушает 127.0.0.1:7777.
 import http from "node:http";
+import https from "node:https";
 import { exec, execFile, spawn } from "node:child_process";
 import { readFile, writeFile, mkdir, unlink, stat, rename, readdir } from "node:fs/promises";
 import { openSync, readFileSync, existsSync } from "node:fs";
@@ -370,6 +371,41 @@ function botHealth(port) {
   });
 }
 
+// macOS-уведомление когда у бота отвалилась авторизация Claude (переход false→true) — заметно даже при закрытой панели.
+const _authFailNotified = new Map();
+function notifyAuthFailIfNeeded(name, health) {
+  if (process.platform !== "darwin") return;
+  const failed = !!(health && health.claude && health.claude.auth_failed);
+  const was = _authFailNotified.get(name) || false;
+  if (failed && !was) {
+    const msg = `${name}: Claude CLI разлогинен — нужен re-login`;
+    exec(`osascript -e 'display notification ${JSON.stringify(msg)} with title "AI Garage" sound name "Basso"'`, () => {});
+  }
+  _authFailNotified.set(name, failed);
+}
+
+// Прочитать одно значение KEY=... из .env-файла (для ping-теста бота). Без зависимостей.
+async function readEnvValue(path, key) {
+  try {
+    const data = await readFile(expandHome(path), "utf8");
+    const m = data.match(new RegExp("^" + key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*=\\s*(.+)$", "m"));
+    return m ? m[1].trim().replace(/^["']|["']$/g, "") : null;
+  } catch { return null; }
+}
+
+// Реальный тест «бот живой»: шлём ему сообщение через Telegram Bot API, ждём ответ 200/ok.
+function telegramPing(token, chatId) {
+  return new Promise((resolve) => {
+    const body = new URLSearchParams({ chat_id: String(chatId), text: "ping test ✓ (AI Garage)" }).toString();
+    const req = https.request({ host: "api.telegram.org", path: `/bot${token}/sendMessage`, method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Length": Buffer.byteLength(body) }, timeout: 10000 },
+      (r) => { let b = ""; r.on("data", (c) => (b += c)); r.on("end", () => { try { resolve({ ok: r.statusCode === 200 && JSON.parse(b).ok === true }); } catch { resolve({ ok: false, error: "bad response" }); } }); });
+    req.on("error", (e) => resolve({ ok: false, error: e.message }));
+    req.on("timeout", () => { req.destroy(); resolve({ ok: false, error: "timeout" }); });
+    req.end(body);
+  });
+}
+
 function guessCmd(port) {
   return new Promise((resolve) => {
     execFile("lsof", ["-ti", `tcp:${port}`, "-sTCP:LISTEN"], (e, out) => {
@@ -496,6 +532,7 @@ const server = http.createServer(async (req, res) => {
     const rows = await Promise.all(services.map(async (s) => {
       const ti = tunnelInfoFrom(tun, tunAlive, s.port);
       const health = (s.kind === "bot" && s.port && listening.has(toPort(s.port))) ? await botHealth(s.port) : null;
+      notifyAuthFailIfNeeded(s.name, health);
       return {
         name: s.name, type: s.type, port: s.port, url: s.url, note: s.note || "", host: s.host || DEVICE,
         up: !!s.port && listening.has(toPort(s.port)), tunnel: ti?.url || await tunnelUrl(s),
@@ -506,6 +543,7 @@ const server = http.createServer(async (req, res) => {
         kind: s.kind || null,
         bots: Array.isArray(s.bots) ? s.bots : null,
         agent: s.agent || null, health, logPath: s.logPath || null,
+        canPing: !!(s.pingEnv && s.pingChatId),
         ...(() => { const pi = pinfo[byPort.get(toPort(s.port))?.pid] || {}; return { cpu: pi.cpu ?? null, mem: pi.mem ?? null, rss: pi.rss ?? null }; })(),
       };
     }));
@@ -543,6 +581,26 @@ const server = http.createServer(async (req, res) => {
       const tail = data.split("\n").slice(-120).join("\n").slice(-20000);
       return sendJson(res, 200, { ok: true, log: tail || "(лог пуст)" });
     } catch (e) { return sendJson(res, 200, { ok: false, error: "лог недоступен: " + e.message }); }
+  }
+
+  // Ping-тест бота: реально шлём сообщение через Telegram Bot API и ждём ответ 200/ok.
+  // Конфиг — в services.json: pingEnv (путь к .env), pingChatId, bots[].tokenKey. Без хардкода в продукте.
+  if (req.method === "POST" && url.pathname === "/api/bot-ping") {
+    const { name, bot } = await readBody(req);
+    const services = await loadServices();
+    const svc = services.find((s) => s.name === name);
+    if (!svc || !svc.pingEnv || !svc.pingChatId) return sendJson(res, 200, { ok: false, error: "ping не настроен для этого бота" });
+    const bots = Array.isArray(svc.bots) ? svc.bots : [];
+    const targets = (bot != null && bots[bot]) ? [bots[bot]] : bots;
+    const results = [];
+    for (const b of targets) {
+      if (!b || !b.tokenKey) { results.push({ user: b?.user || "?", ok: false, error: "нет tokenKey" }); continue; }
+      const token = await readEnvValue(svc.pingEnv, b.tokenKey);
+      if (!token) { results.push({ user: b.user, ok: false, error: "нет токена" }); continue; }
+      const r = await telegramPing(token, svc.pingChatId);
+      results.push({ user: b.user, ok: r.ok, error: r.error || null });
+    }
+    return sendJson(res, 200, { ok: results.length > 0 && results.every((r) => r.ok), results });
   }
 
   // Перелогин Claude CLI: открываем Terminal с командой `claude login` (фиксированная, не из ввода).
