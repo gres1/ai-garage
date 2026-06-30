@@ -378,9 +378,21 @@ function guessCmd(port) {
       execFile("ps", ["-o", "command=", "-p", pid], (e2, cmd) => {
         let start = (cmd || "").trim();
         let stop = `lsof -ti:${port} | xargs kill`;
-        const m = start.match(/\/([^/]+)\.app\//);   // нативное .app → open/quit (понятнее, чем путь к бинарю)
-        if (m) { const app = m[1]; start = `open -a "${app}"`; stop = `osascript -e 'quit app "${app}"'`; }
-        resolve({ ok: true, start: start.slice(0, 500), stop });
+        // Нативное GUI-приложение запускают БЕЗ аргументов: один путь к бинарю внутри .app.
+        // Тогда open -a/quit понятнее пути к бинарю. НО CLI-сервер (python/node/…), даже если
+        // интерпретатор лежит внутри .app (python.org → Python.app/Contents/MacOS/Python server.py),
+        // имеет аргументы — схлопывать его в open -a НЕЛЬЗЯ: open поднимет интерпретатор, а не сервер на порту.
+        const m = start.match(/\/([^/]+)\.app\/Contents\/MacOS\/(.+)$/);
+        if (m && m[2].trim() === m[1]) {   // tail после MacOS/ == имя .app и нет аргументов → чистый GUI-запуск
+          const app = m[1]; start = `open -a "${app}"`; stop = `osascript -e 'quit app "${app}"'`;
+        } else {
+          // Реальная CLI-команда. Делаем фоновой, иначе панель убьёт сервер по 25с-таймауту runCmd.
+          start = start.slice(0, 500);
+          if (start && !/(^|\s)nohup\b/.test(start) && !/&\s*$/.test(start)) {
+            start = `nohup ${start} > /tmp/aig-${port}.log 2>&1 &`;
+          }
+        }
+        resolve({ ok: true, start: start.slice(0, 800), stop });
       });
     });
   });
