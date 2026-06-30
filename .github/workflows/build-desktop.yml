@@ -36,11 +36,15 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - uses: oven-sh/setup-bun@v2
 
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install desktop deps (@tauri-apps/cli)
+        working-directory: desktop
+        run: npm install
 
       - name: Build server sidecar (bun --compile)
         shell: bash
