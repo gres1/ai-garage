@@ -27,6 +27,13 @@
 4. **composio login** (для Higgsfield-видео на лендинг): `composio upgrade && composio login`.
 5. **VPS always-online** (опц.) — решить, нужна ли копия панели на VPS 24/7; потребует дать агенту SSH-доступ (отдельно объяснить по шагам).
 
+## Сделано (2026-07-05)
+- **Авто-запоминание команд (ключевая фича, generic для клиентов):** панель, увидев живой порт, тихо снимает его команду+cwd в `~/.config/localhost-control/commands.json` (`captureCmd` в /api/status, только для НОВЫХ портов). Дальше кнопка Вкл и keep-alive работают БЕЗ ручной настройки. `hasControls` учитывает запомненное; `resolveCmds(svc)` подставляет команду в start/stop/restart и в `ensureKeepAlive`/`keepAliveSet`. `guessCmd` отрефакторен на общую `guessCmdFromRaw`. Протестировано end-to-end (изолированный HOME). Коммит `fed3c3f`.
+- **MCP `register_service` + POST `/api/register`:** агент, спавня сервер, регистрирует его (name/port/command/cwd) → панель заводит карточку + пишет команду в commands.json → кнопка Вкл работает сразу, даже до первого запуска. Пояс+подтяжки к авто-запоминанию. Коммит `b78ba10`. Протестировано.
+- **Убрана всегда-висящая карточка «Claude CLI»** (по решению Az — было непонятно/«unknown»). Оставлены доработки ВНУТРИ карточки бота: красный при auth_failed, «Пинг-тест», live-логи. Коммит `62d11d6`.
+- **Версия → 0.2.0** (`e15f03f`). Раскатка: `git push origin HEAD:main` (GitHub+кэш claude) · `npm publish` · `git tag v0.2.0 && git push origin v0.2.0` (CI-сборки десктопа).
+- **:3030 = insight-landing** (другой агент завёл через pm2, production, `pm2 save`). Для ребута нужен `pm2 startup` (boot-хук). В панели — только показывать, keep-alive НЕ включать (иначе pm2 и панель дерутся).
+
 ## Сделано (2026-06-30)
 - **Карточка бота — полировка (Mac, #6,7,8,11,12):** красная карточка при `claude.auth_failed` (даже при HTTP 200); кнопка **«Пинг-тест»** (реальный sendMessage через Telegram Bot API, config-driven: `pingEnv`/`pingChatId` + `bots[].tokenKey` в services.json — БЕЗ хардкода в продукте); **live-логи** (попап авто-обновляется 1.5с); **macOS-уведомление** при переходе auth ok→fail (`notifyAuthFailIfNeeded`); закреплённая сверху **«Claude CLI»** карточка (`claudeStatusCard()`). Проверено playwright на статик-сервере. Коммит `789b474`. VPS-сторона (#9 re-deploy, #12 VPS-статус) — отложена (нужен SSH + фича «Подключения»).
 - **Личный конфиг:** в `~/.config/localhost-control/services.json` у Mac-бота прописаны `pingEnv=~/.mcp-servers/azz-bot/.env`, `pingChatId=5843091959` (из state-файлов бота; агентский 110110069 был неверный), `tokenKey` CHAT_BOT_TOKEN/VAULT_BOT_TOKEN.
