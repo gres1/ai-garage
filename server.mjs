@@ -10,9 +10,21 @@ import { createHash, timingSafeEqual, randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { homedir, hostname } from "node:os";
+import { connList, connCheck, composioConnect, connStatus } from "./conn.mjs";
+import { discover } from "./discover.mjs";
+
+// Connections-роуты раскрывают карту наличия/валидности кредов — за пределами loopback требуем токен (как мутации).
+function connAuthOk(req, res, cfg) {
+  const exposed = (cfg.access && cfg.access !== "off") || BIND_HOST !== "127.0.0.1";
+  if (!exposed || !cfg.token) return true;
+  const a = Buffer.from(String(req.headers["x-control-token"] || ""));
+  const b = Buffer.from(String(cfg.token));
+  if (a.length !== b.length || !timingSafeEqual(a, b)) { sendJson(res, 401, { ok: false, error: "нужен токен доступа" }); return false; }
+  return true;
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORT = 7777;
+const PORT = Number(process.env.AIGARAGE_PORT) || 7777;
 const CFG_DIR = join(homedir(), ".config", "localhost-control");
 // Имя этого устройства по ОС (дефолт для host, чтобы не было «Mac» у всех)
 const DEVICE = process.platform === "darwin" ? "Mac" : process.platform === "win32" ? "PC" : process.platform === "linux" ? "Linux" : (hostname() || "Local");
@@ -243,11 +255,53 @@ async function fileExists(p) { try { await stat(p); return true; } catch { retur
 const KA_STATE = join(CFG_DIR, "keepalive.json");
 async function loadKA() { try { return new Set(JSON.parse(await readFile(KA_STATE, "utf8"))); } catch { return new Set(); } }
 async function saveKA(set) { await mkdir(CFG_DIR, { recursive: true }); await writeFile(KA_STATE, JSON.stringify([...set], null, 2)); }
+
+// ── Авто-запомненные команды запуска ──
+// Панель, увидев ЖИВОЙ порт, тихо запоминает его команду+cwd (первый раз). Дальше кнопка Вкл работает
+// сама и keep-alive поднимает сервис после ребута — без ручной настройки (для пользователя и клиента).
+const CMDS_PATH = join(CFG_DIR, "commands.json");
+async function loadCmds() { try { return JSON.parse(await readFile(CMDS_PATH, "utf8")); } catch { return {}; } }
+async function saveCmds(m) { await mkdir(CFG_DIR, { recursive: true }); const tmp = CMDS_PATH + ".tmp"; await writeFile(tmp, JSON.stringify(m, null, 2)); await rename(tmp, CMDS_PATH); }
+// Из сырой команды процесса собрать фоновую start + stop (та же логика, что и в guessCmd).
+function guessCmdFromRaw(raw, port) {
+  let start = (raw || "").trim();
+  let stop = `lsof -ti:${port} | xargs kill`;
+  const m = start.match(/\/([^/]+)\.app\/Contents\/MacOS\/(.+)$/);
+  if (m && m[2].trim() === m[1]) {   // чистый GUI-запуск .app без аргументов → open/quit
+    const app = m[1]; return { start: `open -a "${app}"`, stop: `osascript -e 'quit app "${app}"'` };
+  }
+  start = start.slice(0, 500);       // CLI-сервер → в фон, иначе панель убьёт по 25с-таймауту
+  if (start && !/(^|\s)nohup\b/.test(start) && !/&\s*$/.test(start)) start = `nohup ${start} > /tmp/aig-${port}.log 2>&1 &`;
+  return { start: start.slice(0, 800), stop };
+}
+// Снять команду+cwd с живого процесса по pid (для авто-запоминания).
+function captureCmd(port, pid) {
+  return new Promise((resolve) => {
+    execFile("ps", ["-o", "command=", "-p", String(pid)], (e, cmd) => {
+      const raw = (cmd || "").trim(); if (!raw) return resolve(null);
+      execFile("lsof", ["-a", "-d", "cwd", "-Fn", "-p", String(pid)], (e2, o2) => {
+        const line = (o2 || "").split("\n").find((l) => l[0] === "n");
+        const cwd = line ? line.slice(1) : null;
+        const { start, stop } = guessCmdFromRaw(raw, port);
+        resolve(start ? { start, stop, cwd, seenAt: Date.now() } : null);
+      });
+    });
+  });
+}
+// Подставить сервису запомненную команду/cwd, если явных нет (мутирует копию svc).
+async function resolveCmds(svc) {
+  if ((!svc.startCmd || !svc.stopCmd || !svc.cwd) && svc.port) {
+    const c = (await loadCmds())[String(svc.port)];
+    if (c) { svc.startCmd = svc.startCmd || c.start; svc.stopCmd = svc.stopCmd || c.stop; if (!svc.cwd && c.cwd) svc.cwd = c.cwd; }
+  }
+  return svc;
+}
 async function removeKAPlist(name) {                          // снести старый (сломанный TCC) launchd-агент, если остался
   const path = kaPlistPath(name);
   if (await fileExists(path)) { await new Promise((r) => exec(`launchctl unload "${path}" 2>/dev/null; true`, () => r())); try { await unlink(path); } catch {} }
 }
 async function keepAliveSet(svc, enable) {
+  if (enable) await resolveCmds(svc);   // авто-запомненной команды достаточно, чтобы держать включённым
   if (enable && !svc.startCmd) return { ok: false, error: "у сервиса нет команды старта" };
   const ka = await loadKA();
   await removeKAPlist(svc.name);                              // миграция со старого механизма
@@ -262,7 +316,9 @@ async function ensureKeepAlive() {
     const services = await loadServices();
     const listening = new Set((await discoverPorts()).map((d) => d.port));
     for (const svc of services) {
-      if (!ka.has(svc.name) || !svc.startCmd) continue;
+      if (!ka.has(svc.name)) continue;
+      await resolveCmds(svc);                                  // поднять и по авто-запомненной команде (после ребута)
+      if (!svc.startCmd) continue;
       const p = toPort(svc.port);
       if (p && !listening.has(p)) await startAndVerify(svc).catch(() => {});
     }
@@ -412,23 +468,8 @@ function guessCmd(port) {
       const pid = (out || "").trim().split("\n")[0];
       if (!pid) return resolve({ ok: true, start: "", stop: "" });
       execFile("ps", ["-o", "command=", "-p", pid], (e2, cmd) => {
-        let start = (cmd || "").trim();
-        let stop = `lsof -ti:${port} | xargs kill`;
-        // Нативное GUI-приложение запускают БЕЗ аргументов: один путь к бинарю внутри .app.
-        // Тогда open -a/quit понятнее пути к бинарю. НО CLI-сервер (python/node/…), даже если
-        // интерпретатор лежит внутри .app (python.org → Python.app/Contents/MacOS/Python server.py),
-        // имеет аргументы — схлопывать его в open -a НЕЛЬЗЯ: open поднимет интерпретатор, а не сервер на порту.
-        const m = start.match(/\/([^/]+)\.app\/Contents\/MacOS\/(.+)$/);
-        if (m && m[2].trim() === m[1]) {   // tail после MacOS/ == имя .app и нет аргументов → чистый GUI-запуск
-          const app = m[1]; start = `open -a "${app}"`; stop = `osascript -e 'quit app "${app}"'`;
-        } else {
-          // Реальная CLI-команда. Делаем фоновой, иначе панель убьёт сервер по 25с-таймауту runCmd.
-          start = start.slice(0, 500);
-          if (start && !/(^|\s)nohup\b/.test(start) && !/&\s*$/.test(start)) {
-            start = `nohup ${start} > /tmp/aig-${port}.log 2>&1 &`;
-          }
-        }
-        resolve({ ok: true, start: start.slice(0, 800), stop });
+        const { start, stop } = guessCmdFromRaw((cmd || "").trim(), port);
+        resolve({ ok: true, start, stop });
       });
     });
   });
@@ -529,6 +570,11 @@ const server = http.createServer(async (req, res) => {
     const tun = await loadTun();                             // супервизор туннелей — на таймере (не в каждом статусе), чтобы не молотить
     const tunAlive = await aliveTunnelPorts();
     const kaSet = await loadKA();
+    // Авто-запоминание: увидели новый живой порт → тихо снимаем его команду+cwd (только для НОВЫХ портов, дёшево).
+    const cmds = await loadCmds(); let cmdsChanged = false;
+    for (const d of all) { const k = String(d.port);
+      if (!cmds[k] && d.pid && d.port !== PORT) { const cap = await captureCmd(d.port, d.pid); if (cap) { cmds[k] = cap; cmdsChanged = true; } } }
+    if (cmdsChanged) await saveCmds(cmds);
     const rows = await Promise.all(services.map(async (s) => {
       const ti = tunnelInfoFrom(tun, tunAlive, s.port);
       const health = (s.kind === "bot" && s.port && listening.has(toPort(s.port))) ? await botHealth(s.port) : null;
@@ -537,7 +583,8 @@ const server = http.createServer(async (req, res) => {
         name: s.name, type: s.type, port: s.port, url: s.url, note: s.note || "", host: s.host || DEVICE,
         up: !!s.port && listening.has(toPort(s.port)), tunnel: ti?.url || await tunnelUrl(s),
         tunnelManaged: !!ti, tunnelError: ti?.error || null,
-        hasControls: !!(s.startCmd || s.stopCmd),
+        hasControls: !!(s.startCmd || s.stopCmd || cmds[String(s.port)]),
+        autoCmd: !s.startCmd && !!cmds[String(s.port)],   // команда запомнена автоматически (не задана вручную)
         keepAlive: kaSet.has(s.name),
         control: !!s.control,
         kind: s.kind || null,
@@ -556,6 +603,29 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, { services: rows, discovered, platform: process.platform, device: DEVICE, ts: Date.now(), authOn: !!cfg.token,
       selfTunnel: (tunnelInfoFrom(tun, tunAlive, PORT) || {}).url || null,
       access: cfg.access || "off", tsIp: TS_IP, lanUrl: BIND_HOST !== "127.0.0.1" ? `http://${BIND_HOST}:${PORT}` : null });
+  }
+
+  // --- Connections module (внешние ключи / composio / MCP / боты) ---
+  if (req.method === "GET" && url.pathname === "/api/conn/list") {
+    if (!connAuthOk(req, res, cfg)) return;
+    return sendJson(res, 200, await connList());
+  }
+  if (req.method === "GET" && url.pathname === "/api/conn/check") {
+    if (!connAuthOk(req, res, cfg)) return;
+    return sendJson(res, 200, await connCheck());
+  }
+  if (req.method === "GET" && url.pathname === "/api/conn/access") {
+    if (!connAuthOk(req, res, cfg)) return;
+    return sendJson(res, 200, await discover());
+  }
+  if (req.method === "GET" && url.pathname === "/api/conn/status") {
+    if (!connAuthOk(req, res, cfg)) return;
+    return sendJson(res, 200, await connStatus(url.searchParams.get("id")));
+  }
+  if (req.method === "POST" && url.pathname === "/api/conn/composio-connect") {
+    if (!connAuthOk(req, res, cfg)) return;
+    const { auth_config_id, slug } = await readBody(req);
+    return sendJson(res, 200, await composioConnect(auth_config_id, slug));
   }
 
   if (req.method === "GET" && url.pathname === "/api/can-embed") {
@@ -615,6 +685,7 @@ const server = http.createServer(async (req, res) => {
     const services = await loadServices();
     const svc = services.find((s) => s.name === name);
     if (!svc) return sendJson(res, 404, { ok: false, error: "сервис не найден" });
+    await resolveCmds(svc);   // подставить авто-запомненную команду, если явной нет
     if (url.pathname === "/api/start") return sendJson(res, 200, await startAndVerify(svc));
     if (url.pathname === "/api/stop") return sendJson(res, 200, await runCmd(svc, "stop"));
     await runCmd(svc, "stop");
@@ -809,6 +880,10 @@ const server = http.createServer(async (req, res) => {
     if (!cfg.token) { const tk = genToken(); await persistConfig({ token: tk }); console.log(`AI Garage: сгенерирован токен доступа → ${tk}`); }
   }
   const shown = BIND_HOST === "127.0.0.1" ? "localhost" : BIND_HOST;
+  server.on("error", (e) => {
+    if (e && e.code === "EADDRINUSE") { console.error(`AI Garage: порт ${PORT} занят — задай другой: AIGARAGE_PORT=7788 npx ai-garage`); process.exit(1); }
+    throw e;
+  });
   server.listen(PORT, BIND_HOST, () => console.log(`AI Garage → http://${shown}:${PORT}`));
   ensureTunnels(); ensureKeepAlive();                       // восстановить туннели и поднять keep-alive сервисы при старте
   setInterval(() => { ensureTunnels().catch(() => {}); ensureKeepAlive().catch(() => {}); }, 12000);  // и держать их живыми
