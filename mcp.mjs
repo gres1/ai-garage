@@ -31,6 +31,7 @@ const TOOLS = [
   { name: "free_port", description: "Free a TCP port by stopping whatever listens on it (graceful SIGTERM, then SIGKILL after a moment). Refuses the panel's own port. Check the 'safe' flag from list_services first — killing a system/database port can lose data.", inputSchema: { type: "object", properties: { port: { type: "number", description: "TCP port to free" } }, required: ["port"] } },
   { name: "open_tunnel", description: "Create a public link (cloudflared) to a local port so it can be opened from a phone or shared. Returns the public https URL once it comes up.", inputSchema: { type: "object", properties: { port: { type: "number", description: "local port to expose" } }, required: ["port"] } },
   { name: "close_tunnel", description: "Close the public link for a port.", inputSchema: { type: "object", properties: { port: { type: "number" } }, required: ["port"] } },
+  { name: "register_service", description: "Register a localhost service you just started so AI Garage shows it as a controllable card and its On/Off button + keep-alive work — even after a reboot. Call this right after you spawn a dev server or app, passing the exact command and working directory you used. This is how you make a service you started manageable without the user configuring anything.", inputSchema: { type: "object", properties: { name: { type: "string", description: "friendly name, e.g. 'insight-landing'" }, port: { type: "number", description: "TCP port it listens on" }, command: { type: "string", description: "the exact start command you ran, e.g. 'npm run dev' or 'node server.js' or 'pm2 start insight-landing'" }, cwd: { type: "string", description: "absolute working directory the command runs in" }, url: { type: "string", description: "optional, defaults to http://localhost:<port>" } }, required: ["port", "command"] } },
 ];
 
 async function call(name, args) {
@@ -41,6 +42,7 @@ async function call(name, args) {
       discovered: (s.discovered || []).map((d) => ({ port: d.port, pid: d.pid, command: d.command, category: d.cat, safe: d.safe })),
     };
   }
+  if (name === "register_service") return api("POST", "/api/register", { name: args.name, port: args.port, command: args.command, cwd: args.cwd, url: args.url });
   if (name === "free_port") return api("POST", "/api/kill-port", { port: args.port });
   if (name === "close_tunnel") return api("POST", "/api/tunnel-stop", { port: args.port });
   if (name === "open_tunnel") {

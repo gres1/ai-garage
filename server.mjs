@@ -497,6 +497,7 @@ function sanitizeService(s) {
 }
 
 const server = http.createServer(async (req, res) => {
+ try {
   const url = new URL(req.url, "http://localhost");
   const cfg = await loadConfig();
 
@@ -678,6 +679,26 @@ const server = http.createServer(async (req, res) => {
     if (process.platform !== "darwin") return sendJson(res, 200, { ok: false, error: "только macOS" });
     exec(`osascript -e 'tell application "Terminal" to activate' -e 'tell application "Terminal" to do script "claude login"'`, () => {});
     return sendJson(res, 200, { ok: true, note: "Терминал открыт — войди в Claude" });
+  }
+
+  // Регистрация сервиса агентом (через MCP): «я поднял X на порту P командой C в папке D».
+  // Панель заводит карточку + запоминает команду → кнопка Вкл работает сразу, даже до первого запуска.
+  if (req.method === "POST" && url.pathname === "/api/register") {
+    const b = await readBody(req);
+    const port = toPort(b.port);
+    if (!port || !b.command) return sendJson(res, 400, { ok: false, error: "нужны port и command" });
+    const cmds = await loadCmds();
+    const { start, stop } = guessCmdFromRaw(String(b.command), port);
+    cmds[String(port)] = { start, stop, cwd: b.cwd ? String(b.cwd).slice(0, 500) : null, seenAt: Date.now() };
+    await saveCmds(cmds);
+    await withLock(async () => {
+      const list = await loadServices();
+      if (!list.some((s) => toPort(s.port) === port)) {
+        const svc = sanitizeService({ name: b.name || `service :${port}`, type: "local", port, url: b.url || `http://localhost:${port}` });
+        if (svc) { list.push(svc); await saveServices(list); }
+      }
+    });
+    return sendJson(res, 200, { ok: true, note: "сервис зарегистрирован — кнопка Вкл работает" });
   }
 
   if (req.method === "POST" && ["/api/start", "/api/stop", "/api/restart"].includes(url.pathname)) {
@@ -865,6 +886,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   res.writeHead(404); res.end("not found");
+ } catch (e) {
+   if (!res.headersSent) { try { sendJson(res, 500, { ok: false, error: String((e && e.message) || e) }); } catch {} }
+   else { try { res.end(); } catch {} }
+ }
 });
 
 // Старт с учётом режима доступа (config.json → access): tailscale → bind на 100.x (приватно, не в LAN),
@@ -876,7 +901,7 @@ const server = http.createServer(async (req, res) => {
     if (TS_IP) BIND_HOST = TS_IP;
     else console.warn("AI Garage: Tailscale IP не найден — остаюсь на 127.0.0.1 (запущен ли Tailscale и залогинен?)");
   }
-  if (BIND_HOST !== "127.0.0.1" || cfg.access === "public") {
+  if (BIND_HOST !== "127.0.0.1" || (cfg.access && cfg.access !== "off")) {
     if (!cfg.token) { const tk = genToken(); await persistConfig({ token: tk }); console.log(`AI Garage: сгенерирован токен доступа → ${tk}`); }
   }
   const shown = BIND_HOST === "127.0.0.1" ? "localhost" : BIND_HOST;
