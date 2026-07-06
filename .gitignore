@@ -10,3 +10,17 @@ docs/brand-source/
 desktop/src-tauri/target/
 desktop/src-tauri/gen/
 desktop/src-tauri/binaries/
+
+# Per-user state & anything that can hold secrets — NEVER commit (public repo).
+# providers.json (static catalog) stays committed; providers.example.json is the template.
+connections.json
+services.json
+config.json
+*.env
+.env
+conn-data.json
+discovered-cache.json
+overrides.json
+backups/
+docs/ROADMAP-COMMERCIAL.md
+docs/CONNECTIONS-DESIGN.md

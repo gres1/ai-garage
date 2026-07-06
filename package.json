@@ -1,6 +1,6 @@
 {
   "name": "ai-garage",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AI Garage — visual control panel for your localhost services, ports and tunnels — no terminal. See and stop everything running (even what AI agents left behind), free a stuck port, share a public link, on Mac and VPS.",
   "type": "module",
   "bin": {
@@ -14,6 +14,10 @@
   "files": [
     "server.mjs",
     "mcp.mjs",
+    "conn.mjs",
+    "discover.mjs",
+    "grant.mjs",
+    "connections.example.json",
     "public/",
     "README.md",
     "AGENTS.md",
