@@ -45,6 +45,20 @@ AI Garage is a single pane of glass for all of it:
 - 🌍 **19 languages**, switchable in the header.
 - 🎨 Clean glass UI with a live cursor highlight.
 
+## 🔌 Connections — one map of every API access on your machine
+
+Your AI stack sprawls across tools: API keys in `.env`, OAuth accounts inside hubs like Composio, and MCP servers wired into **each** AI client separately. Any single agent only sees *its own* config. Nobody has the full picture — and things silently expire.
+
+The **Connections** tab fixes that. It reads the live configs of **all** your AI clients at once and shows:
+
+- **Access map — who can reach what.** Which AI clients (Claude Code, Cursor, Claude Desktop, Antigravity, VS Code, Zed, Windsurf, LM Studio) have access to which MCP service — deduped across clients, auto-discovered from their real config files. Flip it: pick a client, see everything it can reach.
+- **One-click grant / revoke.** Give or take away a client's access to a service right from a card — **every config is backed up before any write**, edits are atomic, Claude Code goes through its own `claude mcp add/remove`.
+- **Health at a glance.** Every API key checked live — *works / expired / out of credits* in plain words. Keys never leave your Mac.
+- **Composio, honest.** Per-service connection status (connected / needs reconnect), one-click OAuth connect, and a catalog of popular apps to add — plus it flags a half-finished CLI login that makes agents throw 401.
+- **Honest about blind spots.** It tells you what it *can't* see (a client's UI toggle, a cloud-only hub) instead of faking a green check.
+
+Agents get it too: the MCP server exposes `connections_overview`, `connections_health`, `grant_access`, `composio_connect` — so you can say *"give Cursor the same access Claude Code has"* and it just happens. Security-reviewed adversarially; no secret values ever leave your machine.
+
 ## Use with AI agents (MCP)
 
 AI Garage ships an **MCP server** so coding agents can drive it directly — list what's running, free a port, open a tunnel — instead of guessing with `lsof` and `kill -9`.
@@ -59,7 +73,7 @@ Add it to your agent (Claude Code, Cursor, …):
 }
 ```
 
-Tools exposed: `list_services`, `free_port`, `open_tunnel`, `close_tunnel`.
+Tools exposed: `list_services`, `free_port`, `open_tunnel`, `close_tunnel`, `register_service`, and the Connections tools `connections_overview`, `connections_health`, `grant_access`, `composio_connect`.
 The panel must be running (`npx ai-garage`); the MCP server talks to it locally.
 
 ## How it works

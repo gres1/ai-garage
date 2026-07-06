@@ -12,6 +12,7 @@ import { dirname, join } from "node:path";
 import { homedir, hostname } from "node:os";
 import { connList, connCheck, composioConnect, connStatus } from "./conn.mjs";
 import { discover } from "./discover.mjs";
+import { setGrant } from "./grant.mjs";
 
 // Connections-роуты раскрывают карту наличия/валидности кредов — за пределами loopback требуем токен (как мутации).
 function connAuthOk(req, res, cfg) {
@@ -480,7 +481,8 @@ function sendJson(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 async function readBody(req) {
-  const chunks = []; for await (const c of req) chunks.push(c);
+  const chunks = []; let n = 0;
+  for await (const c of req) { n += c.length; if (n > 1e6) { req.destroy(); return {}; } chunks.push(c); }
   try { return JSON.parse(Buffer.concat(chunks).toString() || "{}"); } catch { return {}; }
 }
 // Белый список полей сервиса (отбрасываем чужое, приводим типы)
@@ -627,6 +629,11 @@ const server = http.createServer(async (req, res) => {
     if (!connAuthOk(req, res, cfg)) return;
     const { auth_config_id, slug } = await readBody(req);
     return sendJson(res, 200, await composioConnect(auth_config_id, slug));
+  }
+  if (req.method === "POST" && url.pathname === "/api/conn/grant") {
+    if (!connAuthOk(req, res, cfg)) return;
+    const { serviceId, clientId, enable } = await readBody(req);
+    return sendJson(res, 200, await setGrant({ serviceId, clientId, enable }));
   }
 
   if (req.method === "GET" && url.pathname === "/api/can-embed") {
