@@ -18,8 +18,7 @@
     --shadow-h:0 2px 4px rgba(20,20,45,.06), 0 30px 60px -18px rgba(25,25,70,.34);
     --r:20px;
   }
-  *{ box-sizing:border-box; }
-  html,body{ margin:0; }
+  *{ box-sizing:border-box; } html,body{ margin:0; }
   body{ min-height:100vh; color:var(--txt); padding:30px 26px 80px;
     background:
       radial-gradient(820px 560px at 9% 3%, rgba(254,127,45,.08), transparent 55%),
@@ -29,39 +28,34 @@
     background-attachment:fixed;
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
   .rounded{ font-family:ui-rounded,-apple-system,"SF Pro Rounded",sans-serif; }
-  header{ max-width:1180px; margin:0 auto 18px; display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+  header{ max-width:1180px; margin:0 auto 16px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;
     background:var(--glass-strong); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%);
-    border:1px solid var(--glass-brd); border-radius:24px; padding:18px 22px; box-shadow:var(--shadow); }
-  h1{ font-size:27px; letter-spacing:-.022em; margin:0; font-weight:700; line-height:1.1; }
+    border:1px solid var(--glass-brd); border-radius:24px; padding:16px 22px; box-shadow:var(--shadow); }
+  h1{ font-size:26px; letter-spacing:-.022em; margin:0; font-weight:700; line-height:1.1; }
   .sub{ color:var(--faint); font-size:13px; margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-  .logo{ height:58px; width:auto; filter:drop-shadow(0 4px 9px rgba(20,20,45,.18)); }
-  .ring{ position:relative; width:78px; height:78px; }
+  .logo{ height:56px; width:auto; filter:drop-shadow(0 4px 9px rgba(20,20,45,.18)); }
+  .ring{ position:relative; width:74px; height:74px; }
   .ring svg{ transform:rotate(-90deg); } #arc{ transition:stroke-dashoffset .7s cubic-bezier(.2,.7,.2,1); }
   .ring .num{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-  .ring .num b{ font-size:20px; line-height:1; } .ring .num span{ font-size:9.5px; color:var(--mut); margin-top:2px; }
+  .ring .num b{ font-size:19px; line-height:1; } .ring .num span{ font-size:9px; color:var(--mut); margin-top:2px; }
   .spacer{ flex:1; }
-  .seg{ display:inline-flex; background:rgba(20,20,45,.06); border-radius:980px; padding:3px; gap:2px; }
-  .seg button{ border:0; background:transparent; color:var(--mut); font:inherit; font-size:13px; font-weight:600; padding:7px 15px; border-radius:980px; cursor:pointer; }
-  .seg button.on{ background:#fff; color:var(--txt); box-shadow:var(--shadow); }
   .btn-add{ background:var(--accent); color:#fff; border:0; border-radius:980px; padding:10px 16px; font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 2px 10px rgba(254,127,45,.32); font-family:inherit; display:inline-flex; align-items:center; gap:7px; }
   .btn-add:hover{ background:var(--accent-d); } .btn-add.spinning svg{ animation:spin 1s linear infinite; } @keyframes spin{ to{ transform:rotate(360deg); } }
   .srcpill{ font-size:11px; font-weight:600; padding:2px 9px; border-radius:980px; }
   .srcpill.live{ color:var(--green-d); background:rgba(33,94,97,.14); } .srcpill.snap{ color:var(--amber); background:var(--amber-bg); }
 
   .wrap{ max-width:1180px; margin:0 auto; }
-  .bar{ display:flex; align-items:center; gap:14px; margin:0 2px 12px; flex-wrap:wrap; }
-  .counts{ display:flex; gap:16px; color:var(--mut); font-size:14px; }
-  .counts b{ color:var(--txt); font-weight:700; font-size:16px; }
-  .subseg{ margin-left:auto; }
-  .intro{ color:var(--mut); font-size:13px; line-height:1.5; margin:0 2px 14px; max-width:760px; }
-  .help{ font-size:12.5px; color:var(--mut); margin:0 2px 16px; background:var(--glass); border:1px solid var(--glass-brd); border-radius:14px; padding:0 14px; }
+  .bar{ display:flex; align-items:center; gap:10px; margin:0 2px 12px; flex-wrap:wrap; }
+  .fchips{ display:inline-flex; background:rgba(20,20,45,.06); border-radius:980px; padding:3px; gap:2px; }
+  .fchips button{ border:0; background:transparent; color:var(--mut); font:inherit; font-size:13px; font-weight:600; padding:7px 14px; border-radius:980px; cursor:pointer; }
+  .fchips button.on{ background:#fff; color:var(--txt); box-shadow:var(--shadow); }
+  .counts{ margin-left:auto; display:flex; gap:14px; color:var(--mut); font-size:13px; }
+  .counts b{ color:var(--txt); font-weight:700; }
+  .help{ font-size:12.5px; color:var(--mut); margin:0 2px 14px; background:var(--glass); border:1px solid var(--glass-brd); border-radius:14px; padding:0 14px; }
   .help summary{ cursor:pointer; font-weight:600; color:var(--txt); padding:11px 0; list-style:none; }
   .help summary::before{ content:"？ "; color:var(--accent); font-weight:700; }
-  .help[open] summary{ border-bottom:1px solid var(--line); }
-  .help p{ margin:9px 0; line-height:1.55; } .help b{ color:var(--txt); }
+  .help[open] summary{ border-bottom:1px solid var(--line); } .help p{ margin:9px 0; line-height:1.55; } .help b{ color:var(--txt); }
   .grid{ display:grid; gap:16px; align-items:start; grid-template-columns:repeat(auto-fill,minmax(335px,1fr)); }
-  .section{ grid-column:1/-1; display:flex; align-items:center; gap:8px; font-size:13px; font-weight:650; color:var(--mut); margin:12px 2px -2px; }
-  .section .secn{ color:var(--faint); background:rgba(20,20,45,.06); border-radius:980px; padding:1px 8px; font-size:11px; }
 
   .card{ position:relative; background:var(--glass); backdrop-filter:blur(22px) saturate(185%); -webkit-backdrop-filter:blur(22px) saturate(185%);
     border:1px solid var(--glass-brd); border-radius:var(--r); padding:15px 16px 14px; box-shadow:var(--shadow); overflow:hidden; transition:transform .18s cubic-bezier(.2,.7,.2,1), box-shadow .3s; }
@@ -72,9 +66,7 @@
   .card.down::before{ background:linear-gradient(90deg,var(--red),#ff8a80); opacity:.9; }
   .card.client::before{ background:linear-gradient(90deg,#8a96a0,#c7c7cc); opacity:.5; }
   .top{ display:flex; align-items:center; gap:10px; }
-  .pulse{ width:11px; height:11px; border-radius:50%; flex:0 0 auto; background:#c7c7cc; }
-  .pulse.up{ background:var(--teal-neon); } .pulse.warn{ background:var(--amber); } .pulse.down{ background:var(--red); }
-  .avatar{ width:26px; height:26px; border-radius:8px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:12px; }
+  .savatar,.avatar{ width:28px; height:28px; border-radius:9px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:12px; }
   .name{ font-weight:650; font-size:15px; flex:1; }
   .where{ font-size:11px; font-weight:600; color:var(--teal-d); background:rgba(33,94,97,.1); border-radius:7px; padding:3px 8px; cursor:help; white-space:nowrap; }
   .where.net{ color:#0a5aa8; background:rgba(10,90,168,.1); }
@@ -82,21 +74,18 @@
   .state.up{ color:var(--green-d); background:rgba(33,94,97,.16); } .state.warn{ color:var(--amber); background:var(--amber-bg); }
   .state.down{ color:#b3261e; background:rgba(255,59,48,.12); } .state.unknown{ color:var(--faint); background:rgba(20,20,45,.06); }
   .detail{ color:var(--mut); font-size:12.5px; margin:8px 0 2px; line-height:1.45; }
-  .store{ font-size:11px; color:var(--faint); margin-top:6px; display:flex; align-items:center; gap:5px; }
-
+  .store{ font-size:11px; color:var(--faint); margin-top:6px; }
   .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:11px; border-top:1px solid var(--line); padding-top:10px; }
   .chip{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; border-radius:980px; padding:4px 10px; color:#fff; }
   .chip .cd{ width:6px; height:6px; border-radius:50%; background:#fff; opacity:.85; }
   .chip.svc{ color:var(--txt); background:rgba(20,20,45,.06); }
   .chip .chx{ margin-left:3px; cursor:pointer; opacity:.65; font-weight:700; font-style:normal; padding:0 2px; border-radius:50%; }
-  .chip .chx:hover{ opacity:1; background:rgba(0,0,0,.18); }
-  .chip.svc .chx:hover{ background:rgba(20,20,45,.12); }
+  .chip .chx:hover{ opacity:1; background:rgba(0,0,0,.18); } .chip.svc .chx:hover{ background:rgba(20,20,45,.12); }
   .chip.plus{ color:var(--mut); background:rgba(20,20,45,.07); cursor:pointer; font-weight:700; padding:4px 11px; }
   .chip.plus:hover{ background:rgba(20,20,45,.12); color:var(--txt); }
   .chip.ghost{ color:var(--mut); background:transparent; border:1px dashed rgba(35,61,77,.3); cursor:pointer; }
   .chip.ghost:hover{ border-color:var(--accent); color:var(--accent); }
   .whonote{ font-size:11px; color:var(--faint); margin-top:9px; }
-
   .subs{ margin:10px 0 2px; border-top:1px solid var(--line); padding-top:9px; display:flex; flex-direction:column; gap:2px; }
   .subrow{ display:flex; align-items:center; gap:9px; padding:6px 4px; border-radius:10px; } .subrow:hover{ background:rgba(255,255,255,.5); }
   .sdot{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; background:#c7c7cc; }
@@ -110,12 +99,11 @@
   .btn-primary{ background:var(--accent); color:#fff; } .btn-primary:hover{ background:var(--accent-d); } .btn-soft{ background:rgba(20,20,45,.06); color:var(--txt); }
   .ic{ width:14px; height:14px; vertical-align:-2px; }
   .blind{ max-width:1180px; margin:18px auto 0; background:var(--glass); border:1px solid var(--glass-brd); border-radius:16px; padding:0 16px; font-size:12.5px; color:var(--mut); }
-  .blind summary{ cursor:pointer; font-weight:600; color:var(--txt); padding:12px 0; }
-  .blind li{ margin:5px 0; line-height:1.4; } .blind .cap{ font-size:11.5px; color:var(--faint); margin:2px 0 10px; }
+  .blind summary{ cursor:pointer; font-weight:600; color:var(--txt); padding:12px 0; } .blind li{ margin:5px 0; line-height:1.4; } .blind .cap{ font-size:11.5px; color:var(--faint); margin:2px 0 10px; }
   .toast{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(10px); background:rgba(30,30,32,.95); color:#fff; padding:11px 18px; border-radius:12px; font-size:13px; opacity:0; transition:.25s; pointer-events:none; box-shadow:0 8px 30px rgba(0,0,0,.3); z-index:60; max-width:82vw; }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
   .empty{ max-width:1180px; margin:0 auto; text-align:center; color:var(--mut); padding:40px; }
-  @media (max-width:560px){ body{ padding:16px 12px 60px; } .grid{ grid-template-columns:1fr; } h1{ font-size:22px; } .subseg{ margin-left:0; } }
+  @media (max-width:560px){ body{ padding:16px 12px 60px; } .grid{ grid-template-columns:1fr; } h1{ font-size:22px; } .counts{ margin-left:0; } }
 </style>
 </head>
 <body>
@@ -125,190 +113,142 @@
       <h1 class="rounded">Подключения</h1>
       <div class="sub"><span id="ts">загрузка…</span> <span id="src"></span></div>
     </div>
-    <div class="ring" id="ringWrap" style="visibility:hidden">
-      <svg width="78" height="78"><circle cx="39" cy="39" r="33" fill="none" stroke="#e6e6ea" stroke-width="8"/>
-        <circle id="arc" cx="39" cy="39" r="33" fill="none" stroke="var(--teal-neon)" stroke-width="8" stroke-linecap="round" stroke-dasharray="207" stroke-dashoffset="207"/></svg>
-      <div class="num rounded"><b id="upn">0</b><span>из <span id="totn">0</span></span></div>
+    <div class="ring" id="ringWrap">
+      <svg width="74" height="74"><circle cx="37" cy="37" r="31" fill="none" stroke="#e6e6ea" stroke-width="8"/>
+        <circle id="arc" cx="37" cy="37" r="31" fill="none" stroke="var(--teal-neon)" stroke-width="8" stroke-linecap="round" stroke-dasharray="195" stroke-dashoffset="195"/></svg>
+      <div class="num rounded"><b id="upn">0</b><span>ключей<br>живо</span></div>
     </div>
     <div class="spacer"></div>
-    <div class="seg">
-      <button id="tabAccess" class="on" onclick="setTab('access')">Доступы</button>
-      <button id="tabHealth" onclick="setTab('health')">Здоровье</button>
-    </div>
     <button class="btn-add" id="recheck" onclick="reload(true)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> Обновить</button>
   </header>
 
-  <div class="wrap" id="accessWrap">
-    <div class="intro">У каких твоих ИИ-программ есть доступ к каждому сервису. Собирается <b>автоматически</b> из их настроек — руками вписывать ничего не нужно.</div>
+  <div class="wrap">
     <div class="bar">
-      <div class="counts"><div><b id="cSvc">0</b> сервисов</div><div><b id="cCli">0</b> программ</div></div>
-      <div class="seg subseg">
-        <button id="avSvc" class="on" onclick="setAView('service')">По сервисам</button>
-        <button id="avCli" onclick="setAView('client')">По программе</button>
+      <div class="fchips" id="filters">
+        <button data-f="all" class="on" onclick="setFilter('all')">Все</button>
+        <button data-f="access" onclick="setFilter('access')">Доступы агентов</button>
+        <button data-f="keys" onclick="setFilter('keys')">Ключи</button>
+        <button data-f="composio" onclick="setFilter('composio')">Composio</button>
+        <button data-f="client" onclick="setFilter('client')">По программе</button>
       </div>
+      <div class="counts"><div><b id="cSvc">0</b> сервисов</div><div><b id="cCli">0</b> программ</div></div>
     </div>
     <details class="help"><summary>Как это читать</summary>
-      <p><b>Сервис</b> — внешний инструмент или данные (github, notion, supabase…), к которым подключается ИИ.</p>
-      <p><b>Программа</b> — твой ИИ-клиент (Claude Code, Cursor, Claude Desktop, Antigravity…). Цветной шильдик = у этой программы есть доступ к сервису.</p>
-      <p><b>на этом Mac</b> — сервис запускается локально у тебя (протокол stdio). <b>по сети</b> — удалённый сервер (протокол http/sse).</p>
-      <p>«По программе» — наоборот: выбери программу и увидишь все сервисы, к которым у неё есть доступ.</p>
-      <p><b>Управление:</b> «×» на шильдике — отключить доступ (с бэкапом конфига), «+» — выдать доступ другой программе. После изменения перезапусти программу, чтобы она подхватила.</p>
+      <p>Один список всех подключений. <b>Фильтры</b> сверху: <b>Доступы</b> — какие твои ИИ-программы имеют доступ к сервису (шильдики), <b>Ключи</b> — жив ли API-ключ, <b>Composio</b> — OAuth-подключения. Одна карточка сервиса показывает всё сразу.</p>
+      <p><b>Управление:</b> «×» на шильдике — отключить доступ (с бэкапом конфига), «+» — выдать доступ другой программе. «Подключить» у composio — OAuth. После изменения перезапусти программу.</p>
+      <p><b>на этом Mac</b> — сервис локальный (stdio); <b>по сети</b> — удалённый. Ключи хранятся локально, не в облаке.</p>
     </details>
-    <div class="grid" id="accessGrid"></div>
-  </div>
-
-  <div class="wrap" id="healthWrap" style="display:none">
-    <div class="intro">Живы ли твои ключи и подключения — отвечает ли сервис на проверку. Это <b>не</b> про доступ агентов (это вкладка «Доступы»), а про то, работает ли сам сервис.</div>
-    <details class="help"><summary>Что значат статусы и «ключ»</summary>
-      <p><b>работает</b> — сервис ответил, ключ действителен. <b>ключ протух</b> — ключ недействителен (нужно выпустить новый). <b>кончились кредиты</b> — ключ жив, но на счету 0. <b>не отвечает</b> — сервис недоступен.</p>
-      <p><b>Ключ (API-ключ)</b> — пароль-токен, которым программа входит в сервис. Хранится <b>локально на твоём Mac</b> (в файле настроек / .env), не в облаке AI Garage.</p>
-      <p><b>Composio</b> — «хаб»: держит за тебя OAuth-доступы к сервисам (miro, LinkedIn, X…), чтобы не выпускать ключи вручную.</p>
-    </details>
-    <div class="grid" id="healthGrid"></div>
+    <div class="grid" id="grid"></div>
   </div>
 
   <details class="blind" id="blind" style="display:none"><summary>Что панель НЕ видит</summary>
-    <div class="cap">Автоматически, одинаково для всех — не индивидуальные заметки. Это честные технические ограничения.</div>
+    <div class="cap">Автоматически, одинаково для всех — честные технические ограничения.</div>
     <ul id="blindList"></ul></details>
   <div class="toast" id="toast"></div>
 
 <script>
-const esc = x => String(x==null?"":x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),3200); }
 function openUrl(u){ if(u) window.open(u,"_blank","noopener"); }
-const CLIENTS = {
-  "claude-code":{l:"Claude Code",c:"#d97757"}, "cursor":{l:"Cursor",c:"#4d5e6a"}, "claude-desktop":{l:"Claude Desktop",c:"#c96442"},
-  "antigravity":{l:"Antigravity",c:"#4285f4"}, "vscode":{l:"VS Code",c:"#0a7bd4"}, "zed":{l:"Zed",c:"#5b57d1"},
-  "windsurf":{l:"Windsurf",c:"#09b6a2"}, "lmstudio":{l:"LM Studio",c:"#7a869a"} };
-const clLabel = id => (CLIENTS[id]||{}).l || id;
-const clColor = id => (CLIENTS[id]||{}).c || "#7a869a";
-const initials = s => String(s).replace(/[^a-zA-Zа-яА-Я0-9]/g,"").slice(0,2).toUpperCase();
-const cls = s => s==="ok"?"up":s==="warn"?"warn":s==="dead"?"down":"unknown";
-const stLabel = s => s==="ok"?"работает":s==="warn"?"внимание":s==="dead"?"не работает":"не проверено";
-const whereLabel = t => t==="stdio"?"на этом Mac":"по сети";
-const plainDetail = d => String(d||"").replace(/\s·\s\d{3}\b/,"");   // спрятать код (401/200) из текста
+const CLIENTS={ "claude-code":{l:"Claude Code",c:"#d97757"}, "cursor":{l:"Cursor",c:"#4d5e6a"}, "claude-desktop":{l:"Claude Desktop",c:"#c96442"},
+  "antigravity":{l:"Antigravity",c:"#4285f4"}, "vscode":{l:"VS Code",c:"#0a7bd4"}, "zed":{l:"Zed",c:"#5b57d1"}, "windsurf":{l:"Windsurf",c:"#09b6a2"}, "lmstudio":{l:"LM Studio",c:"#7a869a"} };
+const clLabel=id=>(CLIENTS[id]||{}).l||id; const clColor=id=>(CLIENTS[id]||{}).c||"#7a869a";
+const initials=s=>String(s).replace(/[^a-zA-Zа-яА-Я0-9]/g,"").slice(0,2).toUpperCase();
+const SVCPAL=["#215e61","#4285f4","#d97757","#5b57d1","#0a7bd4","#09b6a2","#c96442","#7a869a","#e0912a","#b3475a"];
+function avatar(name){ let h=0; for(const ch of String(name)) h=(h*31+ch.charCodeAt(0))>>>0; return { c:SVCPAL[h%SVCPAL.length], t:initials(name) }; }
+const cls=s=>s==="ok"?"up":s==="warn"?"warn":s==="dead"?"down":"unknown";
+const stLabel=s=>s==="ok"?"работает":s==="warn"?"внимание":s==="dead"?"не работает":"не проверено";
+const whereLabel=t=>t==="stdio"?"на этом Mac":"по сети";
+const plainDetail=d=>String(d||"").replace(/\s·\s\d{3}\b/,"");
+const norm=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]/g,"");
 
-let TAB="access", AVIEW="service", DATA={}, POLLS={};
-function setTab(t){ TAB=t;
-  document.getElementById("tabAccess").classList.toggle("on",t==="access");
-  document.getElementById("tabHealth").classList.toggle("on",t==="health");
-  document.getElementById("accessWrap").style.display=t==="access"?"":"none";
-  document.getElementById("healthWrap").style.display=t==="health"?"":"none";
-  document.getElementById("ringWrap").style.visibility=t==="health"?"visible":"hidden";
-}
-function setAView(v){ AVIEW=v; document.getElementById("avSvc").classList.toggle("on",v==="service"); document.getElementById("avCli").classList.toggle("on",v==="client"); if(DATA.access) renderAccess(DATA.access); }
+let FILTER="all", DATA={}, POLLS={};
+function setFilter(f){ FILTER=f; [...document.querySelectorAll("#filters button")].forEach(b=>b.classList.toggle("on",b.dataset.f===f)); render(); }
 
-/* ---------- ACCESS ---------- */
-function svcCard(svc, allClients){
-  const w = svc.transport==="stdio"?"":"net";
-  const granted = svc.grantedBy||[];
-  let chips = granted.map(c=>`<span class="chip" style="background:${clColor(c)}"><span class="cd"></span>${esc(clLabel(c))}<i class="chx" title="Отключить доступ" data-svc="${esc(svc.id)}" data-cli="${esc(c)}" data-en="0" data-label="${esc(svc.label)}" onclick="tg(this)">×</i></span>`).join("");
-  const rest = allClients.filter(c=>!granted.includes(c));
-  if(rest.length){
-    chips += `<span class="chip plus" title="Дать доступ ещё одной программе" onclick="showPlus(this)">+</span>`;
-    chips += `<span class="pluslist" style="display:none">`+rest.map(c=>`<span class="chip ghost" data-svc="${esc(svc.id)}" data-cli="${esc(c)}" data-en="1" data-label="${esc(svc.label)}" onclick="tg(this)">+ ${esc(clLabel(c))}</span>`).join("")+`</span>`;
-  }
-  return `<div class="card up">
-    <div class="top"><span class="pulse up"></span><span class="name">${esc(svc.label)}</span>
-      <span class="where ${w}" title="${w?'Удалённый сервер (протокол http/sse)':'Запускается локально у тебя (протокол stdio)'}">${whereLabel(svc.transport)}</span></div>
-    <div class="chips">${chips}</div></div>`;
+/* ---- merge access + health into one list of services ---- */
+function buildUnified(){
+  const acc=(DATA.access&&DATA.access.services)||[], health=(DATA.health&&DATA.health.items)||[];
+  const map=new Map();
+  for(const s of acc){ const k=norm(s.label); map.set(k,{key:k,label:s.label,kind:"mcp",transport:s.transport,svcId:s.id,grantedBy:s.grantedBy||[]}); }
+  for(const it of health){ if(it.group==="mcp") continue; const k=norm(it.label);
+    let e=map.get(k); if(!e){ e={key:k,label:it.label,kind:it.group}; map.set(k,e); }
+    e.health=it; if(it.group==="composio"){ e.kind="composio"; e.composio=it; } }
+  return [...map.values()];
 }
-function clientCard(cli, svcs){
-  const mine = svcs.filter(s=>(s.grantedBy||[]).includes(cli.id));
-  let chips = mine.map(s=>`<span class="chip svc">${esc(s.label)}<i class="chx" title="Отключить у ${esc(cli.label)}" data-svc="${esc(s.id)}" data-cli="${esc(cli.id)}" data-en="0" data-label="${esc(s.label)}" onclick="tg(this)">×</i></span>`).join("") || `<span class="whonote">нет подключённых сервисов</span>`;
-  const rest = svcs.filter(s=>!(s.grantedBy||[]).includes(cli.id));
-  if(rest.length){
-    chips += `<span class="chip plus" title="Дать ${esc(cli.label)} доступ к сервису" onclick="showPlus(this)">+</span>`;
-    chips += `<span class="pluslist" style="display:none">`+rest.map(s=>`<span class="chip ghost" data-svc="${esc(s.id)}" data-cli="${esc(cli.id)}" data-en="1" data-label="${esc(s.label)}" onclick="tg(this)">+ ${esc(s.label)}</span>`).join("")+`</span>`;
-  }
-  return `<div class="card client">
-    <div class="top"><span class="avatar" style="background:${clColor(cli.id)}">${esc(initials(cli.label))}</span><span class="name">${esc(cli.label)}</span><span class="state unknown">${mine.length} сервисов</span></div>
-    <div class="chips">${chips}</div></div>`;
-}
-function showPlus(el){ const l=el.nextElementSibling; if(l){ l.style.display=""; l.style.gap="6px"; l.style.flexWrap="wrap"; l.style.display="inline-flex"; el.remove(); } }
-function tg(el){ toggleGrant(el.dataset.svc, el.dataset.cli, el.dataset.en==="1", el.dataset.label); }
-async function toggleGrant(svcId, clientId, enable, label){
-  const who = clLabel(clientId);
-  if(!confirm(enable ? `Дать ${who} доступ к «${label}»?` : `Отключить «${label}» у ${who}?\n\nПеред изменением сделаю бэкап конфига.`)) return;
-  toast(enable?"Выдаю доступ…":"Отключаю…");
-  try{
-    const r = await fetch("/api/conn/grant",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({serviceId:svcId,clientId,enable})});
-    const j = await r.json();
-    if(j.guide){ alert(j.guide); return; }
-    if(!j.ok){ toast("Не вышло: "+(j.error||"ошибка")); return; }
-    toast(j.note || (enable?"Доступ выдан":"Доступ отключён"));
-    reload();
-  }catch(e){ toast("Ошибка: "+e.message); }
-}
-function renderAccess(d){
-  const svcs=d.services||[], cons=d.consumers||[], allIds=cons.map(c=>c.id);
-  document.getElementById("cSvc").textContent=d.counts.services;
-  document.getElementById("cCli").textContent=d.counts.clients;
-  const g=document.getElementById("accessGrid");
-  if(AVIEW==="service") g.innerHTML = svcs.length? svcs.map(s=>svcCard(s,allIds)).join("") : `<div class="empty">MCP-серверы у программ не найдены</div>`;
-  else g.innerHTML = cons.length? cons.map(c=>clientCard(c,svcs)).join("") : `<div class="empty">ИИ-программы не найдены</div>`;
-  const bl=d.blindSpots||[]; if(bl.length){ document.getElementById("blind").style.display="block"; document.getElementById("blindList").innerHTML=bl.map(b=>`<li>${esc(b)}</li>`).join(""); }
+function passFilter(e){
+  if(FILTER==="all") return true;
+  if(FILTER==="keys") return !!e.health && e.kind!=="composio";
+  if(FILTER==="access") return e.kind==="mcp";
+  if(FILTER==="composio") return e.kind==="composio";
+  return true;
 }
 
-/* ---------- HEALTH ---------- */
-const HGROUPS=[{k:"apikey",t:"API-ключи"},{k:"composio",t:"Composio"},{k:"mcp",t:"MCP-серверы"},{k:"bot",t:"Боты"}];
 const POPULAR=["github","notion","gmail","googlesheets","googledrive","slack","telegram","x","linkedin","miro","youtube","reddit"];
 function composioSubs(extra){
   const cfgs=(extra&&extra.configs)||[]; let out="";
   if(cfgs.length){ out+=`<div class="subs">`+cfgs.map(c=>{
-    const done=c.active>0;
-    const meta = done?`подключено`:(c.connections>0?`нужно переподключить`:"не подключено");
-    const btn = done?`<span class="sbtn done">✓ подключено</span>`
-      :`<button class="sbtn" id="cx-${esc(c.slug)}" onclick='connectComposio(${esc(JSON.stringify(c.slug))})'>${c.connections>0?"Переподключить":"Подключить"}</button>`;
+    const done=c.active>0, meta=done?"подключено":(c.connections>0?"нужно переподключить":"не подключено");
+    const btn=done?`<span class="sbtn done">✓ подключено</span>`:`<button class="sbtn" id="cx-${esc(c.slug)}" onclick='connectComposio(${esc(JSON.stringify(c.slug))})'>${c.connections>0?"Переподключить":"Подключить"}</button>`;
     return `<div class="subrow"><span class="sdot ${c.status}"></span><span class="sname">${esc(c.slug)}</span><span class="smeta">${esc(meta)}</span>${btn}</div>`;
   }).join("")+`</div>`; }
-  // каталог: популярные сервисы, которых ещё нет — подключаются в 1 клик (auth_config создастся сам)
-  const have=new Set(cfgs.map(c=>c.slug));
-  const fresh=POPULAR.filter(s=>!have.has(s));
-  if(fresh.length) out+=`<div class="whonote" style="margin-top:10px">Подключить новый сервис:</div>
-    <div class="chips" style="border-top:none;padding-top:6px;margin-top:2px">`+
-    fresh.map(s=>`<span class="chip ghost" id="cx-${esc(s)}" onclick='connectComposio(${esc(JSON.stringify(s))})'>+ ${esc(s)}</span>`).join("")+`</div>`;
+  const have=new Set(cfgs.map(c=>c.slug)), fresh=POPULAR.filter(s=>!have.has(s));
+  if(fresh.length) out+=`<div class="whonote" style="margin-top:10px">Подключить новый сервис:</div><div class="chips" style="border-top:none;padding-top:6px;margin-top:2px">`+fresh.map(s=>`<span class="chip ghost" id="cx-${esc(s)}" onclick='connectComposio(${esc(JSON.stringify(s))})'>+ ${esc(s)}</span>`).join("")+`</div>`;
   const cli=extra&&extra.cli;
-  if(cli&&cli.installed&&!cli.loggedIn) out+=`<div class="clinote"><b>CLI-логин не завершён.</b> Ключ панели (ak_) работает, но вход через CLI (uak_) не дожат — поэтому агенты/старые сессии, ходящие через CLI, ловят 401. Почини: в терминале <b>composio login</b> и дожми окно до «Success».</div>`;
+  if(cli&&cli.installed&&!cli.loggedIn) out+=`<div class="clinote"><b>CLI-логин не завершён.</b> Ключ панели (ak_) работает, но вход через CLI (uak_) не дожат — агенты/старые сессии ловят 401. Почини: в терминале <b>composio login</b> и дожми до «Success».</div>`;
   return out;
 }
-function mcpSubs(extra){ const s=(extra&&extra.servers)||[]; if(!s.length) return "";
-  return `<div class="chips">`+s.map(x=>`<span class="chip svc"><span class="sdot ${x.status}"></span>${esc(x.name)}</span>`).join("")+`</div>`; }
-function healthCard(it){
-  const c=cls(it.status), code=(String(it.detail||"").match(/\b(\d{3})\b/)||[])[1];
-  let sub=""; if(it.group==="composio") sub=composioSubs(it.extra); if(it.group==="mcp") sub=mcpSubs(it.extra);
-  const store = it.group==="apikey" ? `<div class="store">🔒 ключ хранится локально на этом Mac</div>` : "";
-  let act=""; if(it.status!=="ok"&&it.dashboard) act=`<div class="row"><button class="btn btn-primary" onclick='openUrl(${esc(JSON.stringify(it.dashboard))})'>Открыть дашборд ↗</button></div>`;
-  return `<div class="card ${c}"><div class="top"><span class="pulse ${c}"></span><span class="name">${esc(it.label)}</span>
-    <span class="state ${c}" title="${code?'HTTP-код ответа: '+code:''}">${stLabel(it.status)}</span></div>
-    <div class="detail">${esc(plainDetail(it.detail))}</div>${store}${sub}${act}</div>`;
+function accessChips(e, allClients){
+  const granted=e.grantedBy||[];
+  let chips=granted.map(c=>`<span class="chip" style="background:${clColor(c)}"><span class="cd"></span>${esc(clLabel(c))}<i class="chx" title="Отключить доступ" data-svc="${esc(e.svcId)}" data-cli="${esc(c)}" data-en="0" data-label="${esc(e.label)}" onclick="tg(this)">×</i></span>`).join("");
+  const rest=allClients.filter(c=>!granted.includes(c));
+  if(rest.length){ chips+=`<span class="chip plus" title="Дать доступ ещё одной программе" onclick="showPlus(this)">+</span>`;
+    chips+=`<span class="pluslist" style="display:none">`+rest.map(c=>`<span class="chip ghost" data-svc="${esc(e.svcId)}" data-cli="${esc(c)}" data-en="1" data-label="${esc(e.label)}" onclick="tg(this)">+ ${esc(clLabel(c))}</span>`).join("")+`</span>`; }
+  return `<div class="chips">${chips}</div>`;
 }
-function renderHealth(d){
-  const items=d.items||[]; let html="";
-  for(const g of HGROUPS){ const list=items.filter(i=>i.group===g.k); if(!list.length) continue;
-    const ok=list.filter(i=>i.status==="ok").length;
-    html+=`<div class="section"><span>${g.t}</span><span class="secn">${ok}/${list.length}</span></div>`+list.map(healthCard).join(""); }
-  document.getElementById("healthGrid").innerHTML=html||`<div class="empty">нет данных</div>`;
-  const t=d.tally||{}, ok=t.ok||0, tot=(t.ok||0)+(t.warn||0)+(t.dead||0)+(t.unknown||0);
-  document.getElementById("upn").textContent=ok; document.getElementById("totn").textContent=tot;
-  document.getElementById("arc").style.strokeDashoffset=207*(1-(tot?ok/tot:0));
+function uCard(e, allClients){
+  const h=e.health, av=avatar(e.label), c=h?cls(h.status):"up";
+  const badges=[];
+  if(h && e.kind!=="composio") badges.push(`<span class="state ${cls(h.status)}" title="Статус ключа">${e.kind==="mcp"?"ключ: ":""}${stLabel(h.status)}</span>`);
+  if(e.kind==="mcp") badges.push(`<span class="where ${e.transport==="stdio"?"":"net"}" title="${e.transport==="stdio"?'локально (stdio)':'по сети (http/sse)'}">${whereLabel(e.transport)}</span>`);
+  const detail=(h && e.kind!=="mcp")?`<div class="detail">${esc(plainDetail(h.detail))}</div>`:"";
+  const store=(h&&h.group==="apikey")?`<div class="store">🔒 ключ хранится локально на этом Mac</div>`:"";
+  const composio=e.composio?composioSubs(e.composio.extra):"";
+  const chips=(e.kind==="mcp")?accessChips(e,allClients):"";
+  let act=""; if(h && h.status!=="ok" && h.dashboard) act=`<div class="row"><button class="btn btn-primary" onclick='openUrl(${esc(JSON.stringify(h.dashboard))})'>Открыть дашборд ↗</button></div>`;
+  return `<div class="card ${c}"><div class="top"><span class="savatar" style="background:${av.c}">${av.t}</span><span class="name">${esc(e.label)}</span>${badges.join("")}</div>
+    ${detail}${store}${composio}${chips}${act}</div>`;
 }
-
-/* ---------- composio connect flow ---------- */
+function clientCard(cli, svcs){
+  const mine=svcs.filter(s=>(s.grantedBy||[]).includes(cli.id));
+  let chips=mine.map(s=>`<span class="chip svc">${esc(s.label)}<i class="chx" title="Отключить у ${esc(cli.label)}" data-svc="${esc(s.id)}" data-cli="${esc(cli.id)}" data-en="0" data-label="${esc(s.label)}" onclick="tg(this)">×</i></span>`).join("")||`<span class="whonote">нет подключённых сервисов</span>`;
+  const rest=svcs.filter(s=>!(s.grantedBy||[]).includes(cli.id));
+  if(rest.length){ chips+=`<span class="chip plus" title="Дать ${esc(cli.label)} доступ" onclick="showPlus(this)">+</span>`;
+    chips+=`<span class="pluslist" style="display:none">`+rest.map(s=>`<span class="chip ghost" data-svc="${esc(s.id)}" data-cli="${esc(cli.id)}" data-en="1" data-label="${esc(s.label)}" onclick="tg(this)">+ ${esc(s.label)}</span>`).join("")+`</span>`; }
+  return `<div class="card client"><div class="top"><span class="avatar" style="background:${clColor(cli.id)}">${esc(initials(cli.label))}</span><span class="name">${esc(cli.label)}</span><span class="state unknown">${mine.length} сервисов</span></div><div class="chips">${chips}</div></div>`;
+}
+function showPlus(el){ const l=el.nextElementSibling; if(l){ l.style.display="inline-flex"; l.style.gap="6px"; l.style.flexWrap="wrap"; el.remove(); } }
+function tg(el){ toggleGrant(el.dataset.svc, el.dataset.cli, el.dataset.en==="1", el.dataset.label); }
+async function toggleGrant(svcId, clientId, enable, label){
+  const who=clLabel(clientId);
+  if(!confirm(enable?`Дать ${who} доступ к «${label}»?`:`Отключить «${label}» у ${who}?\n\nПеред изменением сделаю бэкап конфига.`)) return;
+  toast(enable?"Выдаю доступ…":"Отключаю…");
+  try{ const r=await fetch("/api/conn/grant",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({serviceId:svcId,clientId,enable})}); const j=await r.json();
+    if(j.guide){ alert(j.guide); return; } if(!j.ok){ toast("Не вышло: "+(j.error||"ошибка")); return; }
+    toast(j.note||(enable?"Доступ выдан":"Доступ отключён")); reload();
+  }catch(e){ toast("Ошибка: "+e.message); }
+}
 async function connectComposio(slug){
-  if(POLLS[slug]){ clearTimeout(POLLS[slug]); delete POLLS[slug]; }   // отменить прошлую цепочку, если жмут повторно
+  if(POLLS[slug]){ clearTimeout(POLLS[slug]); delete POLLS[slug]; }
   const btn=document.getElementById("cx-"+slug); if(btn){ btn.className="sbtn busy"; btn.textContent="подключаю…"; }
-  const stop=(lbl,cls,msg)=>{ delete POLLS[slug]; if(btn){btn.className="sbtn "+(cls||"");btn.textContent=lbl;} if(msg)toast(msg); };
-  try{
-    const r=await fetch("/api/conn/composio-connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slug})});
-    const j=await r.json(); if(!j.redirect_url) throw new Error(j.error||"нет ссылки");
+  const stop=(lbl,cl,msg)=>{ delete POLLS[slug]; if(btn){btn.className="sbtn "+(cl||"");btn.textContent=lbl;} if(msg)toast(msg); };
+  try{ const r=await fetch("/api/conn/composio-connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slug})}); const j=await r.json();
+    if(!j.redirect_url) throw new Error(j.error||"нет ссылки");
     openUrl(j.redirect_url); toast("Одобри доступ в открывшейся вкладке — жду…");
     const id=j.connected_account_id, t0=Date.now();
     const poll=async()=>{ if(Date.now()-t0>180000) return stop("Повторить","","Не завершилось — жми Повторить");
       try{ const s=await(await fetch("/api/conn/status?id="+encodeURIComponent(id))).json();
-        if(s.error) return stop("Повторить","");
-        if(s.ui==="ok") return stop("✓ подключено","done",slug+" подключён");
+        if(s.error) return stop("Повторить",""); if(s.ui==="ok") return stop("✓ подключено","done",slug+" подключён");
         if(s.terminal) return stop("Повторить","",slug+": "+(s.raw||"не удалось")); }catch(e){}
       POLLS[slug]=setTimeout(poll,2500); };
     POLLS[slug]=setTimeout(poll,2500);
@@ -316,20 +256,34 @@ async function connectComposio(slug){
 }
 
 const skel=(n)=>`<div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;color:var(--mut);font-size:14px;padding:24px 4px">
-  <svg class="ic" style="animation:spin 1s linear infinite" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> ${n||"Проверяю подключения…"}</div>`
-  +Array.from({length:6}).map(()=>`<div class="card" style="opacity:.5"><div class="top"><span class="pulse"></span><span class="name" style="background:rgba(20,20,45,.08);border-radius:6px;color:transparent;min-width:90px">···</span></div><div class="detail" style="background:rgba(20,20,45,.05);border-radius:6px;color:transparent;max-width:70%">···</div></div>`).join("");
+  <svg class="ic" style="animation:spin 1s linear infinite" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> ${n||"Проверяю…"}</div>`
+  +Array.from({length:6}).map(()=>`<div class="card" style="opacity:.5"><div class="top"><span class="savatar" style="background:rgba(20,20,45,.1)"> </span><span class="name" style="background:rgba(20,20,45,.08);border-radius:6px;color:transparent;min-width:90px">···</span></div><div class="detail" style="background:rgba(20,20,45,.05);border-radius:6px;color:transparent;max-width:70%">···</div></div>`).join("");
+
+function render(){
+  const cons=(DATA.access&&DATA.access.consumers)||[], svcs=(DATA.access&&DATA.access.services)||[], allIds=cons.map(c=>c.id);
+  const g=document.getElementById("grid");
+  if(FILTER==="client"){ g.innerHTML=cons.length?cons.map(c=>clientCard(c,svcs)).join(""):`<div class="empty">ИИ-программы не найдены</div>`; }
+  else { const list=buildUnified().filter(passFilter); g.innerHTML=list.length?list.map(e=>uCard(e,allIds)).join(""):`<div class="empty">пусто в этом фильтре</div>`; }
+  // counts + ring
+  if(DATA.access){ document.getElementById("cSvc").textContent=DATA.access.counts.services; document.getElementById("cCli").textContent=DATA.access.counts.clients; }
+  if(DATA.health){ const t=DATA.health.tally||{}, ok=t.ok||0, tot=(t.ok||0)+(t.warn||0)+(t.dead||0)+(t.unknown||0);
+    document.getElementById("upn").textContent=ok; document.getElementById("arc").style.strokeDashoffset=195*(1-(tot?ok/tot:0)); }
+  const bl=(DATA.access&&DATA.access.blindSpots)||[]; if(bl.length){ document.getElementById("blind").style.display="block"; document.getElementById("blindList").innerHTML=bl.map(b=>`<li>${esc(b)}</li>`).join(""); }
+}
+
 async function reload(manual){
-  const btn=document.getElementById("recheck"); btn.classList.add("spinning"); let live=false;
-  if(!DATA.access) document.getElementById("accessGrid").innerHTML=skel("Читаю настройки твоих ИИ-программ…");
-  if(!DATA.health) document.getElementById("healthGrid").innerHTML=skel("Проверяю ключи и подключения…");
-  try{ DATA.access=await(await fetch("/api/conn/access",{cache:"no-store"})).json(); renderAccess(DATA.access); live=true; }
-  catch(e){ document.getElementById("accessGrid").innerHTML=`<div class="empty">нет доступа к серверу — запусти через демо-сервер</div>`; }
-  try{ DATA.health=await(await fetch("/api/conn/check",{cache:"no-store"})).json(); renderHealth(DATA.health); document.getElementById("ts").textContent="проверено "+new Date(DATA.health.ts||Date.now()).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}); }catch(e){}
+  const btn=document.getElementById("recheck"); btn.classList.add("spinning");
+  if(!DATA.access&&!DATA.health) document.getElementById("grid").innerHTML=skel("Читаю программы и проверяю ключи…");
+  let live=false;
+  try{ DATA.access=await(await fetch("/api/conn/access",{cache:"no-store"})).json(); live=true; render(); }catch(e){}
+  try{ DATA.health=await(await fetch("/api/conn/check",{cache:"no-store"})).json(); render();
+    document.getElementById("ts").textContent="проверено "+new Date(DATA.health.ts||Date.now()).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}); }catch(e){}
   btn.classList.remove("spinning");
-  document.getElementById("src").innerHTML= live?`<span class="srcpill live">● живо</span>`:`<span class="srcpill snap">◐ нет сервера</span>`;
+  document.getElementById("src").innerHTML=live?`<span class="srcpill live">● живо</span>`:`<span class="srcpill snap">◐ нет сервера</span>`;
+  if(!DATA.access&&!DATA.health) document.getElementById("grid").innerHTML=`<div class="empty">нет доступа к серверу</div>`;
   if(manual) toast("Обновлено");
 }
-setTab("access"); reload();
+reload();
 </script>
 </body>
 </html>

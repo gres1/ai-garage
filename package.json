@@ -18,7 +18,11 @@
     "discover.mjs",
     "grant.mjs",
     "connections.example.json",
-    "public/",
+    "public/index.html",
+    "public/connections.html",
+    "public/logo.png",
+    "public/favicon.png",
+    "public/qrcode.min.js",
     "README.md",
     "AGENTS.md",
     "LICENSE"
