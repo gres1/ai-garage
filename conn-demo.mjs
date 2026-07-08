@@ -9,7 +9,7 @@ import http from "node:http";
 import { readFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { connCheck, composioConnect, connStatus } from "./conn.mjs";
+import { connCheck, composioConnect, connStatus, connToolkits } from "./conn.mjs";
 import { discover } from "./discover.mjs";
 import { setGrant } from "./grant.mjs";
 
@@ -47,6 +47,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/api/conn/check") return json(res, 200, await connCheck());
     if (req.method === "GET" && p === "/api/conn/access") return json(res, 200, await discover());
     if (req.method === "GET" && p === "/api/conn/status") return json(res, 200, await connStatus(url.searchParams.get("id")));
+    if (req.method === "GET" && p === "/api/conn/composio-toolkits") return json(res, 200, await connToolkits(url.searchParams.get("q")));
     if (req.method === "POST" && p === "/api/conn/composio-connect") {
       const { auth_config_id, slug } = await readBody(req);
       return json(res, 200, await composioConnect(auth_config_id, slug));

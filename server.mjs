@@ -10,7 +10,7 @@ import { createHash, timingSafeEqual, randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { homedir, hostname } from "node:os";
-import { connList, connCheck, composioConnect, connStatus } from "./conn.mjs";
+import { connList, connCheck, composioConnect, connStatus, connToolkits } from "./conn.mjs";
 import { discover } from "./discover.mjs";
 import { setGrant } from "./grant.mjs";
 
@@ -627,6 +627,10 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/api/conn/status") {
     if (!connAuthOk(req, res, cfg)) return;
     return sendJson(res, 200, await connStatus(url.searchParams.get("id")));
+  }
+  if (req.method === "GET" && url.pathname === "/api/conn/composio-toolkits") {
+    if (!connAuthOk(req, res, cfg)) return;
+    return sendJson(res, 200, await connToolkits(url.searchParams.get("q")));
   }
   if (req.method === "POST" && url.pathname === "/api/conn/composio-connect") {
     if (!connAuthOk(req, res, cfg)) return;

@@ -96,6 +96,8 @@
   .sbtn{ border:0; background:var(--accent); color:#fff; border-radius:980px; padding:5px 12px; font-size:11.5px; font-weight:600; cursor:pointer; font-family:inherit; }
   .sbtn.done{ background:rgba(33,94,97,.14); color:var(--green-d); cursor:default; } .sbtn.busy{ background:var(--amber-bg); color:var(--amber); cursor:default; }
   .clinote{ font-size:11.5px; color:var(--amber); background:var(--amber-bg); border-radius:10px; padding:8px 10px; margin-top:10px; line-height:1.4; }
+  .tksearch{ width:100%; margin-top:6px; border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-size:13px; font-family:inherit; background:rgba(255,255,255,.65); color:var(--txt); outline:none; }
+  .tksearch:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(254,127,45,.12); }
   .row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:11px; }
   .btn{ border:0; border-radius:980px; padding:7px 13px; font-size:12.5px; font-weight:550; cursor:pointer; font-family:inherit; }
   .btn-primary{ background:var(--accent); color:#fff; } .btn-primary:hover{ background:var(--accent-d); } .btn-soft{ background:rgba(20,20,45,.06); color:var(--txt); }
@@ -197,7 +199,10 @@ function composioSubs(extra){
     return `<div class="subrow"><span class="sdot ${c.status}"></span><span class="sname">${esc(c.slug)}</span><span class="smeta">${esc(meta)}</span>${btn}</div>`;
   }).join("")+`</div>`; }
   const have=new Set(cfgs.map(c=>c.slug)), fresh=POPULAR.filter(s=>!have.has(s));
-  if(fresh.length) out+=`<div class="whonote" style="margin-top:10px">Подключить новый сервис:</div><div class="chips" style="border-top:none;padding-top:6px;margin-top:2px">`+fresh.map(s=>`<span class="chip ghost" id="cx-${esc(s)}" onclick='connectComposio(${esc(JSON.stringify(s))})'>+ ${esc(s)}</span>`).join("")+`</div>`;
+  if(fresh.length) out+=`<div class="whonote" style="margin-top:10px">Популярные:</div><div class="chips" style="border-top:none;padding-top:6px;margin-top:2px">`+fresh.map(s=>`<span class="chip ghost" id="cx-${esc(s)}" onclick='connectComposio(${esc(JSON.stringify(s))})'>+ ${esc(s)}</span>`).join("")+`</div>`;
+  out+=`<div class="whonote" style="margin-top:10px">Найти любой из 500+ сервисов composio:</div>
+    <input class="tksearch" placeholder="печатай: jira, slack, gmail…" oninput="searchToolkits(this.value)">
+    <div class="chips" id="tkresults" style="border-top:none;padding-top:6px"></div>`;
   const cli=extra&&extra.cli;
   if(cli&&cli.installed&&!cli.loggedIn) out+=`<div class="clinote"><b>CLI-логин не завершён.</b> Ключ панели (ak_) работает, но вход через CLI (uak_) не дожат — агенты/старые сессии ловят 401. Почини: в терминале <b>composio login</b> и дожми до «Success».</div>`;
   return out;
@@ -241,6 +246,18 @@ async function toggleGrant(svcId, clientId, enable, label){
     if(j.guide){ alert(j.guide); return; } if(!j.ok){ toast("Не вышло: "+(j.error||"ошибка")); return; }
     toast(j.note||(enable?"Доступ выдан":"Доступ отключён")); reload();
   }catch(e){ toast("Ошибка: "+e.message); }
+}
+let tkTimer;
+function searchToolkits(q){
+  clearTimeout(tkTimer); const box=document.getElementById("tkresults"); if(!box) return;
+  q=String(q||"").trim(); if(q.length<2){ box.innerHTML=""; return; }
+  box.innerHTML=`<span class="whonote">ищу…</span>`;
+  tkTimer=setTimeout(async()=>{
+    try{ const r=await(await fetch("/api/conn/composio-toolkits?q="+encodeURIComponent(q))).json();
+      const items=(r.items||[]).slice(0,30);
+      box.innerHTML=items.length?items.map(t=>`<span class="chip ghost" id="cx-${esc(t.slug)}" title="${esc(t.name)}" onclick='connectComposio(${esc(JSON.stringify(t.slug))})'>+ ${esc(t.slug)}</span>`).join(""):`<span class="whonote">ничего не найдено</span>`;
+    }catch(e){ box.innerHTML=`<span class="whonote">ошибка поиска</span>`; }
+  },300);
 }
 async function connectComposio(slug){
   if(POLLS[slug]){ clearTimeout(POLLS[slug]); delete POLLS[slug]; }

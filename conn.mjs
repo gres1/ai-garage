@@ -289,6 +289,23 @@ export async function connStatus(id) {
   return { raw, ui: CX_STATE[raw] || "warn", terminal: ["ACTIVE", "FAILED", "REVOKED", "EXPIRED", "INACTIVE"].includes(raw) };
 }
 
+// весь каталог composio-сервисов (для «+ подключить любой»), с опц. поиском
+export async function connToolkits(q) {
+  const env = readEnv();
+  if (!env.COMPOSIO_API_KEY) return { items: [], error: "нет COMPOSIO_API_KEY" };
+  const r = await composioRaw("/toolkits?limit=500", env);
+  if (r.code !== 200) return { items: [], error: `composio ${r.code}` };
+  const items = listItems(r.json).map((t) => ({
+    slug: t.slug || t.toolkit_slug || t.name || "",
+    name: t.name || t.meta?.name || t.slug || "",
+    categories: t.meta?.categories || t.categories || [],
+  })).filter((t) => t.slug);
+  const query = String(q || "").trim().toLowerCase();
+  const list = query ? items.filter((t) => (t.slug + " " + t.name).toLowerCase().includes(query)) : items;
+  list.sort((a, b) => a.name.localeCompare(b.name));
+  return { total: items.length, items: list };
+}
+
 // CLI: node conn.mjs snapshot
 if (process.argv[2] === "snapshot") {
   connCheck().then((r) => { process.stdout.write(JSON.stringify(r, null, 2)); process.exit(0); });
