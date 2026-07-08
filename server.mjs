@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 import { homedir, hostname } from "node:os";
 import { connList, connCheck, composioConnect, connStatus, connToolkits } from "./conn.mjs";
 import { discover } from "./discover.mjs";
-import { setGrant } from "./grant.mjs";
+import { setGrant, connHistory } from "./grant.mjs";
 
 // Connections-роуты раскрывают карту наличия/валидности кредов — за пределами loopback требуем токен (как мутации).
 function connAuthOk(req, res, cfg) {
@@ -631,6 +631,10 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/api/conn/composio-toolkits") {
     if (!connAuthOk(req, res, cfg)) return;
     return sendJson(res, 200, await connToolkits(url.searchParams.get("q")));
+  }
+  if (req.method === "GET" && url.pathname === "/api/conn/history") {
+    if (!connAuthOk(req, res, cfg)) return;
+    return sendJson(res, 200, await connHistory());
   }
   if (req.method === "POST" && url.pathname === "/api/conn/composio-connect") {
     if (!connAuthOk(req, res, cfg)) return;

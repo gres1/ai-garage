@@ -11,7 +11,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { connCheck, composioConnect, connStatus, connToolkits } from "./conn.mjs";
 import { discover } from "./discover.mjs";
-import { setGrant } from "./grant.mjs";
+import { setGrant, connHistory } from "./grant.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(HERE, "public");
@@ -48,6 +48,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/api/conn/access") return json(res, 200, await discover());
     if (req.method === "GET" && p === "/api/conn/status") return json(res, 200, await connStatus(url.searchParams.get("id")));
     if (req.method === "GET" && p === "/api/conn/composio-toolkits") return json(res, 200, await connToolkits(url.searchParams.get("q")));
+    if (req.method === "GET" && p === "/api/conn/history") return json(res, 200, await connHistory());
     if (req.method === "POST" && p === "/api/conn/composio-connect") {
       const { auth_config_id, slug } = await readBody(req);
       return json(res, 200, await composioConnect(auth_config_id, slug));

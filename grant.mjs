@@ -7,7 +7,7 @@
 //    a big stateful file we do not touch directly.
 //  - Response never echoes env VALUES; backup path is ~-stripped.
 
-import { readFile, writeFile, mkdir, copyFile, rename } from "node:fs/promises";
+import { readFile, writeFile, mkdir, copyFile, rename, readdir, stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { homedir } from "node:os";
 import { join, basename } from "node:path";
@@ -106,4 +106,21 @@ export async function setGrant({ serviceId, clientId, enable }) {
   await writeFile(tmp, JSON.stringify(obj, null, 2));
   await rename(tmp, path);
   return { ok: true, note: `${enable ? "доступ выдан" : "доступ отключён"} · бэкап: ${bak} · перезапусти ${target.label}, чтобы подхватил`, backup: bak };
+}
+
+// история правок: что панель бэкапила перед изменениями конфигов
+const CFG_CLIENT = { ".claude.json": "Claude Code", "mcp.json": "Cursor / VS Code", "claude_desktop_config.json": "Claude Desktop", "mcp_config.json": "Antigravity / Windsurf", "settings.json": "Zed", "config.json": "LM Studio" };
+export async function connHistory() {
+  try {
+    const files = await readdir(BAK_DIR);
+    const rows = [];
+    for (const f of files) {
+      const m = f.match(/^(\d+)-(.+)$/);
+      const base = m ? m[2] : f;
+      const st = await stat(join(BAK_DIR, f)).catch(() => null);
+      rows.push({ file: f, ts: m ? Number(m[1]) : (st ? Math.round(st.mtimeMs) : 0), target: base, client: CFG_CLIENT[base] || base });
+    }
+    rows.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    return { items: rows.slice(0, 50), dir: BAK_DIR.replace(H, "~") };
+  } catch { return { items: [], dir: BAK_DIR.replace(H, "~") }; }
 }

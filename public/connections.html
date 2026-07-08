@@ -146,6 +146,9 @@
     <div class="grid" id="grid"></div>
   </div>
 
+  <details class="blind" id="history"><summary>История правок (что панель бэкапила)</summary>
+    <div class="cap" id="histcap">Перед каждым изменением доступа панель сохраняет копию конфига — откат возможен.</div>
+    <ul id="historyList"><li>загрузка…</li></ul></details>
   <details class="blind" id="blind" style="display:none"><summary>Что панель НЕ видит</summary>
     <div class="cap">Автоматически, одинаково для всех — честные технические ограничения.</div>
     <ul id="blindList"></ul></details>
@@ -292,8 +295,15 @@ function render(){
   const bl=(DATA.access&&DATA.access.blindSpots)||[]; if(bl.length){ document.getElementById("blind").style.display="block"; document.getElementById("blindList").innerHTML=bl.map(b=>`<li>${esc(b)}</li>`).join(""); }
 }
 
+async function loadHistory(){
+  try{ const h=await(await fetch("/api/conn/history",{cache:"no-store"})).json(); const list=h.items||[]; const el=document.getElementById("historyList");
+    if(!list.length){ el.innerHTML=`<li>Изменений ещё не было. Как только выдашь или отключишь доступ — тут появится копия конфига «до правки» (для отката).</li>`; return; }
+    el.innerHTML=list.map(x=>`<li>${new Date(x.ts).toLocaleString("ru-RU")} — копия <b>${esc(x.client)}</b> перед изменением</li>`).join("");
+    if(h.dir) document.getElementById("histcap").textContent="Копии лежат в "+h.dir+" — можно откатить вручную.";
+  }catch(e){}
+}
 async function reload(manual){
-  const btn=document.getElementById("recheck"); btn.classList.add("spinning");
+  const btn=document.getElementById("recheck"); btn.classList.add("spinning"); loadHistory();
   if(!DATA.access&&!DATA.health) document.getElementById("grid").innerHTML=skel("Читаю программы и проверяю ключи…");
   let live=false;
   try{ DATA.access=await(await fetch("/api/conn/access",{cache:"no-store"})).json(); live=true; render(); }catch(e){}
