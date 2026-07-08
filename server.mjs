@@ -16,8 +16,11 @@ import { setGrant } from "./grant.mjs";
 
 // Connections-роуты раскрывают карту наличия/валидности кредов — за пределами loopback требуем токен (как мутации).
 function connAuthOk(req, res, cfg) {
-  const exposed = (cfg.access && cfg.access !== "off") || BIND_HOST !== "127.0.0.1";
-  if (!exposed || !cfg.token) return true;
+  // Гейтим по РЕАЛЬНОМУ хосту запроса: локальный браузер (loopback) — свободно, как /api/status;
+  // запрос через туннель/LAN — требуем токен (conn-данные чувствительнее статуса сервисов).
+  const host = (req.headers.host || "").replace(/:\d+$/, "").toLowerCase();
+  if (["localhost", "127.0.0.1", "[::1]", ""].includes(host)) return true;
+  if (!cfg.token) return true;
   const a = Buffer.from(String(req.headers["x-control-token"] || ""));
   const b = Buffer.from(String(cfg.token));
   if (a.length !== b.length || !timingSafeEqual(a, b)) { sendJson(res, 401, { ok: false, error: "нужен токен доступа" }); return false; }
