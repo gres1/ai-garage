@@ -108,10 +108,20 @@
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
   .empty{ max-width:1180px; margin:0 auto; text-align:center; color:var(--mut); padding:40px; }
   @media (max-width:560px){ body{ padding:16px 12px 60px; } .grid{ grid-template-columns:1fr; } h1{ font-size:22px; } .counts{ margin-left:0; } }
+  .hbtn{ display:inline-flex; align-items:center; gap:7px; background:var(--glass); border:1px solid var(--glass-brd); color:var(--txt); border-radius:980px; padding:9px 15px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .hbtn:hover{ background:#fff; } .hbtn .ic{ width:18px; height:18px; } .hbtn.spinning svg{ animation:spin 1s linear infinite; }
+  .modal-bg{ position:fixed; inset:0; background:rgba(20,20,45,.4); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:100; }
+  .modal-bg.show{ display:flex; }
+  .modal{ background:#fff; border-radius:18px; padding:22px; max-width:470px; width:92%; box-shadow:0 20px 60px rgba(20,20,45,.3); }
+  .modal h3{ margin:0 0 2px; font-size:19px; } .modal p{ color:var(--mut); font-size:13.5px; margin:6px 0 0; line-height:1.5; }
+  .modal .opt{ border:1px solid var(--glass-brd); border-radius:13px; padding:13px 15px; margin:14px 0 0; } .modal .opt b{ font-size:14.5px; }
+  .mclose{ float:right; cursor:pointer; color:var(--mut); font-size:22px; line-height:1; border:0; background:none; padding:0 2px; }
 </style>
 </head>
 <body>
   <header>
+    <button class="hbtn" onclick="location.href='/'" title="Назад к панели AI Garage">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg> AI Garage</button>
     <img class="logo" src="/logo.png" alt="AI Garage" onerror="this.remove()"/>
     <div>
       <h1 class="rounded">Подключения</h1>
@@ -123,7 +133,9 @@
       <div class="num rounded"><b id="upn">0</b><span>ключей<br>живо</span></div>
     </div>
     <div class="spacer"></div>
-    <button class="btn-add" id="recheck" onclick="reload(true)">
+    <button class="btn-add" onclick="openAdd()" title="Добавить подключение">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Добавить</button>
+    <button class="hbtn" id="recheck" onclick="reload(true)" title="Обновить">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> Обновить</button>
   </header>
 
@@ -152,12 +164,36 @@
   <details class="blind" id="blind" style="display:none"><summary>Что панель НЕ видит</summary>
     <div class="cap">Автоматически, одинаково для всех — честные технические ограничения.</div>
     <ul id="blindList"></ul></details>
+  <div class="modal-bg" id="addModal" onclick="if(event.target===this)closeAdd()">
+    <div class="modal">
+      <button class="mclose" onclick="closeAdd()">×</button>
+      <h3 class="rounded">Добавить подключение</h3>
+      <p>Выбери, что подключить — или попроси своего ИИ-агента.</p>
+      <div class="opt">
+        <b>Из каталога Composio — 500+ сервисов</b>
+        <p>GitHub, Slack, Gmail, Jira и сотни других. Вход по кнопке (OAuth), ключи не нужны.</p>
+        <button class="btn-add" style="margin-top:10px" onclick="closeAdd();setFilter('composio');document.querySelector('.tksearch')&&document.querySelector('.tksearch').focus()">Открыть каталог Composio</button>
+      </div>
+      <div class="opt">
+        <b>Другой сервис или свой API-ключ</b>
+        <p>Нет в каталоге? Попроси своего ИИ-агента (Claude Code / Cursor) — он добавит подключение и выдаст доступ:</p>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+          <input class="tksearch" id="agentPrompt" readonly value="Добавь в AI Garage подключение <сервис> и выдай доступ Claude Code" style="flex:1;margin:0" onclick="this.select()">
+          <button class="hbtn" onclick="copyPrompt()">Копировать</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="toast" id="toast"></div>
 
 <script>
 const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),3200); }
 function openUrl(u){ if(u) window.open(u,"_blank","noopener"); }
+function openAdd(){ document.getElementById("addModal").classList.add("show"); }
+function closeAdd(){ document.getElementById("addModal").classList.remove("show"); }
+function copyPrompt(){ const v=document.getElementById("agentPrompt").value; navigator.clipboard.writeText(v).then(()=>toast("Промпт скопирован — вставь своему агенту")).catch(()=>{}); }
+addEventListener("keydown",e=>{ if(e.key==="Escape")closeAdd(); });
 const CLIENTS={ "claude-code":{l:"Claude Code",c:"#d97757"}, "cursor":{l:"Cursor",c:"#4d5e6a"}, "claude-desktop":{l:"Claude Desktop",c:"#c96442"},
   "antigravity":{l:"Antigravity",c:"#4285f4"}, "vscode":{l:"VS Code",c:"#0a7bd4"}, "zed":{l:"Zed",c:"#5b57d1"}, "windsurf":{l:"Windsurf",c:"#09b6a2"}, "lmstudio":{l:"LM Studio",c:"#7a869a"} };
 const clLabel=id=>(CLIENTS[id]||{}).l||id; const clColor=id=>(CLIENTS[id]||{}).c||"#7a869a";
