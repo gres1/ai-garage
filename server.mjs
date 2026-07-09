@@ -545,6 +545,20 @@ async function autostartSet(enable) {
   return { ok: true, note: "выключен" };
 }
 
+// Авто-детект ИИ-агентов (Claude Code, Cursor, …) для секции «Агенты» на главной — читает их конфиги
+// через discover.mjs. Кешируем ~10с, чтобы не перечитывать файлы на каждый /api/agents.
+let _agentsCache = null, _agentsAt = 0;
+async function detectedAgents() {
+  const now = Date.now();
+  if (_agentsCache && now - _agentsAt < 10000) return _agentsCache;
+  try {
+    const d = await discover();
+    _agentsCache = (d.consumers || []).map((c) => ({ id: c.id, label: c.label, count: c.count, configPath: c.configPath }));
+    _agentsAt = now;
+  } catch { _agentsCache = _agentsCache || []; }
+  return _agentsCache;
+}
+
 const server = http.createServer(async (req, res) => {
  try {
   const url = new URL(req.url, "http://localhost");
@@ -696,6 +710,11 @@ const server = http.createServer(async (req, res) => {
     const p = toPort(url.searchParams.get("port"));
     if (!p) return sendJson(res, 400, { ok: false, error: "некорректный порт" });
     return sendJson(res, 200, await checkEmbeddable(p));
+  }
+
+  // Обнаруженные ИИ-агенты (для секции «Агенты» на главной панели) — авто, без ручной настройки.
+  if (req.method === "GET" && url.pathname === "/api/agents") {
+    return sendJson(res, 200, { agents: await detectedAgents() });
   }
 
   if (req.method === "GET" && url.pathname === "/api/guess-cmd") {
