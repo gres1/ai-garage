@@ -191,7 +191,11 @@
 <script>
 const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),3200); }
-function openUrl(u){ if(u) window.open(u,"_blank","noopener"); }
+function openUrl(u){ if(!u) return;
+  // В браузере — новая вкладка. В окне приложения (Tauri) window.open заблокирован → открываем
+  // через мостик /__open, который on_navigation ловит и открывает в системном браузере.
+  try{ const w=window.open(u,"_blank","noopener"); if(w) return; }catch(e){}
+  location.href="/__open?u="+encodeURIComponent(u); }
 function openAdd(){
   const pop=document.getElementById("addPopular");
   if(pop && !pop.dataset.filled){
