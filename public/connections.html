@@ -171,8 +171,10 @@
       <p>Выбери, что подключить — или попроси своего ИИ-агента.</p>
       <div class="opt">
         <b>Из каталога Composio — 500+ сервисов</b>
-        <p>GitHub, Slack, Gmail, Jira и сотни других. Вход по кнопке (OAuth), ключи не нужны.</p>
-        <button class="btn-add" style="margin-top:10px" onclick="closeAdd();setFilter('composio');document.querySelector('.tksearch')&&document.querySelector('.tksearch').focus()">Открыть каталог Composio</button>
+        <p>Популярные — подключить в один клик (OAuth, ключи не нужны):</p>
+        <div class="chips" id="addPopular" style="border-top:none;padding-top:6px;margin-top:4px"></div>
+        <input class="tksearch" placeholder="или найди любой: jira, hubspot, figma, airtable…" oninput="searchToolkits(this.value,'addResults')" style="margin-top:10px">
+        <div class="chips" id="addResults" style="border-top:none;padding-top:6px"></div>
       </div>
       <div class="opt">
         <b>Другой сервис или свой API-ключ</b>
@@ -190,7 +192,14 @@
 const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),3200); }
 function openUrl(u){ if(u) window.open(u,"_blank","noopener"); }
-function openAdd(){ document.getElementById("addModal").classList.add("show"); }
+function openAdd(){
+  const pop=document.getElementById("addPopular");
+  if(pop && !pop.dataset.filled){
+    pop.innerHTML=POPULAR.map(s=>`<span class="chip ghost" id="cx-${esc(s)}" onclick='connectComposio(${esc(JSON.stringify(s))})'>+ ${esc(s)}</span>`).join("");
+    pop.dataset.filled="1";
+  }
+  document.getElementById("addModal").classList.add("show");
+}
 function closeAdd(){ document.getElementById("addModal").classList.remove("show"); }
 function copyPrompt(){ const v=document.getElementById("agentPrompt").value; navigator.clipboard.writeText(v).then(()=>toast("Промпт скопирован — вставь своему агенту")).catch(()=>{}); }
 addEventListener("keydown",e=>{ if(e.key==="Escape")closeAdd(); });
@@ -287,8 +296,8 @@ async function toggleGrant(svcId, clientId, enable, label){
   }catch(e){ toast("Ошибка: "+e.message); }
 }
 let tkTimer;
-function searchToolkits(q){
-  clearTimeout(tkTimer); const box=document.getElementById("tkresults"); if(!box) return;
+function searchToolkits(q,target){
+  clearTimeout(tkTimer); const box=document.getElementById(target||"tkresults"); if(!box) return;
   q=String(q||"").trim(); if(q.length<2){ box.innerHTML=""; return; }
   box.innerHTML=`<span class="whonote">ищу…</span>`;
   tkTimer=setTimeout(async()=>{
