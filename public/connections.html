@@ -192,10 +192,11 @@
 const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),3200); }
 function openUrl(u){ if(!u) return;
-  // В браузере — новая вкладка. В окне приложения (Tauri) window.open заблокирован → открываем
-  // через мостик /__open, который on_navigation ловит и открывает в системном браузере.
-  try{ const w=window.open(u,"_blank","noopener"); if(w) return; }catch(e){}
-  location.href="/__open?u="+encodeURIComponent(u); }
+  // Универсально: создаём ссылку и синтетически кликаем. В окне приложения (Tauri) этот клик ловит
+  // мостик LINK_SCRIPT (слушает click по a[href]) → открывает в системном браузере через /__open.
+  // В обычном браузере — просто новая вкладка. Надёжнее window.open (тот в Tauri возвращает «живой» объект).
+  const a=document.createElement("a"); a.href=u; a.target="_blank"; a.rel="noopener";
+  document.body.appendChild(a); a.click(); a.remove(); }
 function openAdd(){
   const pop=document.getElementById("addPopular");
   if(pop && !pop.dataset.filled){
