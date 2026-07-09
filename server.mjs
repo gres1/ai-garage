@@ -586,6 +586,7 @@ const server = http.createServer(async (req, res) => {
       const html = await readFile(join(PUBLIC_DIR, "index.html"), "utf8");
       res.writeHead(200, {
         "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
         "X-Frame-Options": "DENY",
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer",
@@ -605,7 +606,7 @@ const server = http.createServer(async (req, res) => {
         const data = await readFile(fp);
         const ext = (safe.split(".").pop() || "").toLowerCase();
         const types = { html: "text/html; charset=utf-8", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", svg: "image/svg+xml", webp: "image/webp", ico: "image/x-icon", gif: "image/gif", js: "text/javascript; charset=utf-8", css: "text/css; charset=utf-8" };
-        res.writeHead(200, { "Content-Type": types[ext] || "application/octet-stream", "Cache-Control": "max-age=3600", "X-Content-Type-Options": "nosniff" });
+        res.writeHead(200, { "Content-Type": types[ext] || "application/octet-stream", "Cache-Control": ext === "html" ? "no-store" : "max-age=3600", "X-Content-Type-Options": "nosniff" });
         return res.end(data);
       } catch {}
     }

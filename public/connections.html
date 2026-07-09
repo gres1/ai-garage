@@ -116,16 +116,21 @@
   .modal h3{ margin:0 0 2px; font-size:19px; } .modal p{ color:var(--mut); font-size:13.5px; margin:6px 0 0; line-height:1.5; }
   .modal .opt{ border:1px solid var(--glass-brd); border-radius:13px; padding:13px 15px; margin:14px 0 0; } .modal .opt b{ font-size:14.5px; }
   .mclose{ float:right; cursor:pointer; color:var(--mut); font-size:22px; line-height:1; border:0; background:none; padding:0 2px; }
+  /* Унифицированная шапка — как на панели (логотип/бренд/кольцо/кнопки на тех же местах) */
+  header h1.brand{ font-size:26px; margin:0; font-weight:700; letter-spacing:-.022em; line-height:1.1; color:var(--txt); }
+  .brandblock{ margin-left:-6px; }
+  .ctl{ display:flex; align-items:center; gap:8px; }
+  .pausebtn{ border:1px solid var(--line); background:rgba(255,255,255,.6); border-radius:980px; padding:9px 14px; font-size:13px; cursor:pointer; color:var(--mut); font-family:inherit; display:inline-flex; align-items:center; gap:6px; }
+  .pausebtn:hover{ border-color:var(--accent); color:var(--accent); }
+  .pausebtn .ic, .btn-add .ic{ width:16px; height:16px; }
 </style>
 </head>
 <body>
   <header>
-    <button class="hbtn" onclick="location.href='/'" title="Назад к панели AI Garage">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg> AI Garage</button>
-    <img class="logo" src="/logo.png" alt="AI Garage" onerror="this.remove()"/>
-    <div>
-      <h1 class="rounded">Подключения</h1>
-      <div class="sub"><span id="ts">загрузка…</span> <span id="src"></span></div>
+    <img class="logo" src="/logo.png" alt="AI Garage" onclick="location.href='/'" style="cursor:pointer" title="К панели" onerror="this.remove()"/>
+    <div class="brandblock">
+      <h1 class="rounded brand">AI Garage</h1>
+      <div class="sub"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.5;vertical-align:-2px"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> <span id="ts">загрузка…</span> · <b style="color:var(--mut)">Подключения</b> <span id="src"></span></div>
     </div>
     <div class="ring" id="ringWrap">
       <svg width="74" height="74"><circle cx="37" cy="37" r="31" fill="none" stroke="#e6e6ea" stroke-width="8"/>
@@ -133,10 +138,14 @@
       <div class="num rounded"><b id="upn">0</b><span>ключей<br>живо</span></div>
     </div>
     <div class="spacer"></div>
-    <button class="btn-add" onclick="openAdd()" title="Добавить подключение">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Добавить</button>
-    <button class="hbtn" id="recheck" onclick="reload(true)" title="Обновить">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> Обновить</button>
+    <div class="ctl">
+      <button class="pausebtn" onclick="location.href='/'" title="К панели AI Garage">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg> Панель</button>
+      <button class="btn-add" onclick="openAdd()" title="Добавить подключение">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Добавить</button>
+      <button class="pausebtn" id="recheck" onclick="reload(true)" title="Обновить">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> Обновить</button>
+    </div>
   </header>
 
   <div class="wrap">
