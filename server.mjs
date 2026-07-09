@@ -501,6 +501,50 @@ function sanitizeService(s) {
   return out;
 }
 
+// ── Автозапуск при входе в систему (без терминала) ──
+// Ставит launchd-агент, который поднимает панель при логине. Детектит и уже настроенный автозапуск
+// (напр. ручной launchd-агент), чтобы не плодить дубли на одном порту.
+const PANEL_PLIST = join(LA_DIR, "com.aigarage.panel.plist");
+const SERVER_PATH = process.argv[1] || join(__dirname, "server.mjs");
+async function autostartStatus() {
+  if (process.platform !== "darwin") return { on: false, supported: false };
+  if (await fileExists(PANEL_PLIST)) return { on: true, mine: true, supported: true };
+  try {
+    for (const f of await readdir(LA_DIR)) {                   // уже автозапускается другим агентом?
+      if (!f.endsWith(".plist")) continue;
+      try { const c = await readFile(join(LA_DIR, f), "utf8"); if (c.includes(SERVER_PATH)) return { on: true, mine: false, label: f.replace(/\.plist$/, ""), supported: true }; } catch {}
+    }
+  } catch {}
+  return { on: false, supported: true };
+}
+async function autostartSet(enable) {
+  if (process.platform !== "darwin") return { ok: false, error: "автозапуск при входе — пока только macOS" };
+  const st = await autostartStatus(); const uid = process.getuid();
+  if (enable) {
+    if (st.on) return { ok: true, note: st.mine ? "уже включён" : "уже включён (другим агентом)" };
+    const log = join(homedir(), "Library/Logs/ai-garage.log");
+    const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.aigarage.panel</string>
+  <key>ProgramArguments</key><array><string>${xmlEsc(process.execPath)}</string><string>${xmlEsc(SERVER_PATH)}</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardErrorPath</key><string>${xmlEsc(log)}</string>
+  <key>StandardOutPath</key><string>${xmlEsc(log)}</string>
+</dict></plist>
+`;
+    await mkdir(LA_DIR, { recursive: true });
+    await writeFile(PANEL_PLIST, plist);
+    await new Promise((r) => exec(`launchctl bootstrap gui/${uid} ${JSON.stringify(PANEL_PLIST)} 2>/dev/null || launchctl load ${JSON.stringify(PANEL_PLIST)} 2>/dev/null; true`, () => r()));
+    return { ok: true, note: "включён — панель будет стартовать при входе в систему" };
+  }
+  if (st.on && !st.mine) return { ok: false, error: "автозапуск настроен другим агентом (" + (st.label || "launchd") + ") — сними его вручную" };
+  await new Promise((r) => exec(`launchctl bootout gui/${uid}/com.aigarage.panel 2>/dev/null || launchctl unload ${JSON.stringify(PANEL_PLIST)} 2>/dev/null; true`, () => r()));
+  try { await unlink(PANEL_PLIST); } catch {}
+  return { ok: true, note: "выключен" };
+}
+
 const server = http.createServer(async (req, res) => {
  try {
   const url = new URL(req.url, "http://localhost");
@@ -748,6 +792,13 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Режим доступа с телефона: off | tailscale | public. Меняет config.json (мутация → уже под токеном, если он есть).
+  // Автозапуск при входе: статус + вкл/выкл (ставит/снимает launchd-агент, без терминала).
+  if (req.method === "GET" && url.pathname === "/api/autostart") return sendJson(res, 200, await autostartStatus());
+  if (req.method === "POST" && url.pathname === "/api/autostart") {
+    const { enable } = await readBody(req);
+    return sendJson(res, 200, await autostartSet(!!enable));
+  }
+
   if (req.method === "POST" && url.pathname === "/api/access") {
     const { mode } = await readBody(req);
     if (!["off", "tailscale", "public"].includes(mode)) return sendJson(res, 400, { ok: false, error: "неизвестный режим" });
