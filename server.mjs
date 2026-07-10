@@ -545,6 +545,45 @@ async function autostartSet(enable) {
   return { ok: true, note: "выключен" };
 }
 
+// ── Удалённые серверы по SSH (GUI-мастер, без терминала) ──
+// Приватный ключ НЕ копируем — работаем ССЫЛКОЙ на файл в ~/.ssh (как обсуждали: безопасно + удобно).
+async function sshKeys() {
+  const dir = join(homedir(), ".ssh");
+  try {
+    const files = await readdir(dir);
+    const pubs = new Set(files.filter((f) => f.endsWith(".pub")).map((f) => f.slice(0, -4)));
+    const known = new Set(["id_ed25519", "id_rsa", "id_ecdsa", "id_dsa"]);
+    const skip = new Set(["config", "known_hosts", "known_hosts.old", "authorized_keys"]);
+    return files.filter((f) => !f.endsWith(".pub") && !skip.has(f) && (pubs.has(f) || known.has(f)))
+      .map((f) => ({ name: f, path: "~/.ssh/" + f }));
+  } catch { return []; }
+}
+const sshUserHost = (o) => `${String(o.user || "").replace(/[^\w.-]/g, "")}@${String(o.host || "").replace(/[^\w.:-]/g, "")}`;
+const shq = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";   // безопасное shell-экранирование
+function sshBaseArgs(o) {                                          // для execFile (без shell)
+  const a = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "StrictHostKeyChecking=accept-new"];
+  const p = toPort(o.port); if (p) a.push("-p", String(p));
+  if (o.keyPath) a.push("-i", expandHome(String(o.keyPath)));
+  return a;
+}
+function sshCmdStr(o, remoteCmd) {                                 // строка для startCmd/stopCmd (исполняется через bash)
+  let s = "ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new";
+  const p = toPort(o.port); if (p) s += " -p " + p;
+  if (o.keyPath) s += " -i " + shq(expandHome(String(o.keyPath)));
+  s += " " + shq(sshUserHost(o));
+  if (remoteCmd) s += " " + shq(String(remoteCmd));
+  return s;
+}
+function sshTest(o) {
+  return new Promise((resolve) => {
+    if (!o.host || !o.user) return resolve({ ok: false, error: "нужны host и user" });
+    execFile("ssh", [...sshBaseArgs(o), sshUserHost(o), "echo", "aig-ok"], { timeout: 15000 }, (e, out, err) => {
+      if (String(out || "").includes("aig-ok")) return resolve({ ok: true });
+      resolve({ ok: false, error: (String(err || "").split("\n").find((l) => l.trim()) || (e && e.message) || "не удалось подключиться").slice(0, 200) });
+    });
+  });
+}
+
 // Авто-детект ИИ-агентов (Claude Code, Cursor, …) для секции «Агенты» на главной — читает их конфиги
 // через discover.mjs. Кешируем ~10с, чтобы не перечитывать файлы на каждый /api/agents.
 let _agentsCache = null, _agentsAt = 0;
@@ -715,6 +754,34 @@ const server = http.createServer(async (req, res) => {
   // Обнаруженные ИИ-агенты (для секции «Агенты» на главной панели) — авто, без ручной настройки.
   if (req.method === "GET" && url.pathname === "/api/agents") {
     return sendJson(res, 200, { agents: await detectedAgents() });
+  }
+
+  // SSH-ключи из ~/.ssh — для выпадающего списка в мастере «удалённый сервер» (только имена, не содержимое).
+  if (req.method === "GET" && url.pathname === "/api/ssh-keys") {
+    return sendJson(res, 200, { keys: await sshKeys() });
+  }
+  // Проверить SSH-подключение (зелёное/красное в мастере). Выполняется на машине пользователя.
+  if (req.method === "POST" && url.pathname === "/api/ssh-test") {
+    return sendJson(res, 200, await sshTest(await readBody(req)));
+  }
+  // Добавить удалённый сервер: строим ssh-обёрнутые команды старт/стоп и заводим карточку (host=VPS).
+  if (req.method === "POST" && url.pathname === "/api/remote-add") {
+    const b = await readBody(req);
+    if (!b.name || !b.host || !b.user) return sendJson(res, 400, { ok: false, error: "нужны name, host, user" });
+    const svc = sanitizeService({
+      name: b.name, type: "local", host: "VPS", control: true,
+      url: b.url || undefined, port: toPort(b.port) || undefined,
+      startCmd: b.startCmd ? sshCmdStr(b, b.startCmd) : undefined,
+      stopCmd: b.stopCmd ? sshCmdStr(b, b.stopCmd) : undefined,
+      note: b.note || `SSH: ${sshUserHost(b)}`,
+    });
+    if (!svc || (!svc.startCmd && !svc.stopCmd)) return sendJson(res, 400, { ok: false, error: "задай хотя бы команду старта" });
+    const done = await withLock(async () => {
+      const list = await loadServices();
+      if (list.some((s) => s.name === svc.name)) return { ok: false, error: "имя уже занято" };
+      list.push(svc); await saveServices(list); return { ok: true };
+    });
+    return sendJson(res, 200, done.ok ? { ok: true, note: "удалённый сервер добавлен" } : done);
   }
 
   if (req.method === "GET" && url.pathname === "/api/guess-cmd") {
