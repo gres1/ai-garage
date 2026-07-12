@@ -270,6 +270,10 @@ async function saveCmds(m) { await mkdir(CFG_DIR, { recursive: true }); const tm
 function guessCmdFromRaw(raw, port) {
   let start = (raw || "").trim();
   let stop = `lsof -ti:${port} | xargs kill`;
+  // Некоторые процессы переписывают своё имя в ps на человекочитаемый ТИТУЛ, а не команду:
+  // Next.js → 'next-server (v16.2.10)', Postgres → 'postgres: writer process'. Это НЕ запускаемая
+  // команда (скобки ломают bash). Не запоминаем такое — пусть кнопка «Вкл» честно попросит настроить.
+  if (!start || /[()]/.test(start) || /^[\w.\-]+:\s/.test(start)) return { start: "", stop };
   const m = start.match(/\/([^/]+)\.app\/Contents\/MacOS\/(.+)$/);
   if (m && m[2].trim() === m[1]) {   // чистый GUI-запуск .app без аргументов → open/quit
     const app = m[1]; return { start: `open -a "${app}"`, stop: `osascript -e 'quit app "${app}"'` };
@@ -562,13 +566,13 @@ const sshUserHost = (o) => `${String(o.user || "").replace(/[^\w.-]/g, "")}@${St
 const shq = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";   // безопасное shell-экранирование
 function sshBaseArgs(o) {                                          // для execFile (без shell)
   const a = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "StrictHostKeyChecking=accept-new"];
-  const p = toPort(o.port); if (p) a.push("-p", String(p));
+  const p = toPort(o.sshPort || o.port); if (p) a.push("-p", String(p));
   if (o.keyPath) a.push("-i", expandHome(String(o.keyPath)));
   return a;
 }
 function sshCmdStr(o, remoteCmd) {                                 // строка для startCmd/stopCmd (исполняется через bash)
   let s = "ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new";
-  const p = toPort(o.port); if (p) s += " -p " + p;
+  const p = toPort(o.sshPort || o.port); if (p) s += " -p " + p;
   if (o.keyPath) s += " -i " + shq(expandHome(String(o.keyPath)));
   s += " " + shq(sshUserHost(o));
   if (remoteCmd) s += " " + shq(String(remoteCmd));
