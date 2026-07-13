@@ -602,6 +602,17 @@ async function detectedAgents() {
   return _agentsCache;
 }
 
+// Кеш проверки ключей: connCheck опрашивает все API + `claude mcp list` (~7с). Кешируем ~45с,
+// чтобы вкладка «Ключи» открывалась мгновенно, а не выглядела пустой пока идут проверки.
+let _connCheckCache = null, _connCheckAt = 0;
+async function connCheckCached(force) {
+  const now = Date.now();
+  if (!force && _connCheckCache && now - _connCheckAt < 45000) return { ...(_connCheckCache), cached: true };
+  const r = await connCheck();
+  _connCheckCache = r; _connCheckAt = now;
+  return r;
+}
+
 const server = http.createServer(async (req, res) => {
  try {
   const url = new URL(req.url, "http://localhost");
@@ -720,7 +731,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === "GET" && url.pathname === "/api/conn/check") {
     if (!connAuthOk(req, res, cfg)) return;
-    return sendJson(res, 200, await connCheck());
+    return sendJson(res, 200, await connCheckCached(url.searchParams.get("force") === "1"));
   }
   if (req.method === "GET" && url.pathname === "/api/conn/access") {
     if (!connAuthOk(req, res, cfg)) return;
