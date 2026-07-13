@@ -1031,6 +1031,20 @@ const server = http.createServer(async (req, res) => {
     }));
   }
 
+  // Сменить ссылку карточки (напр. дописать путь /board к http://localhost:3000).
+  if (req.method === "POST" && url.pathname === "/api/service-seturl") {
+    const { name, url: newUrl } = await readBody(req);
+    return sendJson(res, 200, await withLock(async () => {
+      const list = await loadServices();
+      const svc = list.find((s) => s.name === name);
+      if (!svc) return { ok: false, error: "сервис не найден" };
+      const u = typeof newUrl === "string" ? newUrl.slice(0, 500).trim() : "";
+      if (u) svc.url = u; else delete svc.url;
+      await saveServices(list);
+      return { ok: true, note: "ссылка обновлена" };
+    }));
+  }
+
   if (req.method === "POST" && url.pathname === "/api/cat-override") {
     const { command, port, cat } = await readBody(req);
     const p = toPort(port);
