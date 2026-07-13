@@ -230,6 +230,11 @@ const stLabel=s=>s==="ok"?"работает":s==="warn"?"внимание":s==="
 const whereLabel=t=>t==="stdio"?"на этом Mac":"по сети";
 const plainDetail=d=>String(d||"").replace(/\s·\s\d{3}\b/,"");
 const norm=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+// Техно-слаги MCP-серверов → понятные человеку имена (чтобы не пугать «pinecone-mcp-server»).
+const FRIENDLY={pineconemcpserver:"Pinecone",figmadevmodemcpserver:"Figma",figmadevmode:"Figma",xcodebuildmcp:"Xcode",markitdown:"MarkItDown",telegramuserbot:"Telegram",linearserver:"Linear",appledocs:"Apple Docs",sequentialthinking:"Sequential Thinking",magicui:"Magic UI",claudecode:"Claude Code",claudedesktop:"Claude Desktop",googlesheets:"Google Sheets",googledrive:"Google Drive"};
+function friendlyName(label){ const k=norm(label); if(FRIENDLY[k]) return FRIENDLY[k];
+  let s=String(label||"").replace(/[-_]?dev[-_]?mode/gi,"").replace(/[-_]?mcp[-_]?server/gi,"").replace(/[-_]?mcp\b/gi,"").replace(/[-_]?server$/gi,"").replace(/[-_]+/g," ").trim();
+  return s?s.replace(/\b\w/g,c=>c.toUpperCase()):label; }
 
 let FILTER="all", DATA={}, POLLS={};
 function setFilter(f){ FILTER=f; [...document.querySelectorAll("#filters button")].forEach(b=>b.classList.toggle("on",b.dataset.f===f)); render(); }
@@ -287,7 +292,7 @@ function uCard(e, allClients){
   const composio=e.composio?composioSubs(e.composio.extra):"";
   const chips=(e.kind==="mcp")?accessChips(e,allClients):"";
   let act=""; if(h && h.status!=="ok" && h.dashboard) act=`<div class="row"><button class="btn btn-primary" onclick='openUrl(${esc(JSON.stringify(h.dashboard))})'>Открыть дашборд ↗</button></div>`;
-  return `<div class="card ${c}"><div class="top">${svcIcon(e.label)}<span class="name">${esc(e.label)}</span>${badges.join("")}</div>
+  return `<div class="card ${c}"><div class="top">${svcIcon(e.label)}<span class="name">${esc(friendlyName(e.label))}</span>${badges.join("")}</div>
     ${detail}${store}${composio}${chips}${act}</div>`;
 }
 function clientCard(cli, svcs){
