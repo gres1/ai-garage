@@ -602,6 +602,18 @@ async function detectedAgents() {
   return _agentsCache;
 }
 
+// ── Сейф ключей (Keychain) ──
+// ЗНАЧЕНИЯ секретов живут только в macOS Keychain (шифрует ОС). В приложении/файлах — лишь ИМЕНА
+// и заметки (secrets.json, chmod 600). Значение отдаётся наружу только по явному действию (копировать/показать).
+const SECRETS_PATH = join(CFG_DIR, "secrets.json");
+const KC_SERVICE = "AI Garage";
+const validSecretName = (n) => typeof n === "string" && /^[\w .:\-/@]{1,60}$/.test(n);
+async function loadSecrets() { try { const a = JSON.parse(await readFile(SECRETS_PATH, "utf8")); return Array.isArray(a) ? a : []; } catch { return []; } }
+async function saveSecrets(list) { await mkdir(CFG_DIR, { recursive: true }); const tmp = SECRETS_PATH + ".tmp"; await writeFile(tmp, JSON.stringify(list, null, 2), { mode: 0o600 }); await rename(tmp, SECRETS_PATH); }
+function kcSet(name, value) { return new Promise((r) => execFile("security", ["add-generic-password", "-U", "-s", KC_SERVICE, "-a", name, "-w", String(value)], (e) => r(!e))); }
+function kcGet(name) { return new Promise((r) => execFile("security", ["find-generic-password", "-s", KC_SERVICE, "-a", name, "-w"], (e, out) => r(e ? null : String(out || "").replace(/\n$/, "")))); }
+function kcDel(name) { return new Promise((r) => execFile("security", ["delete-generic-password", "-s", KC_SERVICE, "-a", name], (e) => r(!e))); }
+
 // Кеш проверки ключей: connCheck опрашивает все API + `claude mcp list` (~7с). Кешируем ~45с,
 // чтобы вкладка «Ключи» открывалась мгновенно, а не выглядела пустой пока идут проверки.
 let _connCheckCache = null, _connCheckAt = 0;
@@ -774,6 +786,36 @@ const server = http.createServer(async (req, res) => {
   // SSH-ключи из ~/.ssh — для выпадающего списка в мастере «удалённый сервер» (только имена, не содержимое).
   if (req.method === "GET" && url.pathname === "/api/ssh-keys") {
     return sendJson(res, 200, { keys: await sshKeys() });
+  }
+
+  // ── Сейф ключей ── список (ТОЛЬКО имена/заметки, без значений). За токеном при удалённом доступе.
+  if (req.method === "GET" && url.pathname === "/api/secrets") {
+    if (!connAuthOk(req, res, cfg)) return;
+    const list = await loadSecrets();
+    return sendJson(res, 200, { supported: process.platform === "darwin", items: list.map((s) => ({ name: s.name, note: s.note || "", updatedAt: s.updatedAt || null })) });
+  }
+  if (req.method === "POST" && url.pathname === "/api/secrets-set") {
+    if (process.platform !== "darwin") return sendJson(res, 200, { ok: false, error: "сейф ключей — пока только macOS (Keychain)" });
+    const { name, value, note } = await readBody(req);
+    if (!validSecretName(name)) return sendJson(res, 400, { ok: false, error: "недопустимое имя" });
+    if (typeof value !== "string" || !value) return sendJson(res, 400, { ok: false, error: "пустое значение" });
+    if (!(await kcSet(name, value))) return sendJson(res, 200, { ok: false, error: "Keychain отказал" });
+    await withLock(async () => { const list = await loadSecrets(); const e = list.find((s) => s.name === name) || (list.push({ name }), list[list.length - 1]); e.note = typeof note === "string" ? note.slice(0, 200) : (e.note || ""); e.updatedAt = Date.now(); await saveSecrets(list); });
+    return sendJson(res, 200, { ok: true, note: "секрет сохранён в Keychain" });
+  }
+  if (req.method === "POST" && url.pathname === "/api/secrets-get") {   // отдаёт значение — только по явному действию (копировать/показать)
+    if (process.platform !== "darwin") return sendJson(res, 200, { ok: false, error: "только macOS" });
+    const { name } = await readBody(req);
+    if (!validSecretName(name)) return sendJson(res, 400, { ok: false, error: "недопустимое имя" });
+    const v = await kcGet(name);
+    return sendJson(res, 200, v == null ? { ok: false, error: "не найдено в Keychain" } : { ok: true, value: v });
+  }
+  if (req.method === "POST" && url.pathname === "/api/secrets-del") {
+    const { name } = await readBody(req);
+    if (!validSecretName(name)) return sendJson(res, 400, { ok: false, error: "недопустимое имя" });
+    await kcDel(name);
+    await withLock(async () => { const list = (await loadSecrets()).filter((s) => s.name !== name); await saveSecrets(list); });
+    return sendJson(res, 200, { ok: true, note: "секрет удалён" });
   }
   // Проверить SSH-подключение (зелёное/красное в мастере). Выполняется на машине пользователя.
   if (req.method === "POST" && url.pathname === "/api/ssh-test") {
