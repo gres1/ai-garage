@@ -39,15 +39,44 @@
 - **SSH-туннель до VPS** (`ssh -L локальный:127.0.0.1:удалённый user@vps`): `type:"link"` (или local с launchd load/unload), `host:"vps"`, `port` = локальный проброшенный порт.
 - **Просто дашборд на VPS (через уже поднятый туннель):** `type:"link"`, `host:"vps"`, `port` = локальный порт туннеля, `url` = `http://localhost:<port>/...`.
 
-## Прочие операции
-- Освободить порт: `POST /api/kill-port {"port":3000}`.
-- Удалить: `POST /api/service-remove {"name":"My App"}`.
-- Статус всех: `GET /api/status`.
+## Прочие операции панели (полный справочник endpoints)
+Всё это — на `http://localhost:7777`. Мутации (`POST`) требуют заголовок `x-control-token: <token>` только если в `config.json` задан `token`.
+
+**Статус и порты**
+- Статус всех сервисов + обнаруженные порты: `GET /api/status`.
+- Освободить порт: `POST /api/kill-port {"port":3000}` (сначала проверь `safe` в статусе — системное/БД не убивать).
+- Угадать команды старта/стопа по живому процессу: `GET /api/guess-cmd?port=3000` → `{start, stop}`.
+- Можно ли встроить сервис в iframe панели: `GET /api/can-embed?port=3000`.
+
+**Жизненный цикл сервиса** (по имени карточки, тело `{"name":"My App"}`)
+- Старт / стоп / рестарт: `POST /api/start` · `POST /api/stop` · `POST /api/restart`. Если явной команды нет — панель подставит авто-запомненную.
+- Зарегистрировать запущенный сервис (то же, что MCP `register_service`): `POST /api/register {"port":3000,"command":"npm run dev","cwd":"~/app","name":"My App","url":"..."}` — заводит карточку и запоминает команду, кнопка «Вкл» работает сразу. Обязательны `port`+`command`.
+- Держать включённым (автозапуск + перезапуск супервизором панели, переживает ребут): `POST /api/keepalive {"name":"My App","enable":true}`.
+
+**Публичная ссылка (cloudflared)** — обычно через MCP `open_tunnel`/`close_tunnel`, напрямую:
+- `POST /api/tunnel-start {"port":3000}` / `POST /api/tunnel-stop {"port":3000}`.
+
+**Правка карточек**
+- Добавить/удалить: `POST /api/service-add` (см. выше) / `POST /api/service-remove {"name":...}`.
+- Переименовать: `POST /api/service-rename {"name":...,"newName":...}`.
+- Сменить ссылку (напр. дописать путь `/board`): `POST /api/service-seturl {"name":...,"url":"http://localhost:3000/board"}` (пустой `url` — удалить ссылку).
+- Сменить устройство (значок 💻/☁️): `POST /api/service-sethost {"name":...,"host":"VPS"}`.
+- Привязать/снять агента-владельца: `POST /api/service-setagent {"name":...,"agent":"claude-code"}` (пустой `agent` — снять).
+- Задать команды управления («link» → «local» с кнопками): `POST /api/service-setcmd {"name":...,"startCmd":...,"stopCmd":...,"cwd":...}`.
+- Порядок карточек: `POST /api/service-reorder {"order":["A","B",...]}`.
+- Внести все безопасные обнаруженные порты карточками разом: `POST /api/save-all-discovered` (системные/БД не тащит).
+- Переопределить категорию обнаруженного процесса: `POST /api/cat-override {"command":...,"port":...,"cat":"app"}` (`cat:"auto"` — вернуть авто-классификацию). Ярлык меняет, но защиту от kill с системных/БД/низких портов НЕ снимает.
+
+**Логи, боты, доступ с телефона**
+- Логи сервиса (последние ~120 строк, нужен `logPath` в карточке): `GET /api/logs?name=My%20App`.
+- Реальный ping Telegram-бота (нужны `pingEnv`/`pingChatId`/`bots[].tokenKey` в карточке): `POST /api/bot-ping {"name":...,"bot":0}` (без `bot` — пингует всех).
+- Перелогин Claude CLI (открывает Terminal с `claude login`, macOS): `POST /api/claude-relogin`.
+- Режим доступа с телефона: `POST /api/access {"mode":"off"|"tailscale"|"public"}` — вне loopback форсит генерацию токена; `tailscale` требует перезапуска панели (rebind сокета).
 
 ## Через MCP (если подключён `ai-garage-mcp`) — предпочитай его вместо curl
 - `list_services` — что запущено: сервисы + авто-обнаруженные порты (у каждого `safe` — системное/БД не убивать).
 - `register_service {name, port, command, cwd}` — **зарегистрируй сервис, который ТЫ только что запустил** (dev-сервер, приложение). Появится карточкой с рабочей кнопкой Вкл/Выкл, переживёт перезагрузку. Вызывай сразу после запуска.
-- `register_remote {name, host, user, keyPath, startCmd, stopCmd}` — **завести удалённый сервер по SSH** карточкой (пользователь опишет словами/голосом — «добавь мой сервер 1.2.3.4, юзер root, старт X»). Панель строит безопасную ssh-команду; ключ — по ссылке на файл в `~/.ssh`, не копируется.
+- `register_remote {name, host, user, keyPath, sshPort, startCmd, stopCmd, url}` — **завести удалённый сервер по SSH** карточкой (пользователь опишет словами/голосом — «добавь мой сервер 1.2.3.4, юзер root, старт X»). Панель строит безопасную ssh-команду; ключ — по ссылке на файл в `~/.ssh`, не копируется. Обёртка над `POST /api/remote-add` (см. раздел «Удалённые серверы по SSH»).
 - `free_port {port}` — освободить занятый порт (сначала проверь `safe`).
 - `open_tunnel {port}` / `close_tunnel {port}` — публичная ссылка (телефон/шаринг).
 - `connections_overview` / `connections_health` / `grant_access` / `composio_connect` — доступы и ключи (см. раздел Connections).
@@ -67,6 +96,9 @@
 **Шаг 1. Всегда сперва прочитай состояние:**
 - `GET /api/conn/access` — карта: `consumers` (ИИ-программы) + `services` (у каждого `label`, `aliases`, `transport`, `grantedBy` = кто имеет доступ). Дедуп сделан; секретов тут нет.
 - `GET /api/conn/check` — здоровье ключей + composio (`items[].status`: ok/warn/dead; у composio `extra.configs`).
+- `GET /api/conn/list` — сырой список внешних коннекторов/ключей (низкоуровневый; для карты доступов предпочитай `access`/`check`).
+- `GET /api/conn/composio-toolkits?q=<query>` — поиск composio-тулкитов по названию (перед `composio-connect`, чтобы взять точный `slug`).
+- `GET /api/conn/history` — журнал выданных/снятых доступов (кто/что/когда) — панель ведёт его сама на каждой записи.
 - Через наш MCP то же: `connections_overview`, `connections_health`.
 
 **Шаг 2. Действия — только по явной просьбе, точечно:**
@@ -80,8 +112,30 @@
 - НЕЛЬЗЯ: править файлы клиентов напрямую (`~/.claude.json` и т.п.) — только через роуты. НЕЛЬЗЯ логировать/возвращать значения ключей. НЕЛЬЗЯ массово выдавать доступ без явной просьбы.
 - «Дай Cursor всё, что у Claude Code» → сперва `connections_overview`, возьми сервисы Claude Code, потом `grant_access` по каждому. Не выдумывай сервисы, которых нет в карте.
 
+## Секреты — сейф ключей (только macOS, Keychain)
+ЗНАЧЕНИЯ секретов лежат ТОЛЬКО в macOS Keychain (шифрует ОС). В файлах панели (`secrets.json`, chmod 600) — лишь ИМЕНА и заметки. Имя секрета: `^[\w .:\-/@]{1,60}$`. Список — за токеном при удалённом доступе.
+- Список (ТОЛЬКО имена/заметки/дата, БЕЗ значений): `GET /api/secrets` → `{supported, items:[{name, note, updatedAt}]}`.
+- Сохранить/обновить: `POST /api/secrets-set {"name":"OPENAI_API_KEY","value":"sk-...","note":"..."}` — значение уходит в Keychain и наружу не возвращается.
+- **Показать значение — ТОЛЬКО по явному действию пользователя** (кнопка «показать/копировать»): `POST /api/secrets-get {"name":"OPENAI_API_KEY"}` → `{ok, value}`. НЕ вызывай этот роут по своей инициативе, не логируй и не пересылай `value` — это единственный путь, где секрет покидает Keychain.
+- Удалить: `POST /api/secrets-del {"name":...}` (стирает и из Keychain, и из `secrets.json`).
+
+## Удалённые серверы по SSH (мастер без терминала)
+Приватный ключ НЕ копируется — панель работает ССЫЛКОЙ на файл в `~/.ssh` (поле `keyPath`, напр. `~/.ssh/id_ed25519`). Начинай с чтения ключей и теста, потом заводи карточку.
+- Ключи из `~/.ssh` (ТОЛЬКО имена/пути, без содержимого; `.pub`/`config`/`known_hosts` отфильтрованы): `GET /api/ssh-keys` → `{keys:[{name, path}]}`.
+- Проверить подключение (зелёное/красное в мастере, выполняется на машине пользователя, BatchMode — без запроса пароля): `POST /api/ssh-test {"host":"1.2.3.4","user":"root","keyPath":"~/.ssh/id_ed25519","sshPort":22}` → `{ok}` или `{ok:false, error}`.
+- Завести удалённый сервер карточкой: `POST /api/remote-add {"name":"My VPS","host":"1.2.3.4","user":"root","keyPath":"~/.ssh/id_ed25519","sshPort":22,"startCmd":"systemctl start app","stopCmd":"systemctl stop app","url":"...","port":...}`. Обязательны `name`+`host`+`user` и хотя бы одна из команд. Панель сама обернёт команды в безопасный `ssh` (`BatchMode=yes`, `StrictHostKeyChecking=accept-new`) и заведёт карточку `host:"VPS"`. Через MCP то же — `register_remote`.
+
+## Агенты — авто-обнаружение (секция «Агенты» на главной)
+- `GET /api/agents` → `{agents:[{id, label, count, configPath}]}` — какие ИИ-клиенты (Claude Code, Cursor, …) найдены на машине по их конфигам. Только чтение, кеш ~10с. Для выдачи/забора доступов используй Connections (`/api/conn/grant`, MCP `grant_access`), а не этот роут.
+
+## Автозапуск панели при входе в систему (только macOS)
+- Статус: `GET /api/autostart` → `{on, mine?, label?, supported}` (`mine:false` = автозапуск настроен другим launchd-агентом).
+- Вкл/выкл: `POST /api/autostart {"enable":true}` — ставит/снимает launchd-агент `com.aigarage.panel`, панель стартует при логине без терминала. Если автозапуск настроен ДРУГИМ агентом — панель откажется его снимать (попросит убрать вручную), чтобы не сломать чужую настройку.
+
 ## Безопасность (не нарушай)
 - Сервер слушает только `127.0.0.1`. **Не выставляй порт 7777 наружу.**
 - Команды из `startCmd`/`stopCmd` выполняются как есть — добавляй только то, что пользователь понимает/подтвердил. Перед деструктивным (kill, rm) — спроси.
-- Не записывай токены/пароли в `services.json` или в команды в открытом виде.
+- Не записывай токены/пароли в `services.json` или в команды в открытом виде. Секреты — через сейф (`/api/secrets-set`, значение уходит в Keychain).
+- ЗНАЧЕНИЕ секрета отдаётся только через `/api/secrets-get` и только по явному действию пользователя. Не дёргай его сам, не логируй, не пересылай.
+- SSH-ключи — всегда ССЫЛКОЙ на файл (`keyPath` в `~/.ssh`), НИКОГДА не копируй и не вставляй содержимое приватного ключа.
 - После изменения проверь: `curl -s http://localhost:7777/api/status` — сервис появился и статус корректный.
