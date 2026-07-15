@@ -28,17 +28,32 @@
     background-attachment:fixed;
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
   .rounded{ font-family:ui-rounded,-apple-system,"SF Pro Rounded",sans-serif; }
-  header{ max-width:1180px; margin:0 auto 16px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  /* Шапка = пиксель-в-пиксель с главной панелью (index.html): те же отступы, лого, кольцо, легенда. */
+  header{ max-width:1180px; margin:0 auto 24px; display:flex; align-items:center; gap:20px; flex-wrap:wrap;
     background:var(--glass-strong); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%);
-    border:1px solid var(--glass-brd); border-radius:24px; padding:16px 22px; box-shadow:var(--shadow); }
-  h1{ font-size:26px; letter-spacing:-.022em; margin:0; font-weight:700; line-height:1.1; }
+    border:1px solid var(--glass-brd); border-radius:24px; padding:18px 22px; box-shadow:var(--shadow); }
+  h1{ font-size:28px; letter-spacing:-.022em; margin:0; font-weight:700; line-height:1.1; }
   .sub{ color:var(--faint); font-size:13px; margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-  .logo{ height:56px; width:auto; filter:drop-shadow(0 4px 9px rgba(20,20,45,.18)); }
-  .ring{ position:relative; width:74px; height:74px; }
+  .logo{ height:67px; width:auto; flex:0 0 auto; filter:drop-shadow(0 4px 9px rgba(20,20,45,.18)); }
+  .ring{ position:relative; width:80px; height:80px; flex:0 0 auto; }
   .ring svg{ transform:rotate(-90deg); } #arc{ transition:stroke-dashoffset .7s cubic-bezier(.2,.7,.2,1); }
   .ring .num{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-  .ring .num b{ font-size:19px; line-height:1; } .ring .num span{ font-size:9px; color:var(--mut); margin-top:2px; }
+  .ring .num b{ font-size:21px; line-height:1; letter-spacing:-.03em; } .ring .num span{ font-size:10px; color:var(--mut); margin-top:2px; }
+  .legend{ display:flex; gap:14px; margin-top:7px; }
+  .legend div{ font-size:13px; color:var(--mut); display:flex; align-items:center; gap:6px; }
+  .ld{ width:9px; height:9px; border-radius:50%; }
   .spacer{ flex:1; }
+  .field{ border:1px solid var(--line); background:rgba(255,255,255,.75); backdrop-filter:blur(8px);
+    border-radius:980px; padding:9px 14px; font-size:14px; color:var(--txt); outline:none; transition:.2s; font-family:inherit; }
+  .field:focus{ border-color:var(--accent); box-shadow:0 0 0 4px rgba(254,127,45,.14); }
+  .search{ position:relative; }
+  .search input{ padding-left:36px; width:210px; }
+  .search input:focus{ width:240px; }
+  .search svg{ position:absolute; left:13px; top:50%; transform:translateY(-50%); opacity:.4; }
+  /* Встроенный режим (?embed=1): страница живёт во вкладке главной панели — своя шапка и фон не нужны. */
+  html.embed header{ display:none !important; }
+  html.embed body{ padding:2px 2px 40px; background:none; }
+  html.embed .wrap, html.embed .blind{ max-width:none; }
   .btn-add{ background:var(--accent); color:#fff; border:0; border-radius:980px; padding:10px 16px; font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 2px 10px rgba(254,127,45,.32); font-family:inherit; display:inline-flex; align-items:center; gap:7px; }
   .btn-add:hover{ background:var(--accent-d); } .btn-add.spinning svg{ animation:spin 1s linear infinite; } @keyframes spin{ to{ transform:rotate(360deg); } }
   .srcpill{ font-size:11px; font-weight:600; padding:2px 9px; border-radius:980px; }
@@ -117,12 +132,13 @@
   .modal .opt{ border:1px solid var(--glass-brd); border-radius:13px; padding:13px 15px; margin:14px 0 0; } .modal .opt b{ font-size:14.5px; }
   .mclose{ float:right; cursor:pointer; color:var(--mut); font-size:22px; line-height:1; border:0; background:none; padding:0 2px; }
   /* Унифицированная шапка — как на панели (логотип/бренд/кольцо/кнопки на тех же местах) */
-  header h1.brand{ font-size:26px; margin:0; font-weight:700; letter-spacing:-.022em; line-height:1.1; color:var(--txt); }
-  .brandblock{ margin-left:-6px; }
+  header h1.brand{ font-size:28px; margin:0; font-weight:700; letter-spacing:-.022em; line-height:1.1; color:var(--txt); }
+  .brandblock{ margin-left:-8px; }
   .ctl{ display:flex; align-items:center; gap:8px; }
   .pausebtn{ border:1px solid var(--line); background:rgba(255,255,255,.6); border-radius:980px; padding:9px 14px; font-size:13px; cursor:pointer; color:var(--mut); font-family:inherit; display:inline-flex; align-items:center; gap:6px; }
   .pausebtn:hover{ border-color:var(--accent); color:var(--accent); }
   .pausebtn .ic, .btn-add .ic{ width:16px; height:16px; }
+  .pausebtn.spinning svg{ animation:spin 1s linear infinite; }
 </style>
 </head>
 <body>
@@ -131,18 +147,28 @@
     <div class="brandblock">
       <h1 class="rounded brand">AI Garage</h1>
       <div class="sub"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.5;vertical-align:-2px"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> <span id="ts">загрузка…</span> · <b style="color:var(--mut)">Подключения</b> <span id="src"></span></div>
+      <div class="legend">
+        <div><span class="ld" style="background:var(--teal-neon)"></span> <span id="cok">0</span> живо</div>
+        <div><span class="ld" style="background:var(--red)"></span> <span id="cbad">0</span> требуют внимания</div>
+      </div>
     </div>
     <div class="ring" id="ringWrap">
-      <svg width="74" height="74"><circle cx="37" cy="37" r="31" fill="none" stroke="#e6e6ea" stroke-width="8"/>
-        <circle id="arc" cx="37" cy="37" r="31" fill="none" stroke="var(--teal-neon)" stroke-width="8" stroke-linecap="round" stroke-dasharray="195" stroke-dashoffset="195"/></svg>
+      <svg width="80" height="80"><circle cx="40" cy="40" r="34" fill="none" stroke="#e6e6ea" stroke-width="8"/>
+        <circle id="arc" cx="40" cy="40" r="34" fill="none" stroke="var(--teal-neon)" stroke-width="8" stroke-linecap="round" stroke-dasharray="214" stroke-dashoffset="214"/></svg>
       <div class="num rounded"><b id="upn">0</b><span>ключей<br>живо</span></div>
     </div>
     <div class="spacer"></div>
+    <!-- Порядок слотов ОДИН В ОДИН как на главной (btn-add → поиск → кнопка-вкладка → правая кнопка).
+         Обычно сюда не попадают: прямой заход уводит во вкладку панели. Это запасная шапка для демо. -->
     <div class="ctl">
-      <button class="pausebtn" onclick="location.href='/'" title="К панели AI Garage">
-        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg> Панель</button>
       <button class="btn-add" onclick="openAdd()" title="Добавить подключение">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Добавить</button>
+      <div class="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <input class="field" id="hq" placeholder="Поиск…" oninput="Q=normq(this.value.trim());render()">
+      </div>
+      <button class="pausebtn" onclick="location.href='/'" title="К панели AI Garage">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg> Панель</button>
       <button class="pausebtn" id="recheck" onclick="reload(true)" title="Обновить">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> Обновить</button>
     </div>
@@ -199,8 +225,19 @@
 
 <script>
 const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* Встроенный режим: страница живёт в iframe вкладки «Подключения» главной панели. */
+const EMBED=new URLSearchParams(location.search).has("embed");
+if(EMBED) document.documentElement.classList.add("embed");
+/* Прямой заход на /connections.html уводим во вкладку панели: шапка в продукте ОДНА,
+   кнопки физически те же и на тех же местах — разъехаться не могут. Демо-сервер (conn-demo.mjs)
+   панели не имеет (нет /api/status) — там страница остаётся самостоятельной. */
+if(!EMBED && window.top===window.self){
+  fetch("/api/status",{cache:"no-store"}).then(r=>{ if(r.ok) location.replace("/#connections"); }).catch(()=>{});
+}
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),3200); }
 function openUrl(u){ if(!u) return;
+  // Из iframe внешние ссылки открывает РОДИТЕЛЬ (у него точно работает мостик /__open в десктопе).
+  if(EMBED&&window.parent!==window){ try{ parent.postMessage({aigarage:"open",url:u},"*"); return; }catch(e){} }
   // Универсально: создаём ссылку и синтетически кликаем. В окне приложения (Tauri) этот клик ловит
   // мостик LINK_SCRIPT (слушает click по a[href]) → открывает в системном браузере через /__open.
   // В обычном браузере — просто новая вкладка. Надёжнее window.open (тот в Tauri возвращает «живой» объект).
@@ -236,8 +273,13 @@ function friendlyName(label){ const k=norm(label); if(FRIENDLY[k]) return FRIEND
   let s=String(label||"").replace(/[-_]?dev[-_]?mode/gi,"").replace(/[-_]?mcp[-_]?server/gi,"").replace(/[-_]?mcp\b/gi,"").replace(/[-_]?server$/gi,"").replace(/[-_]+/g," ").trim();
   return s?s.replace(/\b\w/g,c=>c.toUpperCase()):label; }
 
-let FILTER="all", DATA={}, POLLS={};
+let FILTER="all", DATA={}, POLLS={}, Q="";
 function setFilter(f){ FILTER=f; [...document.querySelectorAll("#filters button")].forEach(b=>b.classList.toggle("on",b.dataset.f===f)); render(); }
+const normq=s=>String(s==null?"":s).toLowerCase().replace(/127\.0\.0\.1/g,"localhost");
+const matchQ=label=>!Q||normq(label).includes(Q)||normq(friendlyName(label)).includes(Q);
+addEventListener("message",e=>{ const d=e.data||{};   // команды из шапки главной панели (поиск, «+ Добавить»)
+  if(d.aigarage==="q"){ Q=normq(String(d.value||"").trim()); render(); }
+  else if(d.aigarage==="openAdd") openAdd(); });
 
 /* ---- merge access + health into one list of services ---- */
 function buildUnified(){
@@ -350,12 +392,15 @@ const skel=(n)=>`<div style="grid-column:1/-1;display:flex;align-items:center;ga
 function render(){
   const cons=(DATA.access&&DATA.access.consumers)||[], svcs=(DATA.access&&DATA.access.services)||[], allIds=cons.map(c=>c.id);
   const g=document.getElementById("grid");
-  if(FILTER==="client"){ g.innerHTML=cons.length?cons.map(c=>clientCard(c,svcs)).join(""):`<div class="empty">ИИ-программы не найдены</div>`; }
-  else { const list=buildUnified().filter(passFilter); g.innerHTML=list.length?list.map(e=>uCard(e,allIds)).join(""):`<div class="empty">пусто в этом фильтре</div>`; }
-  // counts + ring
+  if(FILTER==="client"){ const cl=cons.filter(c=>matchQ(c.label)); g.innerHTML=cl.length?cl.map(c=>clientCard(c,svcs)).join(""):`<div class="empty">ИИ-программы не найдены</div>`; }
+  else { const list=buildUnified().filter(passFilter).filter(e=>matchQ(e.label)); g.innerHTML=list.length?list.map(e=>uCard(e,allIds)).join(""):`<div class="empty">${Q?"ничего не найдено по «"+esc(Q)+"»":"пусто в этом фильтре"}</div>`; }
+  // counts + ring + легенда (как на главной)
   if(DATA.access){ document.getElementById("cSvc").textContent=DATA.access.counts.services; document.getElementById("cCli").textContent=DATA.access.counts.clients; }
   if(DATA.health){ const t=DATA.health.tally||{}, ok=t.ok||0, tot=(t.ok||0)+(t.warn||0)+(t.dead||0)+(t.unknown||0);
-    document.getElementById("upn").textContent=ok; document.getElementById("arc").style.strokeDashoffset=195*(1-(tot?ok/tot:0)); }
+    document.getElementById("upn").textContent=ok; document.getElementById("arc").style.strokeDashoffset=214*(1-(tot?ok/tot:0));
+    const cok=document.getElementById("cok"), cbad=document.getElementById("cbad");
+    if(cok){ cok.textContent=ok; cbad.textContent=Math.max(0,tot-ok); }
+    if(EMBED&&window.parent!==window){ try{ parent.postMessage({aigarage:"conntally",ok,total:tot},"*"); }catch(e){} } }
   const bl=(DATA.access&&DATA.access.blindSpots)||[]; if(bl.length){ document.getElementById("blind").style.display="block"; document.getElementById("blindList").innerHTML=bl.map(b=>`<li>${esc(b)}</li>`).join(""); }
 }
 
@@ -379,6 +424,7 @@ async function reload(manual){
   if(manual) toast("Обновлено");
 }
 reload();
+if(EMBED) setInterval(()=>reload(),90000);   // во вкладке — тихое автообновление, руками жать не надо
 </script>
 </body>
 </html>
