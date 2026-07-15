@@ -237,7 +237,7 @@ if(!EMBED && window.top===window.self){
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),3200); }
 function openUrl(u){ if(!u) return;
   // Из iframe внешние ссылки открывает РОДИТЕЛЬ (у него точно работает мостик /__open в десктопе).
-  if(EMBED&&window.parent!==window){ try{ parent.postMessage({aigarage:"open",url:u},"*"); return; }catch(e){} }
+  if(EMBED&&window.parent!==window){ try{ parent.postMessage({aigarage:"open",url:u},location.origin); return; }catch(e){} }
   // Универсально: создаём ссылку и синтетически кликаем. В окне приложения (Tauri) этот клик ловит
   // мостик LINK_SCRIPT (слушает click по a[href]) → открывает в системном браузере через /__open.
   // В обычном браузере — просто новая вкладка. Надёжнее window.open (тот в Tauri возвращает «живой» объект).
@@ -277,7 +277,9 @@ let FILTER="all", DATA={}, POLLS={}, Q="";
 function setFilter(f){ FILTER=f; [...document.querySelectorAll("#filters button")].forEach(b=>b.classList.toggle("on",b.dataset.f===f)); render(); }
 const normq=s=>String(s==null?"":s).toLowerCase().replace(/127\.0\.0\.1/g,"localhost");
 const matchQ=label=>!Q||normq(label).includes(Q)||normq(friendlyName(label)).includes(Q);
-addEventListener("message",e=>{ const d=e.data||{};   // команды из шапки главной панели (поиск, «+ Добавить»)
+addEventListener("message",e=>{   // команды из шапки главной панели (поиск, «+ Добавить») — только от неё
+  if(e.origin!==location.origin || e.source!==window.parent) return;
+  const d=e.data||{};
   if(d.aigarage==="q"){ Q=normq(String(d.value||"").trim()); render(); }
   else if(d.aigarage==="openAdd") openAdd(); });
 
@@ -400,7 +402,7 @@ function render(){
     document.getElementById("upn").textContent=ok; document.getElementById("arc").style.strokeDashoffset=214*(1-(tot?ok/tot:0));
     const cok=document.getElementById("cok"), cbad=document.getElementById("cbad");
     if(cok){ cok.textContent=ok; cbad.textContent=Math.max(0,tot-ok); }
-    if(EMBED&&window.parent!==window){ try{ parent.postMessage({aigarage:"conntally",ok,total:tot},"*"); }catch(e){} } }
+    if(EMBED&&window.parent!==window){ try{ parent.postMessage({aigarage:"conntally",ok,total:tot},location.origin); }catch(e){} } }
   const bl=(DATA.access&&DATA.access.blindSpots)||[]; if(bl.length){ document.getElementById("blind").style.display="block"; document.getElementById("blindList").innerHTML=bl.map(b=>`<li>${esc(b)}</li>`).join(""); }
 }
 

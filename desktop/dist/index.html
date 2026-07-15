@@ -41,11 +41,14 @@
     n++;
     if(n > 12) document.getElementById("slow").classList.add("on");
     try{
-      const r = await fetch(PANEL + "/api/status", { cache:"no-store" });
-      // Обычно панель открывает Rust (он же и решает, когда сервер готов). Этот путь — запасной,
+      // mode:"no-cors" обязателен: страница живёт на tauri://, а панель на http://127.0.0.1:7777 —
+      // обычный fetch тут всегда падает на CORS, и запасной путь был бы мёртвым кодом.
+      // Ответ непрозрачный (r.ok прочитать нельзя), но САМ факт ответа = сервер поднялся.
+      await fetch(PANEL + "/api/status", { cache:"no-store", mode:"no-cors" });
+      // Обычно панель открывает Rust (он решает, когда сервер готов). Это запасной путь,
       // поэтому ждём пару секунд: так нет гонки и двойной загрузки страницы.
-      if(r.ok && n > 5){ location.replace(PANEL); return; }
-    }catch(e){}   // 7777 ещё не слушает или CORS — просто пробуем снова
+      if(n > 5){ location.replace(PANEL); return; }
+    }catch(e){}   // 7777 ещё не слушает — просто пробуем снова
     setTimeout(poll, 700);
   }
   poll();

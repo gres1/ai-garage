@@ -806,16 +806,22 @@ function toggleConn(force){
   document.body.classList.toggle('connmode',on);
   const fr=$('conniframe'); if(on && fr && !fr.src) fr.src='/connections.html?embed=1';
   try{ history.replaceState(null,'',location.pathname+(on?'#connections':'')); }catch(e){}
-  if(!on){ CONNTALLY=null; if($('q').value){ $('q').value=''; render(); } }
+  if(!on){ CONNTALLY=null; $('q').value=''; renderAll(); }   // именно renderAll: render() один оставлял Агентов/Секреты скрытыми от прошлого поиска
   updateConnBtn(); updateHeader(); closeMenus();
 }
 function updateConnBtn(){ const b=$('connbtn'); if(b) b.classList.toggle('on',connOn()); }
 function addBtnClick(){ connOn()?connPost({aigarage:'openAdd'}):openForm(); }
+function renderAll(){ render(); renderAgents(_lastAgents); renderSecrets(_lastSecrets); renderDiscovered(_lastDisc); }   // поиск и его сброс касаются ВСЕХ секций, не только сервисов
 function onSearch(){ if(connOn()){ connPost({aigarage:'q',value:$('q').value}); return; }
-  render(); renderAgents(_lastAgents); renderSecrets(_lastSecrets); renderDiscovered(_lastDisc); }   // поиск идёт по ВСЕМ секциям, не только по сервисам
-function connPost(m){ const fr=$('conniframe'); try{ if(fr&&fr.contentWindow) fr.contentWindow.postMessage(m,'*'); }catch(e){} }
-function openExt(u){ if(!u) return; const a=document.createElement('a'); a.href=u; a.target='_blank'; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); }
-addEventListener('message',e=>{ const d=e.data||{};
+  renderAll(); }
+function connPost(m){ const fr=$('conniframe'); try{ if(fr&&fr.contentWindow) fr.contentWindow.postMessage(m,location.origin); }catch(e){} }
+function openExt(u){ const href=safeUrl(u); if(href==='#') return;   // только http/https: javascript:-ссылка выполнилась бы в origin панели
+  const a=document.createElement('a'); a.href=href; a.target='_blank'; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); }
+// Слушаем ТОЛЬКО свою вкладку «Подключения». Иначе любой сайт в превью-iframe мог бы прислать
+// команду панели (у неё в localStorage токен — то есть право стопить процессы).
+addEventListener('message',e=>{ const fr=$('conniframe');
+  if(e.origin!==location.origin || !fr || e.source!==fr.contentWindow) return;
+  const d=e.data||{};
   if(d.aigarage==='open'&&d.url) openExt(d.url);
   else if(d.aigarage==='conntally'){ CONNTALLY=d; if(connOn()) updateHeader(); } });
 if(location.hash==='#connections') toggleConn(true);
@@ -1062,9 +1068,11 @@ const isVps=s=>/vps|впс|server|серв|cloud/i.test(s.host||'');
 const isBot=s=>s.kind==='bot'||(Array.isArray(s.bots)&&s.bots.length>0);
 // честный статус: что панель НЕ может проверить с этого Mac (удалённый хост без health, бот без порта) — «неизвестно», не «выключено»
 const cantVerify=s=>!s.health&&(isVps(s)||(isBot(s)&&!s.port));
-const botChipSt=(s,o)=>s.health?((s.health.ok&&o.status!=='off')?'on':'off'):((!isVps(s)&&s.port&&!s.up)?'off':'unk');
+// Живой порт = процесс точно работает (это проверенный факт, а не запись в конфиге).
+// /health молчит — это ещё не «выключено»: не выдумываем, показываем «неизвестно».
+const botChipSt=(s,o)=>s.health?((s.health.ok&&o.status!=='off')?'on':'off'):(!isVps(s)&&s.port?(s.up?'on':'off'):'unk');
 function card(s){ const bot=isBot(s); const authFail=!!(s.health&&s.health.claude&&s.health.claude.auth_failed); const unk=!s.up&&cantVerify(s);
-  const cls=bot?(s.health?((authFail||!s.health.ok)?'down':'up'):(unk?'':(s.port&&!s.up?'down':''))):(s.up?'up':(unk?'unknown':'down'));
+  const cls=bot?(s.health?((authFail||!s.health.ok)?'down':'up'):(s.up?'up':(unk?'':(s.port?'down':'')))):(s.up?'up':(unk?'unknown':'down'));
   const restart=`<button class="btn btn-soft" onclick="act('${jsq(s.name)}','restart')">${icon('restart')} ${t('restart')}</button>`;
   const ka=`<button class="btn ${s.keepAlive?'btn-primary':'btn-soft'}" title="${esc(t('kaTip'))}" onclick="toggleKeepAlive('${jsq(s.name)}',${!s.keepAlive})">${icon('keepalive')} ${s.keepAlive?t('kaOn'):t('keepAlive')}</button>`;
   // Единый набор для всех не-ботов: одна Вкл/Выкл + «Держать включённым» + Preview. Остальное — в меню ⋮.
@@ -1219,9 +1227,10 @@ function renderAgents(all){ const w=$('agents-wrap'), head=$('agents-head'), gri
     <div class="row" style="margin-top:4px"><button class="btn btn-soft" onclick="toggleConn(true)">${icon('link')} ${t('agentManage')}</button></div>
   </div>`).join(''); updateNoResults(); }
 /* Сейф ключей: значения в Keychain, тут только имена + копировать/показать/удалить. */
-let _lastSecrets=[];
-async function loadSecrets(){ try{ const j=await fetch('/api/secrets').then(r=>r.json()); if(!j||!j.supported){ const w=$('secrets-wrap'); if(w)w.style.display='none'; return; } _lastSecrets=j.items||[]; renderSecrets(_lastSecrets); }catch(e){} }
+let _lastSecrets=[], _secretsOk=true;   // _secretsOk=false вне macOS: Keychain нет, секцию не показываем вообще
+async function loadSecrets(){ try{ const j=await fetch('/api/secrets').then(r=>r.json()); if(!j||!j.supported){ _secretsOk=false; const w=$('secrets-wrap'); if(w)w.style.display='none'; return; } _secretsOk=true; _lastSecrets=j.items||[]; renderSecrets(_lastSecrets); }catch(e){} }
 function renderSecrets(all){ const w=$('secrets-wrap'),head=$('secrets-head'),grid=$('secrets-grid'); if(!w)return;
+  if(!_secretsOk){ w.style.display='none'; _matchN.secrets=0; return; }
   const list=(all||[]).filter(s=>qhit(s.name,s.note)); _matchN.secrets=list.length;
   if($('q').value.trim()&&!list.length){ w.style.display='none'; updateNoResults(); return; }   // в поиске пустую секцию не показываем
   w.style.display='block'; $('secrets-n').textContent=list.length;
