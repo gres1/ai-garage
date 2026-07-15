@@ -38,6 +38,18 @@ fn panel_up() -> bool {
     .is_ok()
 }
 
+// Порт занят — ещё не значит, что панель отдаёт страницы: ждём именно живой HTTP-ответ,
+// иначе окно перейдёт на панель слишком рано и снова покажет ошибку.
+async fn panel_ready() -> bool {
+    reqwest::Client::new()
+        .get(format!("http://127.0.0.1:{PORT}/api/status"))
+        .timeout(Duration::from_millis(700))
+        .send()
+        .await
+        .map(|r| r.status().is_success())
+        .unwrap_or(false)
+}
+
 fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.show();
@@ -65,6 +77,9 @@ fn tray_image() -> tauri::image::Image<'static> {
 fn rebuild_menu(app: &AppHandle, shown: &[(String, u16, bool)], up: usize, total: usize, autostart_on: bool) {
     let mut items: Vec<Box<dyn IsMenuItem<tauri::Wry>>> = Vec::new();
     if let Ok(i) = MenuItem::with_id(app, "panel", "Открыть панель AI Garage", true, None::<&str>) {
+        items.push(Box::new(i));
+    }
+    if let Ok(i) = MenuItem::with_id(app, "reload", "Перезагрузить панель", true, None::<&str>) {
         items.push(Box::new(i));
     }
     if let Ok(s) = PredefinedMenuItem::separator(app) {
@@ -111,6 +126,14 @@ pub fn run() {
             let id = ev.id().as_ref().to_string();
             if id == "panel" {
                 show_main(app);
+            } else if id == "reload" {
+                // запасной выход, если окно всё-таки залипло: показать и загрузить панель заново
+                show_main(app);
+                if let Some(w) = app.get_webview_window("main") {
+                    if let Ok(u) = format!("http://127.0.0.1:{PORT}").parse() {
+                        let _ = w.navigate(u);
+                    }
+                }
             } else if id == "quit" {
                 app.exit(0);
             } else if id == "toggle-autostart" {
@@ -163,10 +186,12 @@ pub fn run() {
                 }
             }
 
-            // 2) Окно с панелью. Внешние ссылки открываем в системном браузере (см. LINK_SCRIPT).
+            // 2) Окно. Открываем на встроенном загрузчике (dist/index.html), а НЕ сразу на 127.0.0.1:7777:
+            //    после перезагрузки Mac приложение стартует раньше сервера, и прямая загрузка давала
+            //    навсегда белое окно (webview сам не ретраит). На панель переводим ниже, когда сервер ответил.
             let nav = app.handle().clone();
             let url = format!("http://127.0.0.1:{PORT}");
-            let win = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url.parse().unwrap()))
+            let win = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("AI Garage")
                 .inner_size(1180.0, 800.0)
                 .min_inner_size(420.0, 520.0)
@@ -191,6 +216,24 @@ pub fn run() {
                     if let WindowEvent::CloseRequested { api, .. } = e {
                         api.prevent_close();
                         let _ = w.hide();
+                    }
+                });
+            }
+
+            // 2b) Ждём, пока сервер реально отвечает, и переводим окно на панель.
+            // Ретраим долго: сервер может поднимать launchd, а он после ребута не мгновенный.
+            {
+                let w = win.clone();
+                let panel_url = url.clone();
+                tauri::async_runtime::spawn(async move {
+                    for _ in 0..600 {
+                        if panel_ready().await {
+                            if let Ok(u) = panel_url.parse() {
+                                let _ = w.navigate(u);
+                            }
+                            return;
+                        }
+                        tokio::time::sleep(Duration::from_millis(500)).await;
                     }
                 });
             }
