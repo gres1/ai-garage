@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <title>AI Garage</title>
@@ -27,15 +27,22 @@
   <div class="box">
     <img class="logo" src="logo.png" alt="" onerror="this.remove()">
     <h1>AI Garage</h1>
-    <p id="msg">Запускаю панель…</p>
+    <p id="msg">Starting the panel…</p>
     <div class="spin"></div>
-    <div class="slow" id="slow">Дольше обычного. Панель стартует сама — окно откроется, как только она ответит.
-      Закрывать приложение не нужно.</div>
+    <div class="slow" id="slow">Taking longer than usual. The panel starts on its own — this window opens
+      as soon as it answers. No need to quit the app.</div>
   </div>
 <script>
   // Окно открывается на этой странице МГНОВЕННО (вместо белого экрана), пока сервер на 7777 ещё поднимается.
   // Дальше нас перекинет на панель: либо Rust (win.navigate, основной путь), либо этот же поллинг — что раньше.
   const PANEL = "http://127.0.0.1:7777";
+  // Продукт публичный: по умолчанию английский, русский — только если система русская (как в самой панели).
+  if((navigator.language || "en").slice(0,2) === "ru"){
+    document.documentElement.lang = "ru";
+    document.getElementById("msg").textContent = "Запускаю панель…";
+    document.getElementById("slow").textContent = "Дольше обычного. Панель стартует сама — окно откроется, "
+      + "как только она ответит. Закрывать приложение не нужно.";
+  }
   let n = 0;
   async function poll(){
     n++;

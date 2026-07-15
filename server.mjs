@@ -686,7 +686,15 @@ const server = http.createServer(async (req, res) => {
         const data = await readFile(fp);
         const ext = (safe.split(".").pop() || "").toLowerCase();
         const types = { html: "text/html; charset=utf-8", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", svg: "image/svg+xml", webp: "image/webp", ico: "image/x-icon", gif: "image/gif", js: "text/javascript; charset=utf-8", css: "text/css; charset=utf-8" };
-        res.writeHead(200, { "Content-Type": types[ext] || "application/octet-stream", "Cache-Control": ext === "html" ? "no-store" : "max-age=3600", "X-Content-Type-Options": "nosniff" });
+        const head = { "Content-Type": types[ext] || "application/octet-stream", "Cache-Control": ext === "html" ? "no-store" : "max-age=3600", "X-Content-Type-Options": "nosniff" };
+        // Страницы панели (connections.html) панель встраивает в свою же вкладку — значит DENY нельзя,
+        // но и чужому сайту врезать их в iframe тоже нельзя: внутри живёт токен управления (clickjacking).
+        if (ext === "html") Object.assign(head, {
+          "X-Frame-Options": "SAMEORIGIN",
+          "Referrer-Policy": "no-referrer",
+          "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'; connect-src 'self'",
+        });
+        res.writeHead(200, head);
         return res.end(data);
       } catch {}
     }
