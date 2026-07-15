@@ -733,6 +733,8 @@ const server = http.createServer(async (req, res) => {
         return { ...d, proj: pi.project || null, cpu: pi.cpu ?? null, mem: pi.mem ?? null, rss: pi.rss ?? null, ...applyCatOverride(d, base, catOverrides), tunnel: ti?.url || null, tunnelManaged: !!ti, tunnelError: ti?.error || null }; });
     return sendJson(res, 200, { services: rows, discovered, platform: process.platform, device: DEVICE, ts: Date.now(), authOn: !!cfg.token,
       selfTunnel: (tunnelInfoFrom(tun, tunAlive, PORT) || {}).url || null,
+      sectionOrder: Array.isArray(cfg.sectionOrder) ? cfg.sectionOrder : null,
+      wrapOrder: Array.isArray(cfg.wrapOrder) ? cfg.wrapOrder : null,
       access: cfg.access || "off", tsIp: TS_IP, lanUrl: BIND_HOST !== "127.0.0.1" ? `http://${BIND_HOST}:${PORT}` : null });
   }
 
@@ -1037,6 +1039,21 @@ const server = http.createServer(async (req, res) => {
       await saveServices(list);
       return { ok: true };
     }));
+  }
+
+  // Порядок секций панели (грид: local/vps/bots; блоки ниже: agents/secrets/disc) — в config.json,
+  // чтобы был одинаковым в браузере, десктопе и Safari (localStorage у них разный).
+  if (req.method === "POST" && url.pathname === "/api/sections-order") {
+    const b = await readBody(req);
+    const clean = (arr, allowed) => Array.isArray(arr) ? arr.filter((k) => allowed.includes(k)).slice(0, 10) : null;
+    const patch = {};
+    const sec = clean(b.sections, ["local", "vps", "bots"]);
+    const wr = clean(b.wraps, ["agents", "secrets", "disc"]);
+    if (sec && sec.length) patch.sectionOrder = sec;
+    if (wr && wr.length) patch.wrapOrder = wr;
+    if (!Object.keys(patch).length) return sendJson(res, 400, { ok: false, error: "нужен sections или wraps" });
+    await persistConfig(patch);
+    return sendJson(res, 200, { ok: true });
   }
 
   if (req.method === "POST" && url.pathname === "/api/service-sethost") {
