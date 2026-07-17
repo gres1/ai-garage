@@ -309,6 +309,11 @@ async function removeKAPlist(name) {                          // снести с
   if (await fileExists(path)) { await new Promise((r) => exec(`launchctl unload "${path}" 2>/dev/null; true`, () => r())); try { await unlink(path); } catch {} }
 }
 async function keepAliveSet(svc, enable) {
+  if (svc.kind === "app") {             // приложению команда не нужна — поднимаем через `open -a`
+    const ka = await loadKA();
+    if (enable) { ka.add(svc.name); await saveKA(ka); appOpen(svc.appPath).catch(() => {}); return { ok: true, note: "держится включённым" }; }
+    ka.delete(svc.name); await saveKA(ka); return { ok: true, note: "автозапуск выключен" };
+  }
   if (enable) await resolveCmds(svc);   // авто-запомненной команды достаточно, чтобы держать включённым
   if (enable && !svc.startCmd) return { ok: false, error: "у сервиса нет команды старта" };
   const ka = await loadKA();
@@ -325,6 +330,11 @@ async function ensureKeepAlive() {
     const listening = new Set((await discoverPorts()).map((d) => d.port));
     for (const svc of services) {
       if (!ka.has(svc.name)) continue;
+      if (svc.kind === "app") {                                // у приложения нет порта: смотрим процесс
+        const st = await appState(svc);
+        if (st.installed && !st.running) await appOpen(svc.appPath).catch(() => {});
+        continue;
+      }
       await resolveCmds(svc);                                  // поднять и по авто-запомненной команде (после ребута)
       if (!svc.startCmd) continue;
       const p = toPort(svc.port);
@@ -435,6 +445,94 @@ function botHealth(port) {
   });
 }
 
+// ── Локальные приложения (.app) ──────────────────────────────────────────────
+// У приложения НЕТ порта, поэтому «живо» = живой процесс, а не слушающий порт.
+// Именно из-за этого keep-alive (он смотрит порты) раньше не мог поднимать упавшее приложение.
+const APP_INFO_TTL = 60_000;
+const _appInfoCache = new Map();
+async function appInfo(appPath) {
+  const p = expandHome(appPath || "");
+  if (!p.endsWith(".app")) return null;
+  const hit = _appInfoCache.get(p);
+  if (hit && Date.now() - hit.ts < APP_INFO_TTL) return hit.v;
+  const v = await new Promise((resolve) => {
+    execFile("plutil", ["-convert", "json", "-o", "-", join(p, "Contents/Info.plist")], { timeout: 4000 }, (e, out) => {
+      if (e) return resolve(null);
+      try {
+        const j = JSON.parse(out);
+        const execName = j.CFBundleExecutable;
+        if (!execName) return resolve(null);
+        resolve({
+          exec: execName,
+          execPath: join(p, "Contents/MacOS", execName),
+          bundleId: j.CFBundleIdentifier || null,
+          version: j.CFBundleShortVersionString || j.CFBundleVersion || null,
+          label: j.CFBundleDisplayName || j.CFBundleName || p.split("/").pop().replace(/\.app$/, ""),
+          menuBarOnly: !!j.LSUIElement,       // живёт в строке меню, окна нет — «не вижу его» ≠ «упало»
+        });
+      } catch { resolve(null); }
+    });
+  });
+  _appInfoCache.set(p, { ts: Date.now(), v });
+  return v;
+}
+// Ищем ТОЧНЫЙ путь к исполняемому файлу, а не имя приложения: иначе «Prompt Copilot» совпало бы
+// с любым окном/документом, где это имя встречается в командной строке.
+function appPidOf(execPath) {
+  return new Promise((resolve) => {
+    execFile("pgrep", ["-f", `^${execPath}`], { timeout: 3000 }, (e, out) => {
+      const pid = Number(String(out || "").trim().split("\n")[0]);
+      resolve(Number.isInteger(pid) && pid > 0 ? pid : null);
+    });
+  });
+}
+async function appState(svc) {
+  if (process.platform !== "darwin") return { supported: false };
+  const info = await appInfo(svc.appPath);
+  if (!info) return { installed: false, running: false };       // приложение удалили/переместили — честно скажем
+  const pid = await appPidOf(info.execPath);
+  return { installed: true, running: !!pid, pid, version: info.version, bundleId: info.bundleId, menuBarOnly: info.menuBarOnly };
+}
+function appOpen(appPath) {
+  return new Promise((resolve) => {
+    execFile("open", ["-a", expandHome(appPath)], { timeout: 8000 }, (e) =>
+      resolve(e ? { ok: false, error: String(e.message || e).slice(0, 200) } : { ok: true }));
+  });
+}
+async function appQuit(svc) {
+  const info = await appInfo(svc.appPath);
+  if (!info) return { ok: false, error: "приложение не найдено" };
+  const pid = await appPidOf(info.execPath);
+  if (!pid) return { ok: true, note: "уже не запущено" };
+  // Сначала вежливо (приложение успеет сохраниться), и только упрямое — жёстко.
+  await new Promise((r) => { try { process.kill(pid, "SIGTERM"); } catch {} setTimeout(r, 1500); });
+  if (await appPidOf(info.execPath)) { try { process.kill(pid, "SIGKILL"); } catch {} }
+  return { ok: true, note: "остановлено" };
+}
+// Скан папок с приложениями. Фильтр задаёт пользователь (в продукте нельзя хардкодить чей-то
+// личный префикс bundle-id) — без фильтра показываем всё найденное, пусть выбирает сам.
+async function scanApps(filter) {
+  if (process.platform !== "darwin") return [];
+  const dirs = [join(homedir(), "Applications"), "/Applications"];
+  const out = [];
+  for (const dir of dirs) {
+    let names = [];
+    try { names = await readdir(dir); } catch { continue; }
+    for (const n of names) {
+      if (!n.endsWith(".app")) continue;
+      const p = join(dir, n);
+      const info = await appInfo(p);
+      if (!info) continue;
+      if (filter) {
+        const rx = new RegExp(String(filter).replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*"), "i");
+        if (!rx.test(info.bundleId || "") && !rx.test(info.label || "")) continue;
+      }
+      out.push({ appPath: p, label: info.label, bundleId: info.bundleId, version: info.version, menuBarOnly: info.menuBarOnly });
+    }
+  }
+  return out.sort((a, b) => a.label.localeCompare(b.label));
+}
+
 // macOS-уведомление когда у бота отвалилась авторизация Claude (переход false→true) — заметно даже при закрытой панели.
 const _authFailNotified = new Map();
 function notifyAuthFailIfNeeded(name, health) {
@@ -497,6 +595,12 @@ function sanitizeService(s) {
   if (!s || typeof s.name !== "string" || !s.name.trim()) return null;
   const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : undefined);
   const out = { name: s.name.trim().replace(/["'<>`]/g, "").slice(0, 100) || "service", type: s.type === "local" ? "local" : "link" };
+  if (s.kind === "app") {                                       // локальное приложение: путь к .app вместо порта
+    out.kind = "app";
+    out.appPath = str(s.appPath, 500);
+    out.bundleId = str(s.bundleId, 200);
+    if (!out.appPath) return null;
+  }
   const port = toPort(s.port); if (port) out.port = port;
   out.url = str(s.url, 500); out.host = str(s.host, 40); out.note = str(s.note, 300);
   if (out.type === "local") { out.startCmd = str(s.startCmd, 2000); out.stopCmd = str(s.stopCmd, 2000); out.cwd = str(s.cwd, 500); }
@@ -718,9 +822,11 @@ const server = http.createServer(async (req, res) => {
       const ti = tunnelInfoFrom(tun, tunAlive, s.port);
       const health = (s.kind === "bot" && s.port && listening.has(toPort(s.port))) ? await botHealth(s.port) : null;
       notifyAuthFailIfNeeded(s.name, health);
+      const app = s.kind === "app" ? await appState(s) : null;   // у приложения живость = процесс, не порт
       return {
         name: s.name, type: s.type, port: s.port, url: s.url, note: s.note || "", host: s.host || DEVICE,
-        up: !!s.port && listening.has(toPort(s.port)), tunnel: ti?.url || await tunnelUrl(s),
+        up: app ? !!app.running : (!!s.port && listening.has(toPort(s.port))), tunnel: ti?.url || await tunnelUrl(s),
+        app, appPath: s.appPath || null,
         tunnelManaged: !!ti, tunnelError: ti?.error || null,
         hasControls: !!(s.startCmd || s.stopCmd || cmds[String(s.port)]),
         autoCmd: !s.startCmd && !!cmds[String(s.port)],   // команда запомнена автоматически (не задана вручную)
@@ -1049,13 +1155,57 @@ const server = http.createServer(async (req, res) => {
     }));
   }
 
+  // ── Локальные приложения ──
+  if (req.method === "GET" && url.pathname === "/api/apps-scan") {
+    const cfg2 = await loadConfig();
+    const filter = url.searchParams.get("filter") ?? cfg2.appFilter ?? "";
+    const found = await scanApps(filter);
+    const known = new Set((await loadServices()).filter((s) => s.kind === "app").map((s) => expandHome(s.appPath || "")));
+    return sendJson(res, 200, {
+      supported: process.platform === "darwin",
+      items: found.map((a) => ({ ...a, added: known.has(a.appPath) })),
+      filter,
+    });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/app-add") {
+    const b = await readBody(req);
+    const info = await appInfo(b.appPath);
+    if (!info) return sendJson(res, 400, { ok: false, error: "это не приложение (.app не найден)" });
+    const svc = sanitizeService({ name: b.name || info.label, kind: "app", type: "local", appPath: expandHome(b.appPath), bundleId: info.bundleId, note: b.note });
+    if (!svc) return sendJson(res, 400, { ok: false, error: "не вышло добавить" });
+    return sendJson(res, 200, await withLock(async () => {
+      const list = await loadServices();
+      if (list.some((s) => s.name === svc.name)) return { ok: false, error: "имя уже занято" };
+      list.push(svc); await saveServices(list);
+      return { ok: true, note: `«${svc.name}» добавлено` };
+    }));
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/app-action") {
+    const { name, action } = await readBody(req);
+    const svc = (await loadServices()).find((s) => s.name === name && s.kind === "app");
+    if (!svc) return sendJson(res, 404, { ok: false, error: "приложение не найдено" });
+    if (action === "start") return sendJson(res, 200, await appOpen(svc.appPath));
+    if (action === "stop") return sendJson(res, 200, await appQuit(svc));
+    if (action === "restart") { await appQuit(svc); return sendJson(res, 200, await appOpen(svc.appPath)); }
+    if (action === "reveal") { execFile("open", ["-R", expandHome(svc.appPath)], () => {}); return sendJson(res, 200, { ok: true }); }
+    return sendJson(res, 400, { ok: false, error: "неизвестное действие" });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/apps-filter") {
+    const { filter } = await readBody(req);
+    await persistConfig({ appFilter: typeof filter === "string" ? filter.slice(0, 100) : "" });
+    return sendJson(res, 200, { ok: true });
+  }
+
   // Порядок секций панели (грид: local/vps/bots; блоки ниже: agents/secrets/disc) — в config.json,
   // чтобы был одинаковым в браузере, десктопе и Safari (localStorage у них разный).
   if (req.method === "POST" && url.pathname === "/api/sections-order") {
     const b = await readBody(req);
     const clean = (arr, allowed) => Array.isArray(arr) ? arr.filter((k) => allowed.includes(k)).slice(0, 10) : null;
     const patch = {};
-    const sec = clean(b.sections, ["local", "vps", "bots"]);
+    const sec = clean(b.sections, ["local", "apps", "vps", "bots"]);
     const wr = clean(b.wraps, ["agents", "secrets", "disc"]);
     if (sec && sec.length) patch.sectionOrder = sec;
     if (wr && wr.length) patch.wrapOrder = wr;
