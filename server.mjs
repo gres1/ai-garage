@@ -6,7 +6,7 @@ import https from "node:https";
 import { exec, execFile, spawn } from "node:child_process";
 import { readFile, writeFile, mkdir, unlink, stat, rename, readdir } from "node:fs/promises";
 import { openSync, readFileSync, existsSync } from "node:fs";
-import { createHash, timingSafeEqual, randomBytes } from "node:crypto";
+import { createHash, timingSafeEqual, randomBytes, verify as cryptoVerify, createPublicKey } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { homedir, hostname } from "node:os";
@@ -91,6 +91,44 @@ async function persistConfig(patch) {
   await rename(tmp, CONFIG_PATH);                            // атомарно, как saveServices
   return next;
 }
+// ── Pro-лицензия (офлайн, без слежки) ────────────────────────────────────────
+// Ключ = base64url(payload).base64url(signature). payload = JSON {email, plan, exp?, iat}.
+// Подписан приватным ключом Az (Ed25519); панель проверяет ВСТРОЕННЫМ публичным ключом.
+// Никаких обращений на сервер: приватно, работает офлайн, и никто не «выключит» купленную лицензию.
+const LICENSE_PUBKEY_B64 = "MCowBQYDK2VwAyEAptlh+d6VjcqQsgVbgsOeYEa+7J1SUPBSiW6cW0KnpvU=";
+const _licPubKey = (() => {
+  try { return createPublicKey({ key: Buffer.from(LICENSE_PUBKEY_B64, "base64"), format: "der", type: "spki" }); }
+  catch { return null; }
+})();
+const b64urlToBuf = (s) => Buffer.from(String(s).replace(/-/g, "+").replace(/_/g, "/"), "base64");
+// Возвращает {valid, plan, email, exp, reason}. Формат ошибок — человеку, не коду.
+function verifyLicense(key) {
+  if (!key || typeof key !== "string") return { valid: false, reason: "нет ключа" };
+  if (!_licPubKey) return { valid: false, reason: "проверка недоступна" };
+  const parts = key.trim().split(".");
+  if (parts.length !== 2) return { valid: false, reason: "ключ повреждён" };
+  try {
+    const payloadBuf = b64urlToBuf(parts[0]);
+    const sigBuf = b64urlToBuf(parts[1]);
+    if (!cryptoVerify(null, payloadBuf, _licPubKey, sigBuf)) return { valid: false, reason: "подпись не совпадает" };
+    const p = JSON.parse(payloadBuf.toString("utf8"));
+    if (p.exp && Date.now() > p.exp) return { valid: false, reason: "срок истёк", plan: p.plan, email: p.email, exp: p.exp };
+    return { valid: true, plan: p.plan || "pro", email: p.email || null, exp: p.exp || null };
+  } catch { return { valid: false, reason: "ключ повреждён" }; }
+}
+// Текущий статус Pro — читаем из config.json. Кешируем, чтобы не парсить на каждый тик.
+let _licCache = null;
+async function licenseState() {
+  const cfg = await loadConfig();
+  const key = cfg.licenseKey || "";
+  if (_licCache && _licCache.key === key) return _licCache.state;
+  const v = verifyLicense(key);
+  const state = { pro: v.valid, plan: v.valid ? v.plan : null, email: v.valid ? v.email : null, exp: v.valid ? v.exp : null, reason: v.valid ? null : (key ? v.reason : null) };
+  _licCache = { key, state };
+  return state;
+}
+const isPro = async () => (await licenseState()).pro;
+
 // Tailscale IPv4 (100.x) для приватного bind. Встроенный CLI GUI-приложения тоже отвечает на `ip -4`.
 async function tailscaleIp() {
   let bin = null;
@@ -849,6 +887,7 @@ const server = http.createServer(async (req, res) => {
       selfTunnel: (tunnelInfoFrom(tun, tunAlive, PORT) || {}).url || null,
       sectionOrder: Array.isArray(cfg.sectionOrder) ? cfg.sectionOrder : null,
       wrapOrder: Array.isArray(cfg.wrapOrder) ? cfg.wrapOrder : null,
+      pro: (await licenseState()).pro,
       access: cfg.access || "off", tsIp: TS_IP, lanUrl: BIND_HOST !== "127.0.0.1" ? `http://${BIND_HOST}:${PORT}` : null });
   }
 
@@ -1153,6 +1192,23 @@ const server = http.createServer(async (req, res) => {
       await saveServices(list);
       return { ok: true };
     }));
+  }
+
+  // ── Pro-лицензия ──
+  if (req.method === "GET" && url.pathname === "/api/license") {
+    return sendJson(res, 200, await licenseState());
+  }
+  if (req.method === "POST" && url.pathname === "/api/license") {
+    const { key } = await readBody(req);
+    const raw = typeof key === "string" ? key.trim() : "";
+    if (!raw) {                                                 // пустой ключ = снять лицензию (вернуться на free)
+      await persistConfig({ licenseKey: "" }); _licCache = null;
+      return sendJson(res, 200, { ok: true, ...(await licenseState()) });
+    }
+    const v = verifyLicense(raw);
+    if (!v.valid) return sendJson(res, 400, { ok: false, error: v.reason || "ключ недействителен" });
+    await persistConfig({ licenseKey: raw }); _licCache = null;
+    return sendJson(res, 200, { ok: true, ...(await licenseState()) });
   }
 
   // ── Локальные приложения ──
