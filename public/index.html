@@ -984,6 +984,8 @@ function setLang(l){ lang=l; localStorage.setItem('lc-lang',l); applyI18n(); ren
 
 /* ── Локальные приложения ── */
 async function appAct(name,action){ toast('…');
+  // «Выкл» при включённом «Держится» — сначала снять авто-подъём, иначе панель тут же поднимет обратно
+  if(action==='stop'){ const s=DATA.find(x=>x.name===name); if(s&&s.keepAlive) await api('/api/keepalive',{name,enable:false}); }
   const j=await api('/api/app-action',{name,action});
   if(action!=='reveal') toast(j.ok?('✅ '+(j.note||'ok')):('⛔️ '+(j.error||'')));
   lastSig=''; setTimeout(load,900); }
@@ -1155,7 +1157,9 @@ function hintAt(el, text){ if(!el) return toast(text);
   h.style.left=left+'px'; h.style.top=top+'px'; requestAnimationFrame(()=>h.classList.add('show'));
   _hintT=setTimeout(()=>{ h.classList.remove('show'); }, 8000);      // держим 8с — успеть прочитать
   setTimeout(()=>document.addEventListener('click', function cl(){ clearTimeout(_hintT); h.classList.remove('show'); document.removeEventListener('click',cl); }, {once:true}), 60); }
-async function togglePower(name,ev){ const s=DATA.find(x=>x.name===name); if(!s) return; const btn=ev&&(ev.currentTarget||ev.target); closeMenus(); toast('…');
+async function togglePower(name,ev){ const s=DATA.find(x=>x.name===name); if(!s) return;
+  if(isApp(s)) return appAct(name, s.up?'stop':'start');   // приложение — свой путь (open/quit), без порт-логики
+  const btn=ev&&(ev.currentTarget||ev.target); closeMenus(); toast('…');
   if(s.up){
     if(!s.startCmd && s.port){ const g=await fetch('/api/guess-cmd?port='+s.port).then(r=>r.json()).catch(()=>null); if(g&&g.start) await api('/api/service-setcmd',{name,startCmd:g.start,stopCmd:g.stop||''}); }
     if(s.keepAlive) await api('/api/keepalive',{name,enable:false});
