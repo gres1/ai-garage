@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>AI Garage · Orbit</title>
+<link rel="icon" type="image/png" href="/favicon.png"/>
+<style>
+  :root{
+    --bg0:#05060f; --bg1:#0a0e22; --txt:#e8ecff; --mut:#9aa6d4; --faint:#5b6591;
+    --teal:#1ce5e8; --orange:#fe7f2d; --violet:#a06bff; --blue:#3aa0ff; --green:#28e0a8; --pink:#ff5db1; --amber:#ffc23d;
+    --glass:rgba(20,28,64,.42); --glassbrd:rgba(120,150,255,.18);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; overflow:hidden; background:var(--bg0); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; user-select:none; }
+  #stars{ position:fixed; inset:0; z-index:0; }
+  .neb{ position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(900px 620px at 22% 18%, rgba(160,107,255,.16), transparent 60%),
+      radial-gradient(1000px 700px at 82% 26%, rgba(28,229,232,.12), transparent 60%),
+      radial-gradient(1200px 900px at 50% 120%, rgba(58,160,255,.10), transparent 55%),
+      linear-gradient(180deg,#05060f,#080a1c 60%,#05060f); }
+
+  /* ── хедер ── */
+  header{ position:fixed; top:0; left:0; right:0; z-index:20; display:flex; align-items:center; justify-content:space-between;
+    padding:20px 28px; pointer-events:none; }
+  .brand{ pointer-events:auto; }
+  .brand h1{ font-family:ui-rounded,-apple-system,sans-serif; font-size:22px; font-weight:800; letter-spacing:.12em;
+    background:linear-gradient(90deg,#fff,#9fb4ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .brand .sub{ font-size:11px; letter-spacing:.28em; text-transform:uppercase; color:var(--faint); margin-top:3px; }
+  .clock{ text-align:center; pointer-events:auto; }
+  .clock .t{ font-size:19px; font-weight:600; letter-spacing:.04em; } .clock .d{ font-size:12px; color:var(--mut); margin-top:2px; }
+  .hbtns{ display:flex; gap:10px; pointer-events:auto; }
+  .hbtn{ display:inline-flex; align-items:center; gap:7px; background:var(--glass); border:1px solid var(--glassbrd);
+    color:var(--mut); border-radius:980px; padding:9px 15px; font-size:13px; font-weight:600; cursor:pointer; backdrop-filter:blur(12px);
+    text-decoration:none; transition:.18s; }
+  .hbtn:hover{ color:#fff; border-color:rgba(120,150,255,.5); box-shadow:0 0 24px rgba(120,150,255,.25); }
+  .hbtn svg{ width:16px; height:16px; }
+
+  /* ── подсказки слева ── */
+  .hints{ position:fixed; left:28px; top:50%; transform:translateY(-50%); z-index:15; display:flex; flex-direction:column; gap:18px; pointer-events:none; }
+  .hint{ display:flex; align-items:center; gap:11px; color:var(--mut); font-size:13px; opacity:.85; }
+  .hint .ic{ width:34px; height:34px; border-radius:50%; border:1px solid var(--glassbrd); background:var(--glass);
+    display:flex; align-items:center; justify-content:center; color:var(--teal); }
+  .hint b{ display:block; color:#fff; font-weight:600; font-size:13px; } .hint span{ font-size:11px; color:var(--faint); }
+
+  /* ── сцена ── */
+  #scene{ position:fixed; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; cursor:grab; }
+  #scene.drag{ cursor:grabbing; }
+  #stage{ position:relative; width:520px; height:520px; transform-style:preserve-3d;
+    transform:rotateX(64deg) rotateZ(var(--spin,0deg)); transition:transform .05s linear; }
+
+  /* орбитальные кольца */
+  .ring{ position:absolute; inset:0; margin:auto; border-radius:50%; border:1px solid rgba(120,150,255,.14); transform-style:preserve-3d; }
+  .ring.r2{ inset:70px; border-color:rgba(120,150,255,.09); } .ring.r3{ inset:150px; border-color:rgba(120,150,255,.06); }
+  .ring::after{ content:""; position:absolute; inset:-1px; border-radius:50%;
+    background:conic-gradient(from 0deg, transparent, rgba(28,229,232,.5), transparent 30%); opacity:.5; -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 0); mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 0); }
+
+  /* ядро */
+  .core{ position:absolute; left:50%; top:50%; width:120px; height:120px; margin:-60px 0 0 -60px; transform-style:preserve-3d; }
+  .core .disc{ position:absolute; inset:0; border-radius:50%;
+    background:radial-gradient(circle at 50% 50%, rgba(160,107,255,.9), rgba(58,80,255,.35) 45%, transparent 70%);
+    box-shadow:0 0 60px 10px rgba(120,110,255,.5); animation:pulse 3.4s ease-in-out infinite; }
+  .core .halo{ position:absolute; inset:-24px; border-radius:50%; border:1px solid rgba(160,180,255,.35);
+    animation:spin 14s linear infinite; }
+  .core .halo::before{ content:""; position:absolute; top:-4px; left:50%; width:7px; height:7px; margin-left:-3px; border-radius:50%;
+    background:var(--teal); box-shadow:0 0 14px 3px var(--teal); }
+  .core .lbl{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transform:translateZ(1px); }
+  .core .lbl b{ font-size:15px; font-weight:800; letter-spacing:.04em; } .core .lbl span{ font-size:10px; color:var(--mut); }
+  @keyframes pulse{ 0%,100%{ transform:scale(1); opacity:.92; } 50%{ transform:scale(1.08); opacity:1; } }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* спицы-связи */
+  .spoke{ position:absolute; left:50%; top:50%; height:1px; transform-origin:left center;
+    background:linear-gradient(90deg, rgba(28,229,232,.4), rgba(120,150,255,.05)); opacity:.5; }
+
+  /* узел-форма категории (billboard: держим лицом к камере обратным поворотом) */
+  .node{ position:absolute; left:50%; top:50%; width:0; height:0; transform-style:preserve-3d; }
+  .node .card{ position:absolute; width:132px; margin:-46px 0 0 -66px; padding:14px 12px; border-radius:18px;
+    background:var(--glass); border:1px solid var(--glassbrd); backdrop-filter:blur(14px);
+    transform:rotateZ(calc(-1*var(--spin,0deg))) rotateX(-64deg); transform-origin:center;
+    text-align:center; cursor:pointer; transition:transform .15s, box-shadow .25s, border-color .2s; }
+  .node .card:hover{ border-color:var(--cc); box-shadow:0 0 34px -4px var(--cc); }
+  .node .orb{ width:46px; height:46px; margin:0 auto 8px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--cc) 70%, #fff 0%), color-mix(in srgb, var(--cc) 30%, transparent) 70%);
+    box-shadow:0 0 26px -2px var(--cc), inset 0 0 12px rgba(255,255,255,.25); color:#fff; }
+  .node .orb svg{ width:22px; height:22px; }
+  .node .nm{ font-size:13px; font-weight:700; letter-spacing:.01em; }
+  .node .ct{ font-size:11px; color:var(--mut); margin-top:2px; }
+  .node .ct b{ color:var(--cc); font-weight:700; }
+
+  /* ── деталь категории (провалиться внутрь) ── */
+  #detail{ position:fixed; inset:0; z-index:30; display:none; align-items:center; justify-content:center; padding:24px;
+    background:rgba(5,6,15,.55); backdrop-filter:blur(10px); }
+  #detail.show{ display:flex; animation:fade .25s ease; }
+  @keyframes fade{ from{ opacity:0; } to{ opacity:1; } }
+  .panel{ width:min(680px,94vw); max-height:82vh; overflow:auto; border-radius:24px; background:linear-gradient(180deg, rgba(22,30,66,.85), rgba(12,16,38,.9));
+    border:1px solid var(--glassbrd); box-shadow:0 30px 90px rgba(0,0,0,.6), 0 0 60px -20px var(--cc); }
+  .phead{ position:sticky; top:0; display:flex; align-items:center; gap:14px; padding:20px 22px; backdrop-filter:blur(8px);
+    background:linear-gradient(180deg, rgba(22,30,66,.9), rgba(22,30,66,.4)); border-bottom:1px solid var(--glassbrd); }
+  .phead .orb{ width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+    background:radial-gradient(circle at 40% 35%, var(--cc), transparent 72%); box-shadow:0 0 26px -2px var(--cc); color:#fff; }
+  .phead .orb svg{ width:22px; height:22px; }
+  .phead h2{ font-size:19px; font-weight:800; } .phead .pc{ font-size:12px; color:var(--mut); }
+  .phead .x{ margin-left:auto; width:34px; height:34px; border-radius:50%; border:1px solid var(--glassbrd); background:var(--glass);
+    color:var(--mut); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .phead .x:hover{ color:#fff; }
+  .plist{ padding:14px 18px 22px; display:grid; gap:9px; }
+  .item{ display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px; background:rgba(120,150,255,.06);
+    border:1px solid rgba(120,150,255,.1); }
+  .item .dot{ width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:var(--faint); box-shadow:0 0 8px var(--faint); }
+  .item .dot.up{ background:var(--green); box-shadow:0 0 10px var(--green); } .item .dot.down{ background:#ff5a6a; box-shadow:0 0 10px #ff5a6a; }
+  .item .dot.unk{ background:var(--amber); box-shadow:0 0 10px var(--amber); }
+  .item .nm{ font-weight:650; font-size:14px; } .item .meta{ font-size:11.5px; color:var(--faint); }
+  .item .right{ margin-left:auto; font-size:11.5px; color:var(--mut); }
+  .item .av{ width:30px; height:30px; border-radius:9px; flex:0 0 auto; object-fit:cover; box-shadow:0 0 14px -4px var(--cc); }
+  .empty{ padding:26px; text-align:center; color:var(--faint); font-size:13.5px; }
+
+  /* зум-кнопки */
+  .zoom{ position:fixed; bottom:26px; z-index:15; width:56px; height:56px; border-radius:50%; background:var(--glass);
+    border:1px solid var(--glassbrd); backdrop-filter:blur(12px); color:var(--mut); cursor:pointer; display:flex;
+    flex-direction:column; align-items:center; justify-content:center; gap:1px; font-size:10px; }
+  .zoom:hover{ color:#fff; border-color:rgba(120,150,255,.5); } .zoom svg{ width:20px; height:20px; }
+  #zoomOut{ left:34px; } #zoomIn{ right:34px; }
+  .foot{ position:fixed; bottom:26px; left:50%; transform:translateX(-50%); z-index:15; display:flex; gap:22px;
+    background:var(--glass); border:1px solid var(--glassbrd); border-radius:980px; padding:11px 22px; backdrop-filter:blur(12px);
+    font-size:12.5px; color:var(--mut); }
+  .foot span{ display:inline-flex; align-items:center; gap:7px; } .foot svg{ width:15px; height:15px; color:var(--teal); }
+  @media (max-width:640px){ .hints{ display:none; } header{ padding:14px 16px; } .brand h1{ font-size:18px; } .foot{ display:none; } }
+</style>
+</head>
+<body>
+  <canvas id="stars"></canvas>
+  <div class="neb"></div>
+
+  <header>
+    <div class="brand"><h1>AI GARAGE</h1><div class="sub">Orbit · пространство твоего мира</div></div>
+    <div class="clock"><div class="t" id="clk">—</div><div class="d" id="clkd"></div></div>
+    <div class="hbtns">
+      <a class="hbtn" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg> Панель</a>
+      <button class="hbtn" onclick="resetView()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> Сброс</button>
+    </div>
+  </header>
+
+  <div class="hints">
+    <div class="hint"><div class="ic"><svg viewBox="0 0 24 24" width="17" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2a8 8 0 0 1-7-4l-2.5-4a2 2 0 0 1 3.4-2L7 14"/></svg></div><div><b>Тяни</b><span>вращать пространство</span></div></div>
+    <div class="hint"><div class="ic"><svg viewBox="0 0 24 24" width="17" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4M8 11h6M11 8v6"/></svg></div><div><b>Колесо</b><span>приблизить / отдалить</span></div></div>
+    <div class="hint"><div class="ic"><svg viewBox="0 0 24 24" width="17" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 11.5V6a2 2 0 1 1 4 0v5M13 11V4a2 2 0 1 1 4 0v9"/><path d="M17 9a2 2 0 1 1 4 0v5a8 8 0 0 1-8 8H9.5a6 6 0 0 1-5.2-3l-1.6-2.8a2 2 0 0 1 3.3-2.2L8 16"/></svg></div><div><b>Клик по форме</b><span>заглянуть внутрь</span></div></div>
+  </div>
+
+  <div id="scene"><div id="stage" aria-label="orbit"></div></div>
+
+  <button class="zoom" id="zoomOut" onclick="zoomBy(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4M8 11h6"/></svg>−</button>
+  <button class="zoom" id="zoomIn" onclick="zoomBy(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4M8 11h6M11 8v6"/></svg>+</button>
+  <div class="foot"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg> Тяни — вращать</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg> Колесо — зум</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11V6a2 2 0 1 1 4 0v5"/></svg> Клик — внутрь</span></div>
+
+  <div id="detail" onclick="if(event.target===this)closeDetail()">
+    <div class="panel" id="panel"></div>
+  </div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ── часы ── */
+function tick(){ const d=new Date();
+  $('clk').textContent=d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  $('clkd').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}); }
+tick(); setInterval(tick,10000);
+
+/* ── звёздное небо ── */
+const cv=$('stars'), cx=cv.getContext('2d'); let stars=[];
+function resize(){ cv.width=innerWidth; cv.height=innerHeight;
+  stars=Array.from({length:Math.min(220,Math.round(innerWidth*innerHeight/9000))},()=>({
+    x:Math.random()*cv.width, y:Math.random()*cv.height, r:Math.random()*1.4+.2,
+    a:Math.random(), s:Math.random()*.02+.004 })); }
+resize(); addEventListener('resize',resize);
+(function draw(){ cx.clearRect(0,0,cv.width,cv.height);
+  for(const st of stars){ st.a+=st.s; const al=.35+.45*Math.sin(st.a);
+    cx.beginPath(); cx.arc(st.x,st.y,st.r,0,7); cx.fillStyle=`rgba(200,215,255,${al})`; cx.fill(); }
+  requestAnimationFrame(draw); })();
+
+/* ── категории ── */
+const CATS=[
+  {key:'services', nm:'Сервисы',    cc:'#1ce5e8', icon:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>'},
+  {key:'apps',     nm:'Приложения', cc:'#fe7f2d', icon:'<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/>'},
+  {key:'agents',   nm:'Агенты',     cc:'#a06bff', icon:'<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M8 2v2M16 2v2"/><circle cx="9" cy="14" r="1.3"/><circle cx="15" cy="14" r="1.3"/>'},
+  {key:'bots',     nm:'Боты',       cc:'#3aa0ff', icon:'<path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2M20 14h2M9 13v2M15 13v2"/>'},
+  {key:'vps',      nm:'VPS',        cc:'#28e0a8', icon:'<path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6-1.6A4 4 0 0 0 6 19z"/>'},
+  {key:'conn',     nm:'Подключения',cc:'#ff5db1', icon:'<path d="M9 12h6M8 7a5 5 0 0 0 0 10h2M16 7a5 5 0 0 1 0 10h-2"/>'},
+  {key:'secrets',  nm:'Секреты',    cc:'#ffc23d', icon:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'},
+];
+let DATA={};    // key → {items:[{nm,state,meta,av}], count}
+
+const norm=s=>String(s||'').toLowerCase();
+const isVps=s=>/vps|впс|server|серв|cloud/.test(norm(s.host));
+const isBot=s=>s.kind==='bot'||(Array.isArray(s.bots)&&s.bots.length>0);
+const isApp=s=>s.kind==='app';
+
+async function loadData(){
+  let st={services:[],discovered:[]}, agents={agents:[]}, secrets={items:[]}, conn=null;
+  try{ st=await fetch('/api/status',{cache:'no-store'}).then(r=>r.json()); }catch(e){}
+  try{ agents=await fetch('/api/agents',{cache:'no-store'}).then(r=>r.json()); }catch(e){}
+  try{ secrets=await fetch('/api/secrets',{cache:'no-store'}).then(r=>r.json()); }catch(e){}
+  try{ conn=await fetch('/api/conn/access',{cache:'no-store'}).then(r=>r.json()); }catch(e){}
+  const svc=st.services||[];
+  const stateOf=s=> s.up?'up':(isVps(s)||isApp(s)?'unk':'down');
+  const map=(arr)=>arr.map(s=>({nm:s.name, state:stateOf(s), meta:s.kind==='app'?(s.app&&s.app.version?'v'+s.app.version:'приложение'):(s.port?':'+s.port:(s.host||'')), }));
+  DATA={
+    services:{items:map(svc.filter(s=>!isBot(s)&&!isApp(s)&&!isVps(s)))},
+    apps:{items:map(svc.filter(isApp))},
+    bots:{items:svc.filter(isBot).flatMap(s=>(s.bots&&s.bots.length?s.bots.map(b=>({nm:(b&&b.user)||s.name, state:s.up?'up':'unk', meta:(b&&b.name)||s.agent||'бот'})):[{nm:s.name,state:s.up?'up':'unk',meta:s.agent||'бот'}]))},
+    vps:{items:map(svc.filter(s=>!isBot(s)&&!isApp(s)&&isVps(s)))},
+    agents:{items:(agents.agents||[]).map(a=>({nm:a.label, state:'up', meta:(a.count||0)+' MCP', av:'/logos/'+a.id+'.png'}))},
+    conn:{items:conn&&conn.services?conn.services.map(s=>({nm:s.label, state:'unk', meta:(s.grantedBy||[]).length+' программ'})):[]},
+    secrets:{items:(secrets.items||[]).map(s=>({nm:s.name, state:'up', meta:s.note||'в Keychain'}))},
+  };
+  for(const c of CATS){ (DATA[c.key]=DATA[c.key]||{items:[]}).count=DATA[c.key].items.length; }
+  buildOrbit();
+}
+
+/* ── построение орбиты ── */
+function buildOrbit(){
+  const stage=$('stage'); stage.innerHTML='';
+  stage.insertAdjacentHTML('beforeend','<div class="ring"></div><div class="ring r2"></div><div class="ring r3"></div>');
+  // ядро
+  const total=Object.values(DATA).reduce((n,c)=>n+(c.count||0),0);
+  stage.insertAdjacentHTML('beforeend',`<div class="core"><div class="halo"></div><div class="disc"></div>
+    <div class="lbl"><b>ALL</b><span>${total}</span></div></div>`);
+  const R=232, n=CATS.length;
+  CATS.forEach((c,i)=>{
+    const ang=(i/n)*Math.PI*2, x=Math.cos(ang)*R, y=Math.sin(ang)*R;
+    const len=Math.hypot(x,y), deg=Math.atan2(y,x)*180/Math.PI;
+    stage.insertAdjacentHTML('beforeend',`<div class="spoke" style="width:${len}px;transform:rotate(${deg}deg)"></div>`);
+    const node=document.createElement('div'); node.className='node';
+    node.style.transform=`translate3d(${x}px,${y}px,0)`; node.style.setProperty('--cc',c.cc);
+    node.innerHTML=`<div class="card" style="--cc:${c.cc}" onclick="openDetail('${c.key}')">
+      <div class="orb" style="--cc:${c.cc}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${c.icon}</svg></div>
+      <div class="nm">${c.nm}</div><div class="ct"><b>${DATA[c.key].count||0}</b> шт.</div></div>`;
+    stage.appendChild(node);
+  });
+}
+
+/* ── вращение / зум ── */
+let spin=0, zoom=1, drag=false, lastX=0, auto=true;
+const stageEl=()=>$('stage');
+function applyStage(){ stageEl().style.setProperty('--spin', spin.toFixed(2)+'deg');
+  stageEl().style.transform=`scale(${zoom}) rotateX(64deg) rotateZ(${spin}deg)`; }
+(function autoSpin(){ if(auto&&!drag){ spin=(spin+0.06)%360; applyStage(); } requestAnimationFrame(autoSpin); })();
+const scene=$('scene');
+scene.addEventListener('pointerdown',e=>{ drag=true; auto=false; lastX=e.clientX; scene.classList.add('drag'); });
+addEventListener('pointermove',e=>{ if(!drag)return; spin=(spin+(e.clientX-lastX)*0.35)%360; lastX=e.clientX; applyStage(); });
+addEventListener('pointerup',()=>{ drag=false; scene.classList.remove('drag'); setTimeout(()=>auto=true,2500); });
+scene.addEventListener('wheel',e=>{ e.preventDefault(); zoom=Math.min(1.9,Math.max(.55, zoom - e.deltaY*0.0012)); applyStage(); },{passive:false});
+function zoomBy(d){ zoom=Math.min(1.9,Math.max(.55, zoom + d*0.18)); applyStage(); }
+function resetView(){ spin=0; zoom=1; auto=true; applyStage(); }
+applyStage();
+
+/* ── деталь категории ── */
+function openDetail(key){
+  const c=CATS.find(x=>x.key===key), d=DATA[key]||{items:[]};
+  const stLbl=s=>s==='up'?'работает':s==='down'?'не работает':'—';
+  const items=d.items.length? d.items.map(it=>`<div class="item">
+      ${it.av?`<img class="av" src="${esc(it.av)}" onerror="this.remove()">`:`<span class="dot ${it.state}"></span>`}
+      <div><div class="nm">${esc(it.nm)}</div>${it.meta?`<div class="meta">${esc(it.meta)}</div>`:''}</div>
+      <span class="right">${stLbl(it.state)}</span></div>`).join('')
+    : `<div class="empty">Пока пусто в этой категории.</div>`;
+  $('panel').style.setProperty('--cc',c.cc);
+  $('panel').innerHTML=`<div class="phead" style="--cc:${c.cc}">
+      <div class="orb" style="--cc:${c.cc}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${c.icon}</svg></div>
+      <div><h2>${c.nm}</h2><div class="pc">${d.count||0} элементов</div></div>
+      <button class="x" onclick="closeDetail()">×</button></div>
+    <div class="plist">${items}</div>`;
+  $('detail').classList.add('show');
+}
+function closeDetail(){ $('detail').classList.remove('show'); }
+addEventListener('keydown',e=>{ if(e.key==='Escape')closeDetail(); });
+
+loadData(); setInterval(loadData, 15000);
+</script>
+</body>
+</html>
