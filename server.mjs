@@ -381,6 +381,28 @@ async function ensureKeepAlive() {
   } finally { _ensuringKA = false; }
 }
 
+// Фоновый монитор падений — работает даже при закрытой панели (тот же таймер, что keep-alive).
+// Дёшево считает up по каждому сохранённому сервису и отдаёт detectDowns.
+let _supervising = false;
+async function superviseDowns() {
+  if (_supervising) return; _supervising = true;
+  try {
+    const services = await loadServices();
+    if (!services.length) return;
+    const cfg = await loadConfig();
+    const listening = new Set((await discoverPorts()).map((d) => d.port));
+    const rows = [];
+    for (const s of services) {
+      let up;
+      if (s.kind === "app") up = !!(await appState(s)).running;
+      else up = !!s.port && listening.has(toPort(s.port));
+      rows.push({ name: s.name, up, kind: s.kind || null });
+    }
+    if (process.env.AIGARAGE_DEBUG) console.log("[superviseDowns]", JSON.stringify(rows));
+    await detectDowns(rows, cfg);
+  } catch (e) { if (process.env.AIGARAGE_DEBUG) console.log("[superviseDowns ERR]", e.message); } finally { _supervising = false; }
+}
+
 // ── Туннель-менеджер: публичная ссылка (cloudflared) фоновым процессом ──
 // Состояние = СПИСОК ЖЕЛАЕМЫХ портов (tunnels.json). Живость определяем по самому процессу
 // (pgrep), а не по pid — поэтому дублей не бывает и переживает рестарт. БЕЗ launchd-агента
@@ -584,6 +606,42 @@ function notifyAuthFailIfNeeded(name, health) {
   _authFailNotified.set(name, failed);
 }
 
+// ── Уведомления о падении ────────────────────────────────────────────────────
+// Следим за переходом «работал → упал» для СОХРАНЁННЫХ сервисов/приложений/ботов
+// (не для «Обнаружено» — там шум). macOS-уведомление бесплатно (локально); Telegram — Pro (дистанционно).
+const _upState = new Map();        // name → был ли up на прошлом тике
+let _upSeeded = false;             // первый тик только запоминает, не шлёт (иначе спам при старте)
+function notifyMac(title, msg) {
+  if (process.platform !== "darwin") return;
+  exec(`osascript -e 'display notification ${JSON.stringify(msg)} with title ${JSON.stringify(title)} sound name "Basso"'`, () => {});
+}
+async function notifyTelegram(cfg, text) {
+  const nt = cfg.notify || {};
+  if (!nt.telegramChatId) return;
+  const token = nt.telegramTokenKey && nt.envPath ? await readEnvValue(nt.envPath, nt.telegramTokenKey) : nt.telegramToken;
+  if (!token) return;
+  await telegramSend(token, nt.telegramChatId, text).catch(() => {});
+}
+// rows — то, что уже посчитано в /api/status (name, up, kind). Вызывать оттуда, отдельный таймер не нужен.
+async function detectDowns(rows, cfg) {
+  const notify = cfg.notify || {};
+  const pro = (await licenseState()).pro;
+  const fresh = [];
+  for (const r of rows) {
+    const prev = _upState.get(r.name);
+    _upState.set(r.name, r.up);
+    if (_upSeeded && prev === true && r.up === false) fresh.push(r);
+  }
+  if (!_upSeeded) { _upSeeded = true; return; }
+  if (!fresh.length || notify.enabled === false) return;
+  for (const r of fresh) {
+    const kind = r.kind === "app" ? "приложение" : r.kind === "bot" ? "бот" : "сервис";
+    console.log(`[notify] упало ${kind}: ${r.name}`);
+    notifyMac("AI Garage", `Упало ${kind}: ${r.name}`);
+    if (pro && notify.telegram !== false) await notifyTelegram(cfg, `🔴 AI Garage: упало ${kind} «${r.name}»`);
+  }
+}
+
 // Прочитать одно значение KEY=... из .env-файла (для ping-теста бота). Без зависимостей.
 async function readEnvValue(path, key) {
   try {
@@ -594,9 +652,9 @@ async function readEnvValue(path, key) {
 }
 
 // Реальный тест «бот живой»: шлём ему сообщение через Telegram Bot API, ждём ответ 200/ok.
-function telegramPing(token, chatId) {
+function telegramSend(token, chatId, text) {
   return new Promise((resolve) => {
-    const body = new URLSearchParams({ chat_id: String(chatId), text: "ping test ✓ (AI Garage)" }).toString();
+    const body = new URLSearchParams({ chat_id: String(chatId), text: String(text) }).toString();
     const req = https.request({ host: "api.telegram.org", path: `/bot${token}/sendMessage`, method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Length": Buffer.byteLength(body) }, timeout: 10000 },
       (r) => { let b = ""; r.on("data", (c) => (b += c)); r.on("end", () => { try { resolve({ ok: r.statusCode === 200 && JSON.parse(b).ok === true }); } catch { resolve({ ok: false, error: "bad response" }); } }); });
@@ -605,6 +663,7 @@ function telegramPing(token, chatId) {
     req.end(body);
   });
 }
+const telegramPing = (token, chatId) => telegramSend(token, chatId, "ping test ✓ (AI Garage)");
 
 function guessCmd(port) {
   return new Promise((resolve) => {
@@ -1194,6 +1253,32 @@ const server = http.createServer(async (req, res) => {
     }));
   }
 
+  // ── Уведомления о падении ──
+  if (req.method === "GET" && url.pathname === "/api/notify") {
+    const nt = cfg.notify || {};
+    return sendJson(res, 200, {
+      enabled: nt.enabled !== false, telegram: nt.telegram !== false,
+      hasTelegram: !!(nt.telegramChatId && (nt.telegramToken || (nt.telegramTokenKey && nt.envPath))),
+      telegramChatId: nt.telegramChatId || "", pro: (await licenseState()).pro,
+    });
+  }
+  if (req.method === "POST" && url.pathname === "/api/notify") {
+    const b = await readBody(req);
+    const cur = (await loadConfig()).notify || {};
+    const nt = { ...cur };
+    if (typeof b.enabled === "boolean") nt.enabled = b.enabled;
+    if (typeof b.telegram === "boolean") nt.telegram = b.telegram;
+    if (typeof b.telegramChatId === "string") nt.telegramChatId = b.telegramChatId.trim().slice(0, 64);
+    if (typeof b.telegramToken === "string") nt.telegramToken = b.telegramToken.trim().slice(0, 100);   // хранится локально (config chmod 600)
+    await persistConfig({ notify: nt });
+    return sendJson(res, 200, { ok: true });
+  }
+  if (req.method === "POST" && url.pathname === "/api/notify-test") {
+    notifyMac("AI Garage", "Тест уведомления — так ты узнаешь, если что-то упадёт");
+    if ((await licenseState()).pro) { const j = await notifyTelegram(cfg, "🔔 AI Garage: тест уведомления"); }
+    return sendJson(res, 200, { ok: true, note: "отправлено (проверь Центр уведомлений" + ((await licenseState()).pro ? " и Telegram)" : ")") });
+  }
+
   // ── Pro-лицензия ──
   if (req.method === "GET" && url.pathname === "/api/license") {
     return sendJson(res, 200, await licenseState());
@@ -1369,5 +1454,5 @@ const server = http.createServer(async (req, res) => {
   });
   server.listen(PORT, BIND_HOST, () => console.log(`AI Garage → http://${shown}:${PORT}`));
   ensureTunnels(); ensureKeepAlive();                       // восстановить туннели и поднять keep-alive сервисы при старте
-  setInterval(() => { ensureTunnels().catch(() => {}); ensureKeepAlive().catch(() => {}); }, 12000);  // и держать их живыми
+  setInterval(() => { ensureTunnels().catch(() => {}); ensureKeepAlive().catch(() => {}); superviseDowns().catch(() => {}); }, 12000);  // держать живыми + следить за падениями
 })();
