@@ -102,6 +102,9 @@
   .section.secover-bot{ box-shadow:0 3px 0 0 var(--accent); border-radius:2px; }
   .approw{ display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--line); }
   .approw:last-child{ border-bottom:0; }
+  .ntrow{ display:flex; align-items:center; gap:9px; font-size:14px; color:var(--txt); cursor:pointer; user-select:none; }
+  .ntrow input{ width:16px; height:16px; accent-color:var(--accent); }
+  .ntsub{ border-top:1px solid var(--line); padding-top:11px; margin-top:4px; }
   #probtn.on{ border-color:var(--accent); color:var(--accent); background:rgba(254,127,45,.08); }
   .proline{ margin:5px 0; line-height:1.4; }
   .prook{ background:rgba(33,94,97,.10); border:1px solid rgba(33,94,97,.25); border-radius:12px; padding:10px 12px; font-size:13px; color:var(--green-d,#1a4d50); font-weight:600; }
@@ -370,6 +373,7 @@
       <button class="pausebtn" id="connbtn" onclick="toggleConn()" aria-label="connections" title="Подключения: ключи, доступы агентов, composio"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M9 12h6"/><path d="M8 7a5 5 0 0 0 0 10h2"/><path d="M16 7a5 5 0 0 1 0 10h-2"/></svg> <span data-i="connBtn">Подключения</span></button>
       <button class="pausebtn" id="phonebtn" onclick="openPhone()" aria-label="phone"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="7" y="2" width="10" height="20" rx="2.5"/><line x1="11" y1="18" x2="13" y2="18"/></svg> <span data-i="phoneBtn">Телефон</span> <span style="font-size:9px;font-weight:800;letter-spacing:.03em;color:#fff;background:var(--accent);border-radius:5px;padding:1px 5px;vertical-align:1px">PRO</span></button>
       <select class="field" id="lang" onchange="setLang(this.value)"></select>
+      <button class="pausebtn" id="notifybtn" onclick="openNotify()" aria-label="notifications" title="Уведомления когда что-то упало"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
       <button class="pausebtn" id="probtn" onclick="openPro()" title="Pro / лицензия"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg> <span id="prolbl">Pro</span></button>
       <button class="pausebtn" id="pause" aria-label="пауза" onclick="togglePause()"></button>
     </div>
@@ -423,6 +427,33 @@
             <button class="btn btn-soft" onclick="openExt('https://ai-garage.dev/pro')" data-i="proBuy">Купить Pro</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="notifyModal" onclick="if(event.target===this)closeNotify()">
+    <div class="mbox form">
+      <div class="mbar"><span class="t rounded" data-i="ntTitle">Уведомления</span><div class="spacer"></div>
+        <button class="btn btn-soft" onclick="closeNotify()" data-i="close">Закрыть</button></div>
+      <div class="fbody">
+        <div style="font-size:13px;color:var(--mut);line-height:1.45" data-i="ntHint">Панель следит за твоими сервисами, приложениями и ботами и предупреждает, если что-то упало — даже когда окно закрыто.</div>
+        <label class="ntrow"><input type="checkbox" id="ntEnabled" onchange="saveNotify()"> <span data-i="ntEnabled">Уведомлять, когда что-то упало</span></label>
+        <div class="ntsub"><b data-i="ntMac">На этом Mac</b> <span class="agentb" data-i="ntFree">бесплатно</span><div style="font-size:12px;color:var(--faint);margin-top:2px" data-i="ntMacHint">Уведомление macOS — работает всегда.</div></div>
+        <div class="ntsub" id="ntTgWrap">
+          <div style="display:flex;align-items:center;gap:8px"><b data-i="ntTg">В Telegram</b> <span class="agentb" style="background:rgba(254,127,45,.12);color:var(--accent)">PRO</span></div>
+          <div style="font-size:12px;color:var(--faint);margin:2px 0 8px" data-i="ntTgHint">Чтобы узнавать о падении, когда ты не за компом.</div>
+          <div id="ntTgFields">
+            <label style="font-size:12px;color:var(--mut)" data-i="ntChatId">Твой chat id (напиши боту, узнай id)</label>
+            <input id="ntChatId" placeholder="123456789" style="margin-bottom:8px"/>
+            <label style="font-size:12px;color:var(--mut)" data-i="ntToken">Токен бота</label>
+            <input id="ntToken" placeholder="123456:ABC-…" style="font-family:ui-monospace,monospace;font-size:12px"/>
+            <label class="ntrow" style="margin-top:8px"><input type="checkbox" id="ntTgOn" onchange="saveNotify()"> <span data-i="ntTgSend">Слать в Telegram</span></label>
+          </div>
+          <div id="ntProLock" style="display:none;font-size:12.5px;color:var(--accent);background:rgba(254,127,45,.08);border-radius:10px;padding:9px 11px;margin-top:4px">
+            <span data-i="ntProLock">Telegram-уведомления — в Pro.</span> <a href="#" onclick="closeNotify();openPro();return false" style="color:var(--accent);font-weight:600" data-i="ntGetPro">Открыть Pro →</a>
+          </div>
+        </div>
+        <div class="row" style="margin-top:6px"><button class="btn btn-primary" onclick="testNotify()" data-i="ntTest">Проверить</button></div>
       </div>
     </div>
   </div>
@@ -601,6 +632,7 @@ const DICT={
    whatIs:"What is it?",protected:"protected — don't touch",kaEnabling:"Enabling keep-alive…",kaDisabling:"Disabling…",sysPort:"system port",killDanger:"⚠️ Port {p} — {d}. Kill the process? DATA LOSS possible.",killSafe:"Free port {p}? The process will be stopped.",askAIPrompt:"What is the process «{cmd}» listening on port {port} on my machine? Is it safe, do I need it, can I kill it? Explain simply.",askAICopied:"Prompt copied — paste it to your AI",wi_askLabel:"Prompt for your AI agent",wi_copyBtn:"Copy prompt",wi_port:"Port {x} —",wi_system:"Looks like part of macOS or a background service. Safer to leave it alone.",wi_db:"Looks like a database. Killing it can lose unsaved data — be careful.",wi_app:"An app you're running (browser, editor, etc.). Closing the app itself is usually enough.",wi_dev:"A development server or tool (Node, Python, Vite…). Usually safe to stop or restart.",wi_agent:"An AI agent or tool running locally. Safe to stop if you're not using it.",wi_unknown:"Couldn't identify it for sure. If unsure, ask your AI before stopping it.",cat_system:"system — don't touch",cat_db:"database — careful",cat_app:"app",cat_dev:"dev tool",cat_agent:"AI agent",cat_unknown:"unknown",cat_web:"web / frontend",cat_api:"API / backend",cat_worker:"worker / queue",cat_docker:"container",cat_monitoring:"monitoring",cat_tunnel:"tunnel",changeCat:"Change category",catAuto:"Auto-detect",prevHint:"Blank? The site blocks embedding — not a panel error.",reloadHint:"Reload preview",reloading:"Reloading…",dragHint:"Drag to reorder",prevLoading:"Loading preview…",blockedTitle:"Preview blocked by the service",blockedBody:"This service doesn't allow being shown inside a frame — that's its own security setting, not a panel error. Open it in a new tab instead.",macOnly:"AI Garage is built for macOS — some features may be limited on this system.",exposed:"Panel is exposed to the internet (token-protected)",exposedOff:"Turn off",
    phoneBtn:"Phone",connBtn:"Connections",phoneTitle:"Open on your phone",phoneIntro:"Choose how to reach this panel from your phone. Tailscale keeps it private to your devices; a public link is shareable but exposed (token-protected).",modeOff:"Off",modeTs:"Tailscale (private)",modePublic:"Public link",tsHint:"Open this address in the Tailscale app on your phone (same account).",tsMissing:"Tailscale not detected — is the app running and logged in?",publicHint:"Public link via Cloudflare — works from any network.",scanQr:"Scan with your phone camera",restartApply:"Restart AI Garage to apply the Tailscale binding.",tokenLabel:"Token",
    modeList:"List",modeLive:"Live view",lvCols:"columns",lvZoom:"zoom",lvServices:"Services",lvFull:"Fullscreen",lvExit:"Exit",lvOnWall:"on the wall",lvEmpty:"Nothing selected — click “Services” and pick what to show.",turnOn:"On",turnOff:"Off",botLive:"running",botDown:"not responding",claudeAuth:"Claude logged out",claudeAuthTip:"Claude CLI signed out — run 'claude login' in Terminal, then the bots work again",reloginClaude:"Re-login Claude",viewLogs:"Logs",cantStart:"I don't know how to start this one. Launch it once yourself — I'll remember the command. Or set it via ⋮ → Configure start.",configureRun:"Configure start",pingTest:"Ping test",pinging:"Pinging…",pingOk:"Bot replied",pingFail:"No reply",claudeStatus:"Claude CLI",claudeMac:"Mac",claudeOk:"signed in",claudeDown:"signed out",claudeUnknown:"unknown",statusUnknown:"unknown",unkTip:"Remote host — can't check from this Mac. To know for sure: Ping test (bots) or open the link.",unkChip:"not verified — use Ping test",connOk:"keys alive",connBad:"need attention",nfTitle:"Nothing found",nfHint:"No service, agent, secret or port matches «{q}». Try a name, port (:3000) or a link.",
+ntTitle:"Notifications",ntHint:"The panel watches your services, apps and bots and warns you if something goes down — even when the window is closed.",ntEnabled:"Notify me when something goes down",ntMac:"On this Mac",ntFree:"free",ntMacHint:"macOS notification — always works.",ntTg:"On Telegram",ntTgHint:"So you hear about a crash when you're away from the computer.",ntChatId:"Your chat id (message the bot to find it)",ntToken:"Bot token",ntTgSend:"Send to Telegram",ntProLock:"Telegram alerts are a Pro feature.",ntGetPro:"Open Pro →",ntTest:"Send a test",
 secApps:"Apps",addApp:"+ App",appsTitle:"+ App",appsHint:"The panel shows whether the app is running, and restarts it if it dies.",appsFilterLabel:"Filter (name or bundle id, * allowed)",appsScanning:"Looking through your apps…",appsNone:"Nothing matches this filter.",appsAdded:"added",add:"Add",appRunning:"running",appStopped:"not running",appGone:"app not found",appGoneTip:"The .app was moved or deleted — remove the card or add it again from its new place.",menuBar:"menu bar",menuBarTip:"Lives in the menu bar without a window — «I don't see it» does not mean it crashed.",kaAppTip:"If the app dies, the panel starts it again (checks every 3s).",showInFinder:"Show in Finder",
 proTitle:"AI Garage Pro",proWhat:"What Pro gives you:",proLink:"Strong permanent links (survive restarts, don't rot)",proNotify:"Alerts when something dies (Telegram / email)",proSync:"Sync across devices (Mac + VPS + phone)",proVault:"Cloud key vault",proKeyLabel:"License key",proActivate:"Activate",proBuy:"Get Pro",proActive:"Pro active",proUntil:"until",proForever:"forever",proRemove:"Remove",proRemoveConfirm:"Remove the Pro license from this Mac?",proThanks:"Pro activated — thank you!",proBadKey:"key not valid",proFree:"Free",offlineTitle:"Panel is restarting…",offlineHint:"Lost the local server. Reconnecting on my own — no need to reopen the app.",
    tunnelStart:"Create link",tunnelStop:"Stop link",tunnelUp:"link is coming up…",tunnelHint:"Create a public link — open this service from your phone or share it",provPick:"Choose how to share:",provCf:"Cloudflare — instant, link changes",provNgrok:"ngrok — stable address (soon)",provDomain:"Your own domain (soon)",provSoonMsg:"Coming next — needs your free account; we're building it"},
@@ -615,6 +647,7 @@ proTitle:"AI Garage Pro",proWhat:"What Pro gives you:",proLink:"Strong permanent
    whatIs:"что это?",protected:"защищён — не трогай",kaEnabling:"Включаю автозапуск…",kaDisabling:"Выключаю…",sysPort:"системный порт",killDanger:"⚠️ Порт {p} — {d}. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.",killSafe:"Освободить порт {p}? Процесс будет остановлен.",askAIPrompt:"Что за процесс «{cmd}» слушает порт {port} на моей машине? Безопасно ли это, нужно ли, можно ли убить? Объясни простыми словами.",askAICopied:"Промпт скопирован — вставь своему ИИ",wi_askLabel:"Промпт для твоего ИИ-агента",wi_copyBtn:"Скопировать промпт",wi_port:"Порт {x} —",wi_system:"Похоже на часть macOS или фоновую службу. Лучше не трогать.",wi_db:"Похоже на базу данных. Если убить — можно потерять несохранённые данные. Осторожно.",wi_app:"Запущенное приложение (браузер, редактор и т.п.). Обычно достаточно закрыть само приложение.",wi_dev:"Сервер или инструмент разработки (Node, Python, Vite…). Обычно можно спокойно остановить или перезапустить.",wi_agent:"Локальный ИИ-агент или инструмент. Можно остановить, если не используешь.",wi_unknown:"Точно определить не вышло. Если не уверен — спроси своего ИИ перед остановкой.",cat_system:"системное — не трогать",cat_db:"база данных — осторожно",cat_app:"приложение",cat_dev:"dev-инструмент",cat_agent:"ИИ-агент",cat_unknown:"неизвестно",cat_web:"веб / фронтенд",cat_api:"API / бэкенд",cat_worker:"воркер / очередь",cat_docker:"контейнер",cat_monitoring:"мониторинг",cat_tunnel:"туннель",changeCat:"Сменить категорию",catAuto:"Авто-определение",prevHint:"Пусто? Сайт запрещает встраивание — это не ошибка панели.",reloadHint:"Обновить превью",reloading:"Обновляю…",dragHint:"Потяни, чтобы изменить порядок",prevLoading:"Загрузка превью…",blockedTitle:"Сервис не разрешает превью",blockedBody:"Этот сервис запрещает показ в окне — это его настройка безопасности, не ошибка панели. Открой в новой вкладке.",macOnly:"AI Garage рассчитан на macOS — часть функций здесь может работать неполно.",exposed:"Панель открыта в интернет (по токену)",exposedOff:"Выключить",
    phoneBtn:"Телефон",connBtn:"Подключения",phoneTitle:"Открыть на телефоне",phoneIntro:"Выбери, как заходить в панель с телефона. Tailscale — приватно, только твои устройства; публичная ссылка — можно поделиться, но открыта в интернет (защищена токеном).",modeOff:"Выкл",modeTs:"Tailscale (приватно)",modePublic:"Публичная ссылка",tsHint:"Открой этот адрес в приложении Tailscale на телефоне (тот же аккаунт).",tsMissing:"Tailscale не найден — запущен ли он и залогинен?",publicHint:"Публичная ссылка через Cloudflare — работает из любой сети.",scanQr:"Наведи камеру телефона",restartApply:"Перезапусти AI Garage, чтобы применить привязку к Tailscale.",tokenLabel:"Токен",
    modeList:"Список",modeLive:"Live view",lvCols:"колонки",lvZoom:"зум",lvServices:"Сервисы",lvFull:"Во весь экран",lvExit:"Свернуть",lvOnWall:"на стене",lvEmpty:"Никого не выбрано — нажми «Сервисы» и отметь, что показать.",turnOn:"Вкл",turnOff:"Выкл",botLive:"работает",botDown:"не отвечает",claudeAuth:"Claude разлогинен",claudeAuthTip:"Claude CLI вышел из аккаунта — выполни в Терминале 'claude login', и боты снова заработают",reloginClaude:"Перелогинить Claude",viewLogs:"Логи",cantStart:"Не знаю, как это запустить. Запусти проект один раз сам — я запомню команду. Или задай вручную: ⋮ → Настроить запуск.",configureRun:"Настроить запуск",pingTest:"Пинг-тест",pinging:"Пингую…",pingOk:"Бот ответил",pingFail:"Нет ответа",claudeStatus:"Claude CLI",claudeMac:"Mac",claudeOk:"в аккаунте",claudeDown:"разлогинен",claudeUnknown:"неизвестно",statusUnknown:"неизвестно",unkTip:"Удалённый хост — с этого Mac не проверить. Узнать точно: Пинг-тест (боты) или открой ссылку.",unkChip:"не проверено — жми Пинг-тест",connOk:"ключей живо",connBad:"требуют внимания",nfTitle:"Ничего не нашлось",nfHint:"Ни сервиса, ни агента, ни секрета, ни порта по запросу «{q}». Попробуй имя, порт (:3000) или ссылку.",
+ntTitle:"Уведомления",ntHint:"Панель следит за твоими сервисами, приложениями и ботами и предупреждает, если что-то упало — даже когда окно закрыто.",ntEnabled:"Уведомлять, когда что-то упало",ntMac:"На этом Mac",ntFree:"бесплатно",ntMacHint:"Уведомление macOS — работает всегда.",ntTg:"В Telegram",ntTgHint:"Чтобы узнавать о падении, когда ты не за компом.",ntChatId:"Твой chat id (напиши боту, узнай id)",ntToken:"Токен бота",ntTgSend:"Слать в Telegram",ntProLock:"Telegram-уведомления — в Pro.",ntGetPro:"Открыть Pro →",ntTest:"Проверить",
 secApps:"Приложения",addApp:"+ Приложение",appsTitle:"+ Приложение",appsHint:"Панель покажет, запущено ли приложение, и поднимет его, если упало.",appsFilterLabel:"Фильтр (имя или bundle-id, можно со звёздочкой)",appsScanning:"Смотрю твои приложения…",appsNone:"По этому фильтру ничего нет.",appsAdded:"добавлено",add:"Добавить",appRunning:"работает",appStopped:"не запущено",appGone:"приложение не найдено",appGoneTip:"Файл .app переместили или удалили — убери карточку или добавь заново с нового места.",menuBar:"в строке меню",menuBarTip:"Живёт в строке меню без окна — «не вижу его» не значит «упало».",kaAppTip:"Если приложение упадёт — панель запустит его снова (проверяет каждые 3 сек).",showInFinder:"Показать в Finder",
 proTitle:"AI Garage Pro",proWhat:"Что даёт Pro:",proLink:"Постоянные сильные ссылки (не отваливаются после перезапуска)",proNotify:"Уведомления, когда что-то упало (Telegram / почта)",proSync:"Синхронизация между устройствами (Mac + VPS + телефон)",proVault:"Облачный сейф ключей",proKeyLabel:"Ключ лицензии",proActivate:"Активировать",proBuy:"Купить Pro",proActive:"Pro активен",proUntil:"до",proForever:"бессрочно",proRemove:"Убрать",proRemoveConfirm:"Убрать Pro-лицензию с этого Mac?",proThanks:"Pro активирован — спасибо!",proBadKey:"ключ недействителен",proFree:"Free",offlineTitle:"Панель перезапускается…",offlineHint:"Связь с локальным сервером пропала. Переподключусь сам — закрывать и открывать приложение не надо.",
    tunnelStart:"Создать ссылку",tunnelStop:"Убрать ссылку",tunnelUp:"ссылка поднимается…",tunnelHint:"Создаст публичную ссылку — открыть сервис с телефона или поделиться",provPick:"Чем поделиться:",provCf:"Cloudflare — сразу, адрес меняется",provNgrok:"ngrok — стабильный адрес (скоро)",provDomain:"Свой домен (скоро)",provSoonMsg:"Скоро — нужен твой бесплатный аккаунт, делаем"},
@@ -755,6 +788,7 @@ const ICONS={
  stop:'<rect x="6" y="6" width="12" height="12" rx="2" fill="var(--ic,currentColor)" stroke="none"/>',
  restart:'<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>',
  keepalive:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+ bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
  zap:'<path d="M13 2L3 14h7l-1 8 10-12h-7z" fill="var(--ic,currentColor)" stroke="none"/>',
  help:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".7" fill="var(--ic,currentColor)" stroke="none"/>',
@@ -871,6 +905,29 @@ function reflectPro(){ const b=$('probtn'),l=$('prolbl'); if(!b)return;
 function openPro(){ $('proModal').classList.add('show'); refreshProStatus(); }
 function closePro(){ $('proModal').classList.remove('show'); }
 addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('proModal').classList.contains('show')) closePro(); });
+
+/* ── Уведомления ── */
+function openNotify(){ $('notifyModal').classList.add('show'); loadNotifyCfg(); }
+function closeNotify(){ $('notifyModal').classList.remove('show'); }
+addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('notifyModal').classList.contains('show')) closeNotify(); });
+let _ntLoaded=false;
+async function loadNotifyCfg(){
+  try{ const j=await fetch('/api/notify',{cache:'no-store'}).then(r=>r.json());
+    $('ntEnabled').checked=j.enabled!==false;
+    $('ntChatId').value=j.telegramChatId||'';
+    $('ntTgOn').checked=j.telegram!==false;
+    // Telegram — только Pro: без Pro поля прячем, показываем замок
+    const pro=!!j.pro; $('ntTgFields').style.display=pro?'':'none'; $('ntProLock').style.display=pro?'none':'block';
+    _ntLoaded=true;
+  }catch(e){}
+}
+async function saveNotify(){ if(!_ntLoaded)return;
+  const body={ enabled:$('ntEnabled').checked, telegram:$('ntTgOn').checked, telegramChatId:$('ntChatId').value.trim() };
+  const tok=$('ntToken').value.trim(); if(tok) body.telegramToken=tok;
+  await api('/api/notify',body); }
+let _ntSaveT;
+['ntChatId','ntToken'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('input',()=>{ clearTimeout(_ntSaveT); _ntSaveT=setTimeout(saveNotify,500); }); });
+async function testNotify(){ await saveNotify(); const j=await api('/api/notify-test',{}); toast(j.ok?('✅ '+(j.note||'отправлено')):('⛔️ '+(j.error||''))); }
 async function refreshProStatus(){
   const box=$('proStatus'); const j=await fetch('/api/license',{cache:'no-store'}).then(r=>r.json()).catch(()=>({}));
   if(j&&j.pro){ const exp=j.exp?new Date(j.exp).toLocaleDateString():t('proForever');
