@@ -826,7 +826,7 @@ async function connCheckCached(force) {
   return r;
 }
 
-const server = http.createServer(async (req, res) => {
+const handler = async (req, res) => {
  try {
   const url = new URL(req.url, "http://localhost");
   const cfg = await loadConfig();
@@ -1433,10 +1433,12 @@ const server = http.createServer(async (req, res) => {
    if (!res.headersSent) { try { sendJson(res, 500, { ok: false, error: String((e && e.message) || e) }); } catch {} }
    else { try { res.end(); } catch {} }
  }
-});
+};
+const server = http.createServer(handler);
 
-// Старт с учётом режима доступа (config.json → access): tailscale → bind на 100.x (приватно, не в LAN),
-// иначе loopback. Выход за loopback ИЛИ public-режим требуют токена — генерируем и сохраняем, если его нет.
+// Старт с учётом режима доступа (config.json → access): tailscale → доп. bind на 100.x (приватно, не в LAN)
+// ДЛЯ ТЕЛЕФОНА, но loopback (127.0.0.1) слушаем ВСЕГДА — иначе десктоп-.app не достучится до панели.
+// Выход за loopback ИЛИ public-режим требуют токена — генерируем и сохраняем, если его нет.
 (async () => {
   const cfg = await loadConfig();
   TS_IP = await tailscaleIp().catch(() => null);
@@ -1453,6 +1455,13 @@ const server = http.createServer(async (req, res) => {
     throw e;
   });
   server.listen(PORT, BIND_HOST, () => console.log(`AI Garage → http://${shown}:${PORT}`));
+  // Второй слушатель на loopback, когда основной уехал на Tailscale-адрес: десктоп/локальный браузер
+  // ходят на 127.0.0.1, телефон — на 100.x. LAN (0.0.0.0) намеренно НЕ открываем.
+  if (BIND_HOST !== "127.0.0.1") {
+    const loopback = http.createServer(handler);
+    loopback.on("error", (e) => console.warn(`AI Garage: loopback :${PORT} недоступен (${e && e.code}) — десктоп может не достучаться`));
+    loopback.listen(PORT, "127.0.0.1", () => console.log(`AI Garage → http://localhost:${PORT} (loopback для десктопа)`));
+  }
   ensureTunnels(); ensureKeepAlive();                       // восстановить туннели и поднять keep-alive сервисы при старте
   setInterval(() => { ensureTunnels().catch(() => {}); ensureKeepAlive().catch(() => {}); superviseDowns().catch(() => {}); }, 12000);  // держать живыми + следить за падениями
 })();
