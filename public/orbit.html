@@ -3,81 +3,93 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
-<title>AI Garage · Orbit 3D</title>
+<title>AI Garage · Orbit</title>
 <link rel="icon" type="image/png" href="/favicon.png"/>
+<script type="importmap">{"imports":{"three":"/vendor/three.module.min.js","three/addons/":"/vendor/jsm/"}}</script>
 <style>
-  :root{ --txt:#e8ecff; --mut:#9aa6d4; --faint:#5b6591; --teal:#1ce5e8; --accent:#fe7f2d;
-    --glass:rgba(20,28,64,.42); --glassbrd:rgba(120,150,255,.18); --line:rgba(120,150,255,.12); }
+  :root{ --txt:#eaf0ff; --mut:#9aa6d4; --faint:#5b6591; --teal:#1ce5e8; --accent:#fe7f2d; --green:#28e0a8; --red:#ff5a6a; --amber:#ffc23d;
+    --glass:rgba(18,26,58,.44); --glass2:rgba(24,32,72,.6); --brd:rgba(130,160,255,.16); --brd2:rgba(130,160,255,.28); }
   *{ box-sizing:border-box; margin:0; padding:0; }
-  html,body{ height:100%; overflow:hidden; background:#03040c; color:var(--txt);
+  html,body{ height:100%; overflow:hidden; background:#04050e; color:var(--txt);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; user-select:none; }
-  #gl{ position:fixed; inset:0; z-index:0; display:block; touch-action:none; cursor:grab; } #gl.drag{ cursor:grabbing; }
-  #loading{ position:fixed; inset:0; z-index:40; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:#03040c; color:var(--mut); }
-  .spin{ width:34px; height:34px; border:3px solid rgba(120,150,255,.2); border-top-color:var(--teal); border-radius:50%; animation:sp 1s linear infinite; }
-  @keyframes sp{ to{ transform:rotate(360deg); } }
+  #gl{ position:fixed; inset:0; z-index:0; display:block; touch-action:none; }
+  #loading{ position:fixed; inset:0; z-index:60; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:#04050e; color:var(--mut); }
+  .spin{ width:34px; height:34px; border:3px solid rgba(130,160,255,.2); border-top-color:var(--teal); border-radius:50%; animation:sp 1s linear infinite; } @keyframes sp{ to{ transform:rotate(360deg); } }
+  a{ color:inherit; }
 
-  header{ position:fixed; top:0; left:0; right:0; z-index:20; display:flex; align-items:center; justify-content:space-between; padding:20px 28px; pointer-events:none; }
-  .brand h1{ font-family:ui-rounded,-apple-system,sans-serif; font-size:22px; font-weight:800; letter-spacing:.12em; background:linear-gradient(90deg,#fff,#9fb4ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .brand .sub{ font-size:11px; letter-spacing:.28em; text-transform:uppercase; color:var(--faint); margin-top:3px; }
-  .clock{ text-align:center; } .clock .t{ font-size:19px; font-weight:600; letter-spacing:.04em; } .clock .d{ font-size:12px; color:var(--mut); margin-top:2px; }
-  .hbtns{ display:flex; gap:10px; pointer-events:auto; }
-  .hbtn{ display:inline-flex; align-items:center; gap:7px; background:var(--glass); border:1px solid var(--glassbrd); color:var(--mut); border-radius:980px; padding:9px 15px; font-size:13px; font-weight:600; cursor:pointer; backdrop-filter:blur(12px); text-decoration:none; transition:.18s; }
-  .hbtn:hover{ color:#fff; border-color:rgba(120,150,255,.5); box-shadow:0 0 24px rgba(120,150,255,.25); } .hbtn svg{ width:16px; height:16px; }
+  /* ── шапка-дашборд ── */
+  header{ position:fixed; top:0; left:0; right:0; z-index:30; display:flex; align-items:center; gap:22px; padding:16px 26px; pointer-events:none; }
+  header>*{ pointer-events:auto; }
+  .brand h1{ font-family:ui-rounded,-apple-system,sans-serif; font-size:20px; font-weight:800; letter-spacing:.12em; background:linear-gradient(90deg,#fff,#9fb4ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .brand .sub{ font-size:10px; letter-spacing:.26em; text-transform:uppercase; color:var(--faint); margin-top:2px; }
+  .statbar{ display:flex; align-items:center; gap:16px; background:var(--glass); border:1px solid var(--brd); border-radius:18px; padding:9px 18px; backdrop-filter:blur(16px) saturate(160%); }
+  .ring{ position:relative; width:46px; height:46px; flex:0 0 auto; } .ring svg{ transform:rotate(-90deg); } .ring .num{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .ring .num b{ font-size:15px; line-height:1; } .ring .num span{ font-size:8px; color:var(--mut); }
+  .legend{ display:flex; gap:13px; } .legend div{ font-size:12px; color:var(--mut); display:flex; align-items:center; gap:6px; } .ld{ width:8px; height:8px; border-radius:50%; }
+  .clock{ margin-left:auto; text-align:right; } .clock .t{ font-size:17px; font-weight:600; } .clock .d{ font-size:11px; color:var(--mut); }
+  .hbtn{ display:inline-flex; align-items:center; gap:7px; background:var(--glass); border:1px solid var(--brd); color:var(--mut); border-radius:980px; padding:9px 15px; font-size:13px; font-weight:600; cursor:pointer; backdrop-filter:blur(14px); text-decoration:none; transition:.18s; }
+  .hbtn:hover{ color:#fff; border-color:var(--brd2); box-shadow:0 0 22px rgba(130,160,255,.2); } .hbtn svg{ width:15px; height:15px; }
 
-  .lbl{ position:fixed; z-index:10; transform:translate(-50%,-50%); pointer-events:none; text-align:center; transition:opacity .3s; }
-  .lbl .nm{ font-size:13.5px; font-weight:700; text-shadow:0 2px 12px rgba(0,0,0,.85); white-space:nowrap; }
-  .lbl .ct{ font-size:11px; margin-top:1px; } .lbl .ct b{ font-weight:700; }
+  /* ── плавающие дашборд-панели ── */
+  #wrap{ position:fixed; inset:0; z-index:10; transition:transform .5s cubic-bezier(.2,.7,.2,1); pointer-events:none; }
+  body.drawer #wrap{ transform:translateX(-14vw) scale(.94); }
+  .pan{ position:absolute; width:300px; max-height:30vh; display:flex; flex-direction:column; pointer-events:auto;
+    background:var(--glass); border:1px solid var(--brd); border-radius:20px; backdrop-filter:blur(18px) saturate(170%);
+    box-shadow:0 20px 60px -20px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.05); overflow:hidden; transition:.25s; opacity:.98; }
+  .pan:hover{ border-color:var(--cc); box-shadow:0 20px 60px -18px rgba(0,0,0,.7), 0 0 40px -14px var(--cc); }
+  .pan .ph{ display:flex; align-items:center; gap:9px; padding:12px 14px 9px; }
+  .pan .pic{ width:28px; height:28px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; color:#fff;
+    background:radial-gradient(circle at 38% 32%, var(--cc), transparent 74%); box-shadow:0 0 18px -3px var(--cc); } .pan .pic svg{ width:16px; height:16px; }
+  .pan .pt{ font-size:14px; font-weight:700; } .pan .pcount{ margin-left:auto; font-size:12px; font-weight:700; color:var(--cc); }
+  .pan .pb{ padding:0 10px 8px; overflow:auto; display:flex; flex-direction:column; gap:5px; }
+  .pi{ display:flex; align-items:center; gap:9px; padding:7px 9px; border-radius:11px; transition:.15s; }
+  .pi:hover{ background:rgba(130,160,255,.09); } .pi .d{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; background:var(--faint); box-shadow:0 0 7px var(--faint); }
+  .d.up{ background:var(--green); box-shadow:0 0 9px var(--green); } .d.down{ background:var(--red); box-shadow:0 0 9px var(--red); } .d.unk{ background:var(--amber); box-shadow:0 0 9px var(--amber); }
+  .pi .av{ width:22px; height:22px; border-radius:6px; flex:0 0 auto; object-fit:contain; background:#fff; }
+  .pi .nm{ font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .pi .mt{ font-size:10.5px; color:var(--faint); }
+  .pi .qb{ margin-left:auto; flex:0 0 auto; border:1px solid var(--brd); background:rgba(130,160,255,.08); color:var(--txt); border-radius:980px; padding:3px 10px; font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .pi .qb:hover{ border-color:var(--cc); } .pi .qb.on{ background:var(--cc); color:#08122a; border-color:transparent; }
+  .pan .more{ padding:8px 14px 12px; } .pan .more button{ width:100%; border:1px dashed var(--brd2); background:transparent; color:var(--mut); border-radius:11px; padding:7px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .pan .more button:hover{ color:#fff; border-color:var(--cc); }
+  .pan .mini{ display:flex; gap:4px; align-items:flex-end; height:26px; padding:0 14px 4px; }
+  .pan .mini i{ flex:1; background:var(--cc); border-radius:2px 2px 0 0; opacity:.5; min-height:3px; }
 
-  #detail{ position:fixed; inset:0; z-index:30; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(3,4,12,.55); backdrop-filter:blur(10px); }
-  #detail.show{ display:flex; animation:fade .25s ease; } @keyframes fade{ from{opacity:0} to{opacity:1} }
-  .panel{ width:min(720px,94vw); max-height:84vh; overflow:auto; border-radius:24px; background:linear-gradient(180deg, rgba(22,30,66,.92), rgba(12,16,38,.95)); border:1px solid var(--glassbrd); box-shadow:0 30px 90px rgba(0,0,0,.6), 0 0 70px -18px var(--cc); }
-  .phead{ position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:14px; padding:20px 22px; backdrop-filter:blur(8px); background:linear-gradient(180deg, rgba(22,30,66,.95), rgba(22,30,66,.5)); border-bottom:1px solid var(--glassbrd); }
-  .phead .orb{ width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:0 0 auto; background:radial-gradient(circle at 40% 35%, var(--cc), transparent 72%); box-shadow:0 0 26px -2px var(--cc); color:#fff; } .phead .orb svg{ width:22px; height:22px; }
-  .phead h2{ font-size:19px; font-weight:800; } .phead .pc{ font-size:12px; color:var(--mut); }
-  .phead .hx{ margin-left:auto; display:flex; gap:8px; }
-  .phead .x,.phead .add{ height:34px; border-radius:980px; border:1px solid var(--glassbrd); background:var(--glass); color:var(--mut); cursor:pointer; display:flex; align-items:center; justify-content:center; }
-  .phead .x{ width:34px; font-size:18px; } .phead .add{ padding:0 14px; font-size:13px; font-weight:600; gap:5px; } .phead .x:hover,.phead .add:hover{ color:#fff; border-color:var(--cc); }
-  .plist{ padding:14px 18px 22px; display:grid; gap:11px; }
-  .row{ padding:13px 15px; border-radius:16px; background:rgba(120,150,255,.06); border:1px solid var(--line); }
-  .rtop{ display:flex; align-items:center; gap:11px; }
-  .rtop .dot{ width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:var(--faint); box-shadow:0 0 8px var(--faint); }
-  .dot.up{ background:#28e0a8; box-shadow:0 0 10px #28e0a8; } .dot.down{ background:#ff5a6a; box-shadow:0 0 10px #ff5a6a; } .dot.unk{ background:#ffc23d; box-shadow:0 0 10px #ffc23d; }
+  /* ── боковое раскрытие (drawer) ── */
+  #drawer{ position:fixed; top:0; right:0; height:100%; width:min(460px,92vw); z-index:40; transform:translateX(105%); transition:transform .5s cubic-bezier(.2,.7,.2,1);
+    background:linear-gradient(180deg, rgba(20,28,64,.92), rgba(10,14,34,.96)); border-left:1px solid var(--brd2); backdrop-filter:blur(24px) saturate(170%);
+    box-shadow:-30px 0 90px rgba(0,0,0,.6); display:flex; flex-direction:column; }
+  body.drawer #drawer{ transform:translateX(0); }
+  .dh{ display:flex; align-items:center; gap:13px; padding:22px 22px 16px; border-bottom:1px solid var(--brd); }
+  .dh .pic{ width:44px; height:44px; border-radius:13px; } .dh .pic svg{ width:22px; height:22px; }
+  .dh h2{ font-size:20px; font-weight:800; } .dh .pc{ font-size:12px; color:var(--mut); } .dh .hx{ margin-left:auto; display:flex; gap:8px; }
+  .dh .x,.dh .add{ height:34px; border-radius:980px; border:1px solid var(--brd); background:var(--glass); color:var(--mut); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .dh .x{ width:34px; font-size:18px; } .dh .add{ padding:0 14px; font-size:13px; font-weight:600; gap:5px; } .dh .x:hover,.dh .add:hover{ color:#fff; border-color:var(--cc); }
+  .dl{ flex:1; overflow:auto; padding:14px 16px 24px; display:flex; flex-direction:column; gap:11px; }
+  .row{ padding:13px 15px; border-radius:16px; background:rgba(130,160,255,.06); border:1px solid var(--brd); }
+  .rtop{ display:flex; align-items:center; gap:11px; } .rtop .d{ width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:var(--faint); box-shadow:0 0 8px var(--faint); }
   .rtop .av{ width:30px; height:30px; border-radius:9px; flex:0 0 auto; object-fit:contain; background:#fff; box-shadow:0 0 14px -4px var(--cc); }
   .rtop .nm{ font-weight:650; font-size:14.5px; } .rtop .meta{ font-size:11.5px; color:var(--faint); }
   .rtop .st{ margin-left:auto; font-size:11.5px; font-weight:600; padding:3px 10px; border-radius:980px; white-space:nowrap; }
-  .st.up{ color:#28e0a8; background:rgba(40,224,168,.14); } .st.down{ color:#ff8088; background:rgba(255,90,106,.14); } .st.unk{ color:#ffc23d; background:rgba(255,194,61,.14); cursor:help; }
-  .rlink{ font-size:12px; color:var(--teal); margin-top:8px; word-break:break-all; }
-  .rlink a{ color:var(--teal); text-decoration:none; } .rlink a:hover{ text-decoration:underline; }
-  .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
-  .chip{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; border-radius:980px; padding:4px 11px; text-decoration:none; color:#bcd0ff; background:rgba(120,150,255,.12); }
-  .chip:hover{ background:rgba(120,150,255,.22); } .chip .bd{ width:7px; height:7px; border-radius:50%; background:var(--faint); }
-  .chip .bd.on{ background:#28e0a8; } .chip .bd.off{ background:var(--faint); } .chip .bd.unk{ background:#ffc23d; }
+  .st.up{ color:var(--green); background:rgba(40,224,168,.14); } .st.down{ color:#ff8088; background:rgba(255,90,106,.14); } .st.unk{ color:var(--amber); background:rgba(255,194,61,.14); cursor:help; }
+  .rlink{ font-size:12px; color:var(--teal); margin-top:8px; word-break:break-all; } .rlink a{ color:var(--teal); text-decoration:none; } .rlink a:hover{ text-decoration:underline; }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; } .chip{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; border-radius:980px; padding:4px 11px; text-decoration:none; color:#bcd0ff; background:rgba(130,160,255,.12); }
+  .chip:hover{ background:rgba(130,160,255,.22); } .chip .bd{ width:7px; height:7px; border-radius:50%; background:var(--faint); } .chip .bd.on{ background:var(--green); } .chip .bd.unk{ background:var(--amber); }
   .acts{ display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }
-  .btn{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:rgba(120,150,255,.08); color:var(--txt); border-radius:980px; padding:7px 13px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; transition:.15s; }
-  .btn:hover{ border-color:var(--cc); background:rgba(120,150,255,.15); } .btn svg{ width:14px; height:14px; }
-  .btn.primary{ background:var(--cc); border-color:transparent; color:#08122a; } .btn.primary:hover{ filter:brightness(1.1); }
-  .btn.danger:hover{ border-color:#ff5a6a; color:#ff8088; }
-  .empty{ padding:26px; text-align:center; color:var(--faint); font-size:13.5px; }
-  .note{ font-size:11.5px; color:var(--faint); margin-top:8px; }
+  .btn{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--brd); background:rgba(130,160,255,.08); color:var(--txt); border-radius:980px; padding:7px 13px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; transition:.15s; }
+  .btn:hover{ border-color:var(--cc); background:rgba(130,160,255,.15); } .btn svg{ width:14px; height:14px; }
+  .btn.primary{ background:var(--cc); border-color:transparent; color:#08122a; } .btn.primary:hover{ filter:brightness(1.1); } .btn.danger:hover{ border-color:var(--red); color:#ff8088; }
+  .empty{ padding:26px; text-align:center; color:var(--faint); font-size:13.5px; } .note{ font-size:11.5px; color:var(--faint); margin-top:8px; }
 
-  #connFrame{ position:fixed; inset:0; z-index:35; display:none; background:#03040c; }
-  #connFrame.show{ display:block; } #connFrame iframe{ width:100%; height:100%; border:0; }
-  #connFrame .close{ position:fixed; top:18px; right:22px; z-index:2; width:40px; height:40px; border-radius:50%; background:var(--glass); border:1px solid var(--glassbrd); color:#fff; font-size:20px; cursor:pointer; backdrop-filter:blur(12px); }
-
-  /* prompt/confirm модалка */
-  #ui{ position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; background:rgba(3,4,12,.6); backdrop-filter:blur(8px); }
-  #ui.show{ display:flex; } .uibox{ width:min(420px,92vw); background:linear-gradient(180deg,rgba(24,32,70,.96),rgba(14,18,42,.98)); border:1px solid var(--glassbrd); border-radius:20px; padding:22px; }
-  .uibox p{ font-size:14.5px; line-height:1.5; margin-bottom:14px; white-space:pre-wrap; }
-  .uibox input{ width:100%; border:1px solid var(--glassbrd); background:rgba(10,14,34,.7); color:#fff; border-radius:12px; padding:11px 13px; font-size:14px; font-family:inherit; outline:none; margin-bottom:14px; }
+  #connFrame{ position:fixed; inset:0; z-index:50; display:none; background:#04050e; } #connFrame.show{ display:block; } #connFrame iframe{ width:100%; height:100%; border:0; }
+  #connFrame .close{ position:fixed; top:18px; right:22px; z-index:2; width:40px; height:40px; border-radius:50%; background:var(--glass); border:1px solid var(--brd); color:#fff; font-size:20px; cursor:pointer; backdrop-filter:blur(12px); }
+  #ui{ position:fixed; inset:0; z-index:70; display:none; align-items:center; justify-content:center; background:rgba(4,5,14,.6); backdrop-filter:blur(8px); } #ui.show{ display:flex; }
+  .uibox{ width:min(420px,92vw); background:linear-gradient(180deg,rgba(24,32,70,.96),rgba(14,18,42,.98)); border:1px solid var(--brd2); border-radius:20px; padding:22px; }
+  .uibox p{ font-size:14.5px; line-height:1.5; margin-bottom:14px; white-space:pre-wrap; } .uibox input{ width:100%; border:1px solid var(--brd); background:rgba(10,14,34,.7); color:#fff; border-radius:12px; padding:11px 13px; font-size:14px; font-family:inherit; outline:none; margin-bottom:14px; }
   .uibox input:focus{ border-color:var(--teal); } .uibtns{ display:flex; gap:9px; justify-content:flex-end; }
-  .toast{ position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(10px); z-index:70; background:rgba(24,30,60,.96); border:1px solid var(--glassbrd); color:#fff; padding:11px 18px; border-radius:14px; font-size:13.5px; opacity:0; transition:.25s; pointer-events:none; box-shadow:0 10px 40px rgba(0,0,0,.4); max-width:82vw; }
-  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-
-  .zoom{ position:fixed; bottom:26px; z-index:15; width:54px; height:54px; border-radius:50%; background:var(--glass); border:1px solid var(--glassbrd); backdrop-filter:blur(12px); color:var(--mut); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:22px; }
-  .zoom:hover{ color:#fff; border-color:rgba(120,150,255,.5); } #zoomOut{ left:34px; } #zoomIn{ right:34px; }
-  .foot{ position:fixed; bottom:26px; left:50%; transform:translateX(-50%); z-index:15; display:flex; gap:22px; background:var(--glass); border:1px solid var(--glassbrd); border-radius:980px; padding:11px 22px; backdrop-filter:blur(12px); font-size:12.5px; color:var(--mut); }
-  .foot span{ display:inline-flex; align-items:center; gap:7px; } .foot svg{ width:15px; height:15px; color:var(--teal); }
-  @media (max-width:640px){ .foot{ display:none; } header{ padding:14px 16px; } }
+  .toast{ position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(10px); z-index:80; background:rgba(24,30,60,.96); border:1px solid var(--brd2); color:#fff; padding:11px 18px; border-radius:14px; font-size:13.5px; opacity:0; transition:.25s; pointer-events:none; box-shadow:0 10px 40px rgba(0,0,0,.4); max-width:82vw; } .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .hint{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%); z-index:9; font-size:12px; color:var(--faint); display:flex; gap:18px; }
+  .hint span{ display:inline-flex; gap:6px; align-items:center; } .hint svg{ width:13px; height:13px; color:var(--teal); }
+  @media (max-width:1080px){ .pan{ position:relative; width:auto; max-height:none; margin:0 0 12px; } #wrap{ position:fixed; inset:64px 0 0; overflow:auto; padding:12px; display:grid; grid-template-columns:1fr 1fr; gap:12px; align-content:start; } .lp,.rp{ position:static!important; } .hint{ display:none; } }
 </style>
 </head>
 <body>
@@ -85,81 +97,70 @@
   <div id="loading"><div class="spin"></div><div>Собираю пространство…</div></div>
 
   <header>
-    <div class="brand"><h1>AI GARAGE</h1><div class="sub">Orbit 3D · пространство твоего мира</div></div>
-    <div class="clock"><div class="t" id="clk">—</div><div class="d" id="clkd"></div></div>
-    <div class="hbtns">
-      <a class="hbtn" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg> Панель</a>
-      <button class="hbtn" onclick="resetView()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg> Сброс</button>
+    <div class="brand"><h1>AI GARAGE</h1><div class="sub">Orbit · пространство твоего мира</div></div>
+    <div class="statbar">
+      <div class="ring"><svg width="46" height="46"><circle cx="23" cy="23" r="19" fill="none" stroke="rgba(130,160,255,.15)" stroke-width="5"/><circle id="arc" cx="23" cy="23" r="19" fill="none" stroke="var(--teal)" stroke-width="5" stroke-linecap="round" stroke-dasharray="119" stroke-dashoffset="119"/></svg><div class="num"><b id="upn">0</b><span>из <span id="totn">0</span></span></div></div>
+      <div class="legend"><div><span class="ld" style="background:var(--green)"></span> <b id="upc" style="color:var(--txt)">0</b>&nbsp;работает</div><div><span class="ld" style="background:var(--red)"></span> <b id="downc" style="color:var(--txt)">0</b>&nbsp;выкл</div><div id="unkw" style="display:none"><span class="ld" style="background:var(--amber)"></span> <b id="unkc" style="color:var(--txt)">0</b>&nbsp;неизв.</div></div>
     </div>
+    <div class="clock"><div class="t" id="clk">—</div><div class="d" id="clkd"></div></div>
+    <a class="hbtn" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg> Панель</a>
   </header>
 
-  <div id="labels"></div>
-  <button class="zoom" id="zoomOut" onclick="zoomBy(1)">−</button>
-  <button class="zoom" id="zoomIn" onclick="zoomBy(-1)">+</button>
-  <div class="foot"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg> Тяни — вращать</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg> Колесо — зум</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11V6a2 2 0 1 1 4 0v5"/></svg> Клик по форме — внутрь</span></div>
+  <div id="wrap"></div>
+  <div class="hint"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg> тяни фон — вращать</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg> колесо — зум</span></div>
 
-  <div id="detail" onclick="if(event.target===this)closeDetail()"><div class="panel" id="panel"></div></div>
+  <div id="drawer"></div>
   <div id="connFrame"><button class="close" onclick="closeConn()">×</button><iframe id="connIframe" title="Подключения"></iframe></div>
   <div id="ui"><div class="uibox" id="uibox"></div></div>
   <div class="toast" id="toast"></div>
 
 <script type="module">
-import * as THREE from '/vendor/three.module.min.js';
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const jsq=s=>String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/\n/g,' ');
 const safeUrl=u=>{ try{ const p=new URL(u,location.origin); return ['http:','https:'].includes(p.protocol)?p.href:'#'; }catch{ return '#'; } };
+const hex=n=>'#'+n.toString(16).padStart(6,'0');
 
-/* ── auth/api (портировано из панели: тот же origin → общий токен) ── */
+/* auth/api (тот же origin → общий токен с панелью) */
 const token=()=>localStorage.getItem('lc-token')||'';
-async function api(path,body){
-  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','x-control-token':token()},body:JSON.stringify(body||{})});
-  if(r.status===401){ const tk=await uiPrompt('Нужен токен доступа (панель открыта удалённо):'); if(tk){ localStorage.setItem('lc-token',tk); return api(path,body); } }
-  try{ return await r.json(); }catch{ return {ok:r.ok}; }
-}
+async function api(path,body){ const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','x-control-token':token()},body:JSON.stringify(body||{})});
+  if(r.status===401){ const tk=await uiPrompt('Нужен токен доступа (панель открыта удалённо):'); if(tk){ localStorage.setItem('lc-token',tk); return api(path,body); } } try{ return await r.json(); }catch{ return {ok:r.ok}; } }
 (function(){ try{ const m=location.hash.match(/(?:^|[#&])token=([^&]+)/); if(m){ localStorage.setItem('lc-token',decodeURIComponent(m[1])); history.replaceState(null,'',location.pathname); } }catch(e){} })();
-
-/* ── toast / prompt / confirm (нативные мертвы в Tauri webview) ── */
 function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3000); }
-function uiPrompt(msg,def){ return new Promise(res=>{ $('uibox').innerHTML=`<p>${esc(msg)}</p><input id="uiin" value="${esc(def||'')}"><div class="uibtns"><button class="btn" id="uicancel">Отмена</button><button class="btn primary" id="uiok" style="--cc:var(--teal)">ОК</button></div>`;
-  $('ui').classList.add('show'); const inp=$('uiin'); inp.focus(); inp.select();
-  const done=v=>{ $('ui').classList.remove('show'); res(v); };
-  $('uiok').onclick=()=>done(inp.value); $('uicancel').onclick=()=>done(null); inp.onkeydown=e=>{ if(e.key==='Enter')done(inp.value); if(e.key==='Escape')done(null); }; }); }
-function uiConfirm(msg){ return new Promise(res=>{ $('uibox').innerHTML=`<p>${esc(msg)}</p><div class="uibtns"><button class="btn" id="uicancel">Отмена</button><button class="btn primary" id="uiok" style="--cc:var(--teal)">Да</button></div>`;
-  $('ui').classList.add('show'); const done=v=>{ $('ui').classList.remove('show'); res(v); };
-  $('uiok').onclick=()=>done(true); $('uicancel').onclick=()=>done(false); }); }
+function uiPrompt(msg,def){ return new Promise(res=>{ $('uibox').innerHTML=`<p>${esc(msg)}</p><input id="uiin" value="${esc(def||'')}"><div class="uibtns"><button class="btn" id="uicancel">Отмена</button><button class="btn primary" id="uiok" style="--cc:var(--teal)">ОК</button></div>`; $('ui').classList.add('show'); const inp=$('uiin'); inp.focus(); inp.select(); const done=v=>{ $('ui').classList.remove('show'); res(v); }; $('uiok').onclick=()=>done(inp.value); $('uicancel').onclick=()=>done(null); inp.onkeydown=e=>{ if(e.key==='Enter')done(inp.value); if(e.key==='Escape')done(null); }; }); }
+function uiConfirm(msg){ return new Promise(res=>{ $('uibox').innerHTML=`<p>${esc(msg)}</p><div class="uibtns"><button class="btn" id="uicancel">Отмена</button><button class="btn primary" id="uiok" style="--cc:var(--teal)">Да</button></div>`; $('ui').classList.add('show'); const done=v=>{ $('ui').classList.remove('show'); res(v); }; $('uiok').onclick=()=>done(true); $('uicancel').onclick=()=>done(false); }); }
 
-/* часы */
-function tick(){ const d=new Date(); $('clk').textContent=d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); $('clkd').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}); }
+function tick(){ const d=new Date(); $('clk').textContent=d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); $('clkd').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long'}); }
 tick(); setInterval(tick,10000);
 
-/* ── категории ── */
 const CATS=[
-  {key:'services', nm:'Сервисы',    cc:0x1ce5e8, build:'rack'},
-  {key:'apps',     nm:'Приложения', cc:0xfe7f2d, build:'stack'},
-  {key:'agents',   nm:'Агенты',     cc:0xa06bff, build:'head'},
-  {key:'bots',     nm:'Боты',       cc:0x3aa0ff, build:'bot'},
-  {key:'vps',      nm:'VPS',        cc:0x28e0a8, build:'planet'},
-  {key:'conn',     nm:'Подключения',cc:0xff5db1, build:'hub'},
-  {key:'secrets',  nm:'Секреты',    cc:0xffc23d, build:'safe'},
+  {key:'services', nm:'Сервисы',    cc:0x1ce5e8, build:'rack',   pos:'lp', y:82},
+  {key:'apps',     nm:'Приложения', cc:0xfe7f2d, build:'stack',  pos:'lp', y:'auto'},
+  {key:'vps',      nm:'VPS',        cc:0x28e0a8, build:'planet', pos:'lp', y:'auto'},
+  {key:'bots',     nm:'Боты',       cc:0x3aa0ff, build:'bot',    pos:'rp', y:82},
+  {key:'agents',   nm:'Агенты',     cc:0xa06bff, build:'head',   pos:'rp', y:'auto'},
+  {key:'secrets',  nm:'Секреты',    cc:0xffc23d, build:'safe',   pos:'rp', y:'auto'},
+  {key:'conn',     nm:'Подключения',cc:0xff5db1, build:'hub',    pos:'rp', y:'auto'},
 ];
-const ICON={ services:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
-  apps:'<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/>',
-  agents:'<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M8 2v2M16 2v2"/><circle cx="9" cy="14" r="1.3"/><circle cx="15" cy="14" r="1.3"/>',
-  bots:'<path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2M20 14h2M9 13v2M15 13v2"/>',
-  vps:'<path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6-1.6A4 4 0 0 0 6 19z"/>',
-  conn:'<path d="M9 12h6M8 7a5 5 0 0 0 0 10h2M16 7a5 5 0 0 1 0 10h-2"/>',
-  secrets:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>' };
-const hex=n=>'#'+n.toString(16).padStart(6,'0');
-const svgIcon=(k,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
+const ICON={ services:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>', apps:'<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/>', agents:'<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M8 2v2M16 2v2"/><circle cx="9" cy="14" r="1.3"/><circle cx="15" cy="14" r="1.3"/>', bots:'<path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2M20 14h2M9 13v2M15 13v2"/>', vps:'<path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6-1.6A4 4 0 0 0 6 19z"/>', conn:'<path d="M9 12h6M8 7a5 5 0 0 0 0 10h2M16 7a5 5 0 0 1 0 10h-2"/>', secrets:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>' };
+const svgIcon=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
+const svg=(p,s=14)=>`<svg viewBox="0 0 24 24" width="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const IC={ play:'<path d="M7 4v16l13-8z"/>', stop:'<rect x="6" y="6" width="12" height="12" rx="2"/>', restart:'<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>', ka:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>', link:'<path d="M9 12h6M8 7a5 5 0 0 0 0 10h2M16 7a5 5 0 0 1 0 10h-2"/>', trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>', pencil:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>', copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>', eye:'<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>', zap:'<path d="M13 2L3 14h9l-1 8 10-12h-9z"/>', plus:'<path d="M12 5v14M5 12h14"/>', tg:'<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>', finder:'<path d="M9 3v18M4 8h5M15 3v18M15 8h5"/>' };
 
-let DATA={}, DEVICE='Mac', IS_LOCAL=true, secretsOk=true;
+let DATA={}, DEVICE='Mac', secretsOk=true, curKey=null;
 const norm=s=>String(s||'').toLowerCase();
 const isVps=s=>/vps|впс|server|серв|cloud/.test(norm(s.host));
 const isBot=s=>s.kind==='bot'||(Array.isArray(s.bots)&&s.bots.length>0);
 const isApp=s=>s.kind==='app';
 const cantVerify=s=>!isApp(s)&&!s.health&&(isVps(s)||(isBot(s)&&!s.port));
-const svcState=s=>{ if(isApp(s)) return s.up?'up':'unk'; if(s.up) return 'up'; if(!s.up&&cantVerify(s)) return 'unk'; return 'down'; };
+const svcState=s=>{ if(isApp(s)) return s.up?'up':'unk'; if(s.up) return 'up'; if(cantVerify(s)) return 'unk'; return 'down'; };
 const stLbl=st=>st==='up'?'работает':st==='down'?'выключено':'неизвестно';
 
 async function loadData(){
@@ -168,268 +169,186 @@ async function loadData(){
   try{ agents=await fetch('/api/agents',{cache:'no-store'}).then(r=>r.json()); }catch(e){}
   try{ secrets=await fetch('/api/secrets',{cache:'no-store'}).then(r=>r.json()); }catch(e){}
   try{ conn=await fetch('/api/conn/access',{cache:'no-store'}).then(r=>r.json()); }catch(e){}
-  DEVICE=st.device||'Mac'; IS_LOCAL=/^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname); secretsOk=secrets.supported!==false;
+  DEVICE=st.device||'Mac'; secretsOk=secrets.supported!==false;
   const svc=st.services||[];
-  DATA={
-    services:{raw:svc.filter(s=>!isBot(s)&&!isApp(s)&&!isVps(s))},
-    apps:{raw:svc.filter(isApp)},
-    bots:{raw:svc.filter(isBot)},
-    vps:{raw:svc.filter(s=>!isBot(s)&&!isApp(s)&&isVps(s))},
-    agents:{raw:agents.agents||[]},
-    conn:{raw:(conn&&conn.services)||[], counts:conn&&conn.counts},
-    secrets:{raw:secretsOk?(secrets.items||[]):[]},
-  };
+  DATA={ services:{raw:svc.filter(s=>!isBot(s)&&!isApp(s)&&!isVps(s))}, apps:{raw:svc.filter(isApp)}, bots:{raw:svc.filter(isBot)},
+    vps:{raw:svc.filter(s=>!isBot(s)&&!isApp(s)&&isVps(s))}, agents:{raw:agents.agents||[]},
+    conn:{raw:(conn&&conn.services)||[], counts:conn&&conn.counts}, secrets:{raw:secretsOk?(secrets.items||[]):[]} };
   for(const c of CATS){ DATA[c.key].count=DATA[c.key].raw.length; }
   DATA.bots.count=DATA.bots.raw.reduce((n,s)=>n+(Array.isArray(s.bots)&&s.bots.length?s.bots.length:1),0);
   DATA.conn.count=(DATA.conn.counts&&DATA.conn.counts.services)||DATA.conn.raw.length;
-  updateLabels();
+  renderPanels(); updateStat();
+  if(curKey&&document.body.classList.contains('drawer')) openDrawer(curKey);
 }
-async function refresh(openKey){ await loadData(); if(openKey&&$('detail').classList.contains('show')) openDetail(openKey); }
+async function refresh(){ await loadData(); }
 
-/* ── Three.js сцена ── */
+/* ── статус в шапке ── */
+function updateStat(){ const all=[...DATA.services.raw,...DATA.apps.raw,...DATA.bots.raw,...DATA.vps.raw];
+  let up=0,down=0,unk=0; for(const s of all){ const st=svcState(s); if(st==='up')up++; else if(st==='unk')unk++; else down++; }
+  const tot=all.length; $('upn').textContent=up; $('totn').textContent=tot; $('upc').textContent=up; $('downc').textContent=down;
+  const uw=$('unkw'); uw.style.display=unk?'flex':'none'; $('unkc').textContent=unk;
+  const C=119; $('arc').style.strokeDashoffset=tot?C-(C*up/tot):C; }
+
+/* ── дашборд-панели ── */
+function quickBtn(s){ if(isApp(s)) return `<button class="qb ${s.up?'on':''}" onclick="event.stopPropagation();appAct('${jsq(s.name)}','${s.up?'stop':'start'}')">${s.up?'выкл':'вкл'}</button>`;
+  if(isBot(s)){ const u=(Array.isArray(s.bots)&&s.bots[0])?(typeof s.bots[0]==='object'?s.bots[0].user:s.bots[0]):''; return u?`<a class="qb" href="https://t.me/${encodeURIComponent(String(u).replace(/^@/,''))}" target="_blank" onclick="event.stopPropagation()">открыть</a>`:''; }
+  if(s.port||s.stopCmd||s.startCmd||s.hasControls) return `<button class="qb ${s.up?'on':''}" onclick="event.stopPropagation();power('${jsq(s.name)}')">${s.up?'выкл':'вкл'}</button>`;
+  return ''; }
+function panelItem(key,s){ const st= key==='agents'?'up':(key==='secrets'?'up':(key==='conn'?'unk':svcState(s)));
+  const nm= key==='agents'?s.label:(key==='secrets'||key==='conn'?(s.name||s.label):s.name);
+  const mt= key==='agents'?((s.count||0)+' MCP'):(key==='conn'?((s.grantedBy||[]).length+' прогр.'):(s.port?':'+s.port:(s.host||'')));
+  const av= key==='agents'?`<img class="av" src="/logos/${esc(s.id)}.png" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'d up'}))">`:`<span class="d ${st}"></span>`;
+  const qb= (key==='services'||key==='vps'||key==='apps'||key==='bots')?quickBtn(s):'';
+  return `<div class="pi"><div class="d-wrap">${av}</div><div style="min-width:0"><div class="nm">${esc(nm)}</div>${mt?`<div class="mt">${esc(mt)}</div>`:''}</div>${qb}</div>`; }
+function renderPanels(){ const wrap=$('wrap'); wrap.innerHTML='';
+  let ly={lp:82,rp:82};
+  for(const c of CATS){ const d=DATA[c.key]||{raw:[]}; const list=(c.key==='conn'?d.raw:d.raw).slice(0,3);
+    const el=document.createElement('div'); el.className='pan '+c.pos; el.style.setProperty('--cc',hex(c.cc));
+    el.style.top=ly[c.pos]+'px'; if(c.pos==='lp') el.style.left='22px'; else el.style.right='22px'; ly[c.pos]+=250;
+    const bars= (c.key==='services'||c.key==='bots') ? `<div class="mini">${Array.from({length:12},()=>`<i style="height:${20+Math.round(Math.random()*60)}%"></i>`).join('')}</div>`:'';
+    el.innerHTML=`<div class="ph"><div class="pic">${svgIcon(c.key)}</div><div class="pt">${c.nm}</div><div class="pcount">${d.count||0}</div></div>
+      <div class="pb">${list.length?list.map(s=>panelItem(c.key,s)).join(''):`<div style="padding:8px 10px;color:var(--faint);font-size:12px">пусто</div>`}</div>${bars}
+      <div class="more"><button onclick="openDrawer('${c.key}')">Все ${d.count||0} →</button></div>`;
+    wrap.appendChild(el); }
+}
+
+/* ── Three.js: орбита-ядро с bloom + отражениями ── */
 const canvas=$('gl');
-const renderer=new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-const scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x03040c,0.026);
-const camera=new THREE.PerspectiveCamera(52, 1, 0.1, 200); let camDist=17;
-scene.add(new THREE.AmbientLight(0x2a3570,1.2));
-const keyLight=new THREE.PointLight(0x88a0ff,140,70); scene.add(keyLight);
-const rim=new THREE.DirectionalLight(0x66d0ff,0.6); rim.position.set(6,8,4); scene.add(rim);
-const rim2=new THREE.DirectionalLight(0xff9a5a,0.3); rim2.position.set(-6,-3,-5); scene.add(rim2);
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15;
+const scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x04050e,0.03);
+const camera=new THREE.PerspectiveCamera(50,1,0.1,200); let camDist=15.5;
+const pmrem=new THREE.PMREMGenerator(renderer); scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+scene.add(new THREE.AmbientLight(0x33407a,0.7));
+const key=new THREE.PointLight(0x9db4ff,90,60); scene.add(key);
+const rim=new THREE.DirectionalLight(0x66d0ff,0.7); rim.position.set(6,8,4); scene.add(rim);
 
-function glowTex(){ const s=128,c=document.createElement('canvas'); c.width=c.height=s; const g=c.getContext('2d');
-  const rg=g.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2); rg.addColorStop(0,'rgba(255,255,255,1)'); rg.addColorStop(.25,'rgba(255,255,255,.5)'); rg.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=rg; g.fillRect(0,0,s,s); return new THREE.CanvasTexture(c); }
-const GLOW=glowTex();
-const glowSprite=(color,scale)=>{ const m=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW,color,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false})); m.scale.set(scale,scale,1); return m; };
-const pbr=(cc,emi=.5)=>new THREE.MeshStandardMaterial({color:cc,emissive:cc,emissiveIntensity:emi,metalness:.75,roughness:.32});
-const dark=new THREE.MeshStandardMaterial({color:0x11142e,emissive:0x0a0c1e,metalness:.85,roughness:.4});
+function glowTex(){ const s=128,c=document.createElement('canvas'); c.width=c.height=s; const g=c.getContext('2d'); const rg=g.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2); rg.addColorStop(0,'rgba(255,255,255,1)'); rg.addColorStop(.25,'rgba(255,255,255,.5)'); rg.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=rg; g.fillRect(0,0,s,s); return new THREE.CanvasTexture(c); }
+const GLOW=glowTex(); const glowSprite=(color,scale)=>{ const m=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW,color,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false})); m.scale.set(scale,scale,1); return m; };
+const mat=(cc,emi=.32)=>new THREE.MeshPhysicalMaterial({color:cc,emissive:cc,emissiveIntensity:emi,metalness:.55,roughness:.18,clearcoat:.9,clearcoatRoughness:.18,envMapIntensity:1.1});
+const emat=cc=>new THREE.MeshStandardMaterial({color:cc,emissive:cc,emissiveIntensity:1.5,metalness:.2,roughness:.3});
+const darkm=new THREE.MeshPhysicalMaterial({color:0x0e1230,metalness:.9,roughness:.35,clearcoat:1,envMapIntensity:1});
 
-/* звёзды */
-(function(){ const N=2400,pos=new Float32Array(N*3),col=new Float32Array(N*3),c=new THREE.Color();
-  for(let i=0;i<N;i++){ const r=40+Math.random()*95,th=Math.random()*6.283,ph=Math.acos(2*Math.random()-1);
-    pos[i*3]=r*Math.sin(ph)*Math.cos(th); pos[i*3+1]=(Math.random()-.5)*76; pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
-    c.setHSL(.6+Math.random()*.12,.5,.5+Math.random()*.5); col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b; }
-  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3));
-  scene.add(new THREE.Points(g,new THREE.PointsMaterial({size:.32,vertexColors:true,transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending}))); })();
-for(const [color,x,y,z,sc] of [[0xa06bff,-14,6,-18,26],[0x1ce5e8,16,-4,-20,30],[0x3aa0ff,0,-12,-24,34]]){ const s=glowSprite(color,sc); s.position.set(x,y,z); s.material.opacity=.13; scene.add(s); }
+(function(){ const N=2400,pos=new Float32Array(N*3),col=new Float32Array(N*3),c=new THREE.Color(); for(let i=0;i<N;i++){ const r=42+Math.random()*95,th=Math.random()*6.283,ph=Math.acos(2*Math.random()-1); pos[i*3]=r*Math.sin(ph)*Math.cos(th); pos[i*3+1]=(Math.random()-.5)*78; pos[i*3+2]=r*Math.sin(ph)*Math.sin(th); c.setHSL(.6+Math.random()*.12,.5,.5+Math.random()*.5); col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b; } const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3)); scene.add(new THREE.Points(g,new THREE.PointsMaterial({size:.3,vertexColors:true,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending}))); })();
 
-/* ядро */
 const core=new THREE.Group(); scene.add(core);
-const coreMat=new THREE.MeshStandardMaterial({color:0x2a2f6b,emissive:0x6a5bff,emissiveIntensity:1.5,metalness:.4,roughness:.25});
-const coreMesh=new THREE.Mesh(new THREE.IcosahedronGeometry(1.5,1),coreMat); core.add(coreMesh);
-core.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1.85,1),new THREE.MeshBasicMaterial({color:0x9db4ff,wireframe:true,transparent:true,opacity:.22})));
-core.add(glowSprite(0x7a6bff,9));
-const ring=new THREE.Mesh(new THREE.RingGeometry(2.4,2.5,80),new THREE.MeshBasicMaterial({color:0x1ce5e8,transparent:true,opacity:.35,side:THREE.DoubleSide})); ring.rotation.x=Math.PI/2; core.add(ring);
+const coreMesh=new THREE.Mesh(new THREE.IcosahedronGeometry(1.35,2),new THREE.MeshStandardMaterial({color:0x3a3f8b,emissive:0x6a5bff,emissiveIntensity:1.7,metalness:.4,roughness:.2})); core.add(coreMesh);
+core.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1.7,1),new THREE.MeshBasicMaterial({color:0x9db4ff,wireframe:true,transparent:true,opacity:.18})));
+core.add(glowSprite(0x7a6bff,7));
+const cring=new THREE.Mesh(new THREE.RingGeometry(2.15,2.25,80),new THREE.MeshBasicMaterial({color:0x1ce5e8,transparent:true,opacity:.4,side:THREE.DoubleSide})); cring.rotation.x=Math.PI/2; core.add(cring);
 
-/* ── реалистичные процедурные эмблемы категорий ── */
-function buildEmblem(kind,cc){ const g=new THREE.Group(); const M=pbr(cc,.55); const em=new THREE.MeshStandardMaterial({color:cc,emissive:cc,emissiveIntensity:1.6,metalness:.3,roughness:.2});
-  if(kind==='rack'){ // серверная стойка: 3 полки + индикаторы
-    const body=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.7,1),dark); g.add(body);
-    for(let i=-1;i<=1;i++){ const shelf=new THREE.Mesh(new THREE.BoxGeometry(1.44,.4,1.02),M); shelf.position.y=i*.52; g.add(shelf);
-      for(let j=0;j<3;j++){ const led=new THREE.Mesh(new THREE.SphereGeometry(.05,8,8),em); led.position.set(-.5+j*.16,i*.52,.53); g.add(led); } } }
-  else if(kind==='stack'){ // приложения: стопка окон ступенькой
-    for(let i=0;i<3;i++){ const w=new THREE.Mesh(new THREE.BoxGeometry(1.3,.9,.12),i===2?em:M); w.position.set(i*.18-.18,i*.18-.18,i*.12); g.add(w);
-      const bar=new THREE.Mesh(new THREE.BoxGeometry(1.3,.16,.13),dark); bar.position.set(i*.18-.18,i*.18-.18+.37,i*.12); g.add(bar); } }
-  else if(kind==='head'){ // агент: голова-ИИ с визором
-    const h=new THREE.Mesh(new THREE.SphereGeometry(1,32,32),new THREE.MeshStandardMaterial({color:cc,emissive:cc,emissiveIntensity:.35,metalness:.9,roughness:.15})); g.add(h);
-    const visor=new THREE.Mesh(new THREE.BoxGeometry(1.3,.34,.3),em); visor.position.z=.82; visor.position.y=.05; g.add(visor);
-    const crown=new THREE.Mesh(new THREE.TorusGeometry(.55,.06,12,30),em); crown.rotation.x=Math.PI/2; crown.position.y=.9; g.add(crown); }
-  else if(kind==='bot'){ // бот: голова-робот с антенной и глазами
-    const h=new THREE.Mesh(new THREE.BoxGeometry(1.35,1.1,1.1),M); g.add(h);
-    for(const sx of [-.32,.32]){ const eye=new THREE.Mesh(new THREE.SphereGeometry(.15,16,16),em); eye.position.set(sx,.1,.6); g.add(eye); }
-    const mouth=new THREE.Mesh(new THREE.BoxGeometry(.5,.08,.05),em); mouth.position.set(0,-.3,.58); g.add(mouth);
-    const ant=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.5,8),dark); ant.position.y=.78; g.add(ant);
-    const ball=new THREE.Mesh(new THREE.SphereGeometry(.13,16,16),em); ball.position.y=1.05; g.add(ball); }
-  else if(kind==='planet'){ // vps: планета с кольцами и луной
-    const p=new THREE.Mesh(new THREE.SphereGeometry(1,40,40),new THREE.MeshStandardMaterial({color:cc,emissive:cc,emissiveIntensity:.4,metalness:.3,roughness:.55})); g.add(p);
-    for(let i=0;i<3;i++){ const lat=new THREE.Mesh(new THREE.TorusGeometry(1.002,.012,8,48),em); lat.rotation.x=Math.PI/2; lat.position.y=(i-1)*.5; lat.scale.setScalar(Math.cos((i-1)*.5)); g.add(lat); }
-    g.add(glowSprite(cc,3.4));
-    const ringP=new THREE.Mesh(new THREE.RingGeometry(1.4,1.7,48),new THREE.MeshBasicMaterial({color:cc,transparent:true,opacity:.25,side:THREE.DoubleSide})); ringP.rotation.x=1.2; g.add(ringP);
-    const moon=new THREE.Mesh(new THREE.SphereGeometry(.16,16,16),M); moon.position.set(1.7,.3,0); g.add(moon); }
-  else if(kind==='hub'){ // подключения: центральный узел + связанные узлы (граф)
-    const cnode=new THREE.Mesh(new THREE.IcosahedronGeometry(.55,1),em); g.add(cnode);
-    const N=6; for(let i=0;i<N;i++){ const a=(i/N)*6.283, r=1.15, x=Math.cos(a)*r, y=Math.sin(a)*r*.7, z=Math.sin(a*1.5)*.4;
-      const nd=new THREE.Mesh(new THREE.SphereGeometry(.22,20,20),M); nd.position.set(x,y,z); g.add(nd);
-      const dir=new THREE.Vector3(x,y,z), len=dir.length(); const link=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,len,6),new THREE.MeshBasicMaterial({color:cc,transparent:true,opacity:.5}));
-      link.position.set(x/2,y/2,z/2); link.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize()); g.add(link); } }
-  else if(kind==='safe'){ // секреты: сейф с круглым замком
-    const box=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.1),M); g.add(box);
-    const door=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,.08),dark); door.position.z=.56; g.add(door);
-    const dial=new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.16,32),em); dial.rotation.x=Math.PI/2; dial.position.z=.64; g.add(dial);
-    for(let i=0;i<8;i++){ const a=(i/8)*6.283; const spoke=new THREE.Mesh(new THREE.BoxGeometry(.05,.14,.04),dark); spoke.position.set(Math.cos(a)*.34,Math.sin(a)*.34,.7); g.add(spoke); }
-    const handle=new THREE.Mesh(new THREE.TorusGeometry(.16,.05,10,24),M); handle.position.set(.45,-.45,.6); g.add(handle); }
-  else { g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1,0),M)); }
+function buildEmblem(kind,cc){ const g=new THREE.Group(); const M=mat(cc),E=emat(cc);
+  if(kind==='rack'){ g.add(new THREE.Mesh(new THREE.BoxGeometry(1.4,1.6,.95),darkm)); for(let i=-1;i<=1;i++){ const sh=new THREE.Mesh(new THREE.BoxGeometry(1.34,.36,.98),M); sh.position.y=i*.5; g.add(sh); for(let j=0;j<3;j++){ const led=new THREE.Mesh(new THREE.SphereGeometry(.05,10,10),E); led.position.set(-.45+j*.15,i*.5,.5); g.add(led); } } }
+  else if(kind==='stack'){ for(let i=0;i<3;i++){ const w=new THREE.Mesh(new THREE.BoxGeometry(1.25,.85,.11),i===2?E:M); w.position.set(i*.16-.16,i*.16-.16,i*.11); g.add(w); const bar=new THREE.Mesh(new THREE.BoxGeometry(1.25,.15,.12),darkm); bar.position.set(i*.16-.16,i*.16-.16+.35,i*.11); g.add(bar); } }
+  else if(kind==='head'){ const h=new THREE.Mesh(new THREE.SphereGeometry(.95,40,40),mat(cc,.28)); g.add(h); const v=new THREE.Mesh(new THREE.BoxGeometry(1.25,.32,.28),E); v.position.set(0,.05,.78); g.add(v); const cr=new THREE.Mesh(new THREE.TorusGeometry(.52,.055,14,32),E); cr.rotation.x=Math.PI/2; cr.position.y=.86; g.add(cr); }
+  else if(kind==='bot'){ g.add(new THREE.Mesh(new THREE.BoxGeometry(1.3,1.05,1.05),M)); for(const sx of[-.3,.3]){ const e=new THREE.Mesh(new THREE.SphereGeometry(.14,18,18),E); e.position.set(sx,.1,.57); g.add(e); } const m2=new THREE.Mesh(new THREE.BoxGeometry(.48,.07,.05),E); m2.position.set(0,-.28,.55); g.add(m2); const ant=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.48,10),darkm); ant.position.set(0,.75,0); g.add(ant); const b=new THREE.Mesh(new THREE.SphereGeometry(.12,16,16),E); b.position.y=1.0; g.add(b); }
+  else if(kind==='planet'){ g.add(new THREE.Mesh(new THREE.SphereGeometry(.95,48,48),new THREE.MeshPhysicalMaterial({color:cc,emissive:cc,emissiveIntensity:.35,metalness:.2,roughness:.5,clearcoat:.6,envMapIntensity:1}))); for(let i=0;i<3;i++){ const lat=new THREE.Mesh(new THREE.TorusGeometry(.952,.012,8,52),E); lat.rotation.x=Math.PI/2; lat.position.y=(i-1)*.48; lat.scale.setScalar(Math.cos((i-1)*.5)); g.add(lat); } const pg=glowSprite(cc,1.7); pg.material.opacity=.5; g.add(pg); const rp=new THREE.Mesh(new THREE.RingGeometry(1.35,1.62,52),new THREE.MeshBasicMaterial({color:cc,transparent:true,opacity:.28,side:THREE.DoubleSide})); rp.rotation.x=1.2; g.add(rp); const moon=new THREE.Mesh(new THREE.SphereGeometry(.15,18,18),M); moon.position.set(1.65,.3,0); g.add(moon); }
+  else if(kind==='hub'){ g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(.52,2),E)); const N=6; for(let i=0;i<N;i++){ const a=(i/N)*6.283,r=1.1,x=Math.cos(a)*r,y=Math.sin(a)*r*.7,z=Math.sin(a*1.5)*.4; const nd=new THREE.Mesh(new THREE.SphereGeometry(.2,22,22),M); nd.position.set(x,y,z); g.add(nd); const dir=new THREE.Vector3(x,y,z),len=dir.length(); const lk=new THREE.Mesh(new THREE.CylinderGeometry(.028,.028,len,6),new THREE.MeshBasicMaterial({color:cc,transparent:true,opacity:.55})); lk.position.set(x/2,y/2,z/2); lk.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize()); g.add(lk); } }
+  else if(kind==='safe'){ g.add(new THREE.Mesh(new THREE.BoxGeometry(1.45,1.45,1.05),M)); const dr=new THREE.Mesh(new THREE.BoxGeometry(1.15,1.15,.08),darkm); dr.position.z=.54; g.add(dr); const dial=new THREE.Mesh(new THREE.CylinderGeometry(.32,.32,.15,36),E); dial.rotation.x=Math.PI/2; dial.position.z=.62; g.add(dial); for(let i=0;i<8;i++){ const a=(i/8)*6.283; const sp=new THREE.Mesh(new THREE.BoxGeometry(.05,.13,.04),darkm); sp.position.set(Math.cos(a)*.32,Math.sin(a)*.32,.68); g.add(sp); } const hnd=new THREE.Mesh(new THREE.TorusGeometry(.15,.05,10,24),M); hnd.position.set(.43,-.43,.58); g.add(hnd); }
   return g;
 }
-
-/* формы на орбите */
 const orbit=new THREE.Group(); scene.add(orbit);
-const R=6.4, nodes=[];
-CATS.forEach((c,i)=>{ const ang=(i/CATS.length)*6.283, x=Math.cos(ang)*R, z=Math.sin(ang)*R;
-  const grp=new THREE.Group(); grp.position.set(x,0,z);
-  const emblem=buildEmblem(c.build,c.cc); grp.add(emblem);
-  const hit=new THREE.Mesh(new THREE.SphereGeometry(1.7,8,8),new THREE.MeshBasicMaterial({visible:false})); hit.userData.key=c.key; grp.add(hit);
-  grp.add(glowSprite(c.cc,4.6));
-  orbit.add(grp); nodes.push({cat:c,group:grp,emblem,hit,phase:Math.random()*6.283}); });
+const R=5.6, nodes=[];
+CATS.forEach((c,i)=>{ const ang=(i/CATS.length)*6.283, x=Math.cos(ang)*R, z=Math.sin(ang)*R; const grp=new THREE.Group(); grp.position.set(x,0,z); const em=buildEmblem(c.build,c.cc); em.scale.setScalar(.68); grp.add(em); const hit=new THREE.Mesh(new THREE.SphereGeometry(1.2,8,8),new THREE.MeshBasicMaterial({visible:false})); hit.userData.key=c.key; grp.add(hit); const gs=glowSprite(c.cc,1.7); gs.material.opacity=.55; grp.add(gs); orbit.add(grp); nodes.push({cat:c,group:grp,em,hit,phase:Math.random()*6.283}); });
 
-/* подписи */
-const labelsWrap=$('labels');
-nodes.forEach(n=>{ const el=document.createElement('div'); el.className='lbl'; el.innerHTML=`<div class="nm" style="color:${hex(n.cat.cc)}">${n.cat.nm}</div><div class="ct" style="color:var(--mut)"><b style="color:${hex(n.cat.cc)}">0</b> шт.</div>`; labelsWrap.appendChild(el); n.label=el; });
-function updateLabels(){ nodes.forEach(n=>{ const b=n.label.querySelector('b'); if(b)b.textContent=(DATA[n.cat.key]?.count)||0; }); }
-const _v=new THREE.Vector3();
-function projectLabels(){ nodes.forEach(n=>{ n.group.getWorldPosition(_v); _v.y+=1.9; _v.project(camera); const vis=_v.z<1;
-  n.label.style.opacity=vis?'1':'0'; n.label.style.left=((_v.x*.5+.5)*vw())+'px'; n.label.style.top=((-_v.y*.5+.5)*vh())+'px'; }); }
+/* bloom */
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new THREE.Vector2(1,1),0.5,0.4,0.9); composer.addPass(bloom);
+composer.addPass(new OutputPass());
 
-/* управление */
-let rotY=0.4, rotX=0.42, drag=false, lx=0, ly=0, auto=true, downX=0, downY=0;
-canvas.addEventListener('pointerdown',e=>{ drag=true; auto=false; lx=e.clientX; ly=e.clientY; downX=e.clientX; downY=e.clientY; canvas.classList.add('drag'); try{canvas.setPointerCapture(e.pointerId);}catch(_){} });
-canvas.addEventListener('pointermove',e=>{ if(drag){ rotY+=(e.clientX-lx)*0.006; rotX=Math.max(-0.2,Math.min(1.2,rotX+(e.clientY-ly)*0.005)); lx=e.clientX; ly=e.clientY; } });
-canvas.addEventListener('pointerup',e=>{ drag=false; canvas.classList.remove('drag'); setTimeout(()=>auto=true,2600);
-  if(Math.abs(e.clientX-downX)+Math.abs(e.clientY-downY)<6){ mouse.x=(e.clientX/vw())*2-1; mouse.y=-(e.clientY/vh())*2+1; ray.setFromCamera(mouse,camera);
-    const hit=ray.intersectObjects(nodes.map(n=>n.hit),false); if(hit.length) openDetail(hit[0].object.userData.key); } });
-canvas.addEventListener('wheel',e=>{ e.preventDefault(); camDist=Math.max(9,Math.min(30,camDist+e.deltaY*0.012)); },{passive:false});
-window.zoomBy=d=>{ camDist=Math.max(9,Math.min(30,camDist+d*2.2)); };
-window.resetView=()=>{ rotY=0.4; rotX=0.42; camDist=17; auto=true; };
+/* управление (только по фону — панели кликаются) */
+let rotY=0.4, rotX=0.4, drag=false, lx=0, ly2=0, auto=true, downX=0, downY=0;
+canvas.addEventListener('pointerdown',e=>{ drag=true; auto=false; lx=e.clientX; ly2=e.clientY; downX=e.clientX; downY=e.clientY; });
+addEventListener('pointermove',e=>{ if(drag){ rotY+=(e.clientX-lx)*0.006; rotX=Math.max(-0.15,Math.min(1.1,rotX+(e.clientY-ly2)*0.005)); lx=e.clientX; ly2=e.clientY; } });
+addEventListener('pointerup',e=>{ if(!drag)return; drag=false; setTimeout(()=>auto=true,2600);
+  if(Math.abs(e.clientX-downX)+Math.abs(e.clientY-downY)<6){ mouse.x=(e.clientX/vw())*2-1; mouse.y=-(e.clientY/vh())*2+1; ray.setFromCamera(mouse,camera); const h=ray.intersectObjects(nodes.map(n=>n.hit),false); if(h.length) openDrawer(h[0].object.userData.key); } });
+canvas.addEventListener('wheel',e=>{ e.preventDefault(); camDist=Math.max(9,Math.min(26,camDist+e.deltaY*0.011)); },{passive:false});
 const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
-
-/* анимация */
 const clock=new THREE.Clock();
+function vw(){ return innerWidth||document.documentElement.clientWidth||1280; } function vh(){ return innerHeight||document.documentElement.clientHeight||800; }
 function animate(){ requestAnimationFrame(animate); const t=clock.getElapsedTime();
-  if(auto&&!drag) rotY+=0.0015; orbit.rotation.y=rotY; scene.rotation.x=rotX;
-  core.rotation.y+=0.004; core.rotation.x=Math.sin(t*.3)*0.1; coreMesh.scale.setScalar(1+Math.sin(t*1.8)*0.05); coreMat.emissiveIntensity=1.3+Math.sin(t*1.8)*0.4; ring.rotation.z+=0.003;
-  nodes.forEach(n=>{ n.emblem.rotation.y+=0.006; n.group.position.y=Math.sin(t*0.7+n.phase)*0.32; });
-  camera.position.set(0,4.5,camDist); camera.lookAt(0,0,0); projectLabels(); renderer.render(scene,camera); }
-function vw(){ return innerWidth||document.documentElement.clientWidth||1280; }
-function vh(){ return innerHeight||document.documentElement.clientHeight||800; }
-function onResize(){ const w=vw(),h=vh(); camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); }
+  if(auto&&!drag) rotY+=0.0013; orbit.rotation.y=rotY; scene.rotation.x=rotX;
+  core.rotation.y+=0.0035; coreMesh.scale.setScalar(1+Math.sin(t*1.7)*0.04); cring.rotation.z+=0.003;
+  nodes.forEach(n=>{ n.em.rotation.y+=0.006; n.group.position.y=Math.sin(t*0.7+n.phase)*0.28; });
+  const cx=document.body.classList.contains('drawer')?3.4:0;
+  camera.position.set(cx,3.6,camDist); camera.lookAt(cx*.4,0,0); composer.render(); }
+function onResize(){ const w=vw(),h=vh(); camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); composer.setSize(w,h); bloom.setSize(w,h); }
 addEventListener('resize',onResize); onResize();
 
-/* ── деталь категории с ПОЛНЫМ функционалом ── */
-const svg=(p,s=14)=>`<svg viewBox="0 0 24 24" width="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
-const IC={ play:'<path d="M7 4v16l13-8z"/>', stop:'<rect x="6" y="6" width="12" height="12" rx="2"/>', restart:'<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>',
-  ka:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>', link:'<path d="M9 12h6M8 7a5 5 0 0 0 0 10h2M16 7a5 5 0 0 1 0 10h-2"/>',
-  trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>', pencil:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
-  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>', eye:'<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>',
-  zap:'<path d="M13 2L3 14h9l-1 8 10-12h-9z"/>', plus:'<path d="M12 5v14M5 12h14"/>', tg:'<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>', finder:'<path d="M9 3v18M4 8h5M15 3v18M15 8h5"/>', bolt:'<path d="M13 2L3 14h9l-1 8 10-12h-9z"/>' };
-
-function openDetail(key){ const c=CATS.find(x=>x.key===key), d=DATA[key]||{raw:[]};
-  $('panel').style.setProperty('--cc',hex(c.cc));
+/* ── боковое раскрытие ── */
+function openDrawer(key){ curKey=key; const c=CATS.find(x=>x.key===key), d=DATA[key]||{raw:[]};
+  const dr=$('drawer'); dr.style.setProperty('--cc',hex(c.cc));
   let addBtn=''; if(key==='secrets'&&secretsOk) addBtn=`<button class="add" onclick="secretAdd()">${svg(IC.plus,15)} Добавить</button>`;
-  if(key==='conn'||key==='agents') addBtn=`<button class="add" onclick="openConn()">${svg(IC.link,15)} Открыть</button>`;
-  const body= key==='services'||key==='vps' ? d.raw.map(s=>renderService(s,key)).join('')
-    : key==='apps' ? d.raw.map(renderApp).join('')
-    : key==='bots' ? d.raw.map(renderBot).join('')
-    : key==='agents' ? d.raw.map(renderAgent).join('')
-    : key==='secrets' ? (secretsOk?d.raw.map(renderSecret).join(''):`<div class="empty">Секреты доступны только на macOS.</div>`)
-    : key==='conn' ? renderConn(d) : '';
-  $('panel').innerHTML=`<div class="phead" style="--cc:${hex(c.cc)}"><div class="orb">${svgIcon(key)}</div>
+  if(key==='conn'||key==='agents') addBtn=`<button class="add" onclick="openConn()">${svg(IC.link,15)} Полное окно</button>`;
+  const body= key==='services'||key==='vps' ? d.raw.map(s=>renderService(s,c.cc)).join('') : key==='apps' ? d.raw.map(renderApp).join('') : key==='bots' ? d.raw.map(renderBot).join('') : key==='agents' ? d.raw.map(renderAgent).join('') : key==='secrets' ? (secretsOk?d.raw.map(renderSecret).join(''):`<div class="empty">Секреты — только на macOS.</div>`) : key==='conn' ? renderConn(d) : '';
+  dr.innerHTML=`<div class="dh"><div class="pic" style="background:radial-gradient(circle at 38% 32%,${hex(c.cc)},transparent 74%);box-shadow:0 0 22px -3px ${hex(c.cc)}">${svgIcon(key)}</div>
     <div><h2>${c.nm}</h2><div class="pc">${d.count||0} ${key==='conn'?'сервисов':'элементов'}</div></div>
-    <div class="hx">${addBtn}<button class="x" onclick="closeDetail()">×</button></div></div>
-    <div class="plist">${body||`<div class="empty">Пока пусто в этой категории.</div>`}</div>`;
-  $('detail').classList.add('show');
+    <div class="hx">${addBtn}<button class="x" onclick="closeDrawer()">×</button></div></div>
+    <div class="dl">${body||`<div class="empty">Пока пусто.</div>`}</div>`;
+  document.body.classList.add('drawer');
 }
-window.closeDetail=()=>$('detail').classList.remove('show');
-addEventListener('keydown',e=>{ if(e.key==='Escape'){ if($('connFrame').classList.contains('show'))closeConn(); else if($('ui').classList.contains('show')){} else closeDetail(); } });
+window.closeDrawer=()=>{ document.body.classList.remove('drawer'); curKey=null; };
+addEventListener('keydown',e=>{ if(e.key==='Escape'){ if($('connFrame').classList.contains('show'))closeConn(); else if($('ui').classList.contains('show')){} else closeDrawer(); } });
 
-/* — сервис/VPS — */
+/* рендер строк (полные) */
 function metricsStr(s){ const p=[]; if(s.rss!=null)p.push(Math.round(s.rss/1024)+' MB'); if(s.cpu!=null&&s.cpu>=1)p.push(Math.round(s.cpu)+'% CPU'); return p.join(' · '); }
-function renderService(s,key){ const st=svcState(s), nm=jsq(s.name); const port=s.port, ctrl=s.control;
+function renderService(s,cc){ const st=svcState(s), nm=jsq(s.name), port=s.port, ctrl=s.control; const ccx=hex(cc);
   const link=(!ctrl)?`<div class="rlink">${port?`<b style="color:var(--faint)">:${port}</b> `:''}<a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.url||'')}</a>${metricsStr(s)?` <span style="color:var(--faint)">· ${metricsStr(s)}</span>`:''}</div>`:'';
-  const tun=s.tunnel?`<div class="rlink">${svg(IC.link,12)} <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a> <button class="btn" style="padding:2px 8px;font-size:11px" onclick="copyStr('${jsq(s.tunnel)}')">копировать</button></div>`:'';
-  const acts=[];
-  acts.push(`<button class="btn ${s.up?'':'primary'}" style="--cc:${hex(CATS.find(x=>x.key===key).cc)}" onclick="power('${nm}')">${svg(s.up?IC.stop:IC.play)} ${s.up?'Выключить':'Включить'}</button>`);
-  if(port) acts.push(`<button class="btn" onclick="act('${nm}','restart')">${svg(IC.restart)} Рестарт</button>`);
-  if(port&&!ctrl) acts.push(`<button class="btn ${s.keepAlive?'primary':''}" style="--cc:${hex(CATS.find(x=>x.key===key).cc)}" onclick="ka('${nm}',${!s.keepAlive})">${svg(IC.ka)} ${s.keepAlive?'Держится':'Держать вкл'}</button>`);
-  if(port) acts.push(`<button class="btn" onclick="tunnel(${port},${s.tunnelManaged?1:0})">${svg(IC.link)} ${s.tunnelManaged?'Убрать ссылку':'Сделать ссылку'}</button>`);
-  if(port&&!ctrl) acts.push(`<button class="btn" onclick="killp(${port})">${svg(IC.zap)} Освободить :${port}</button>`);
-  if(!ctrl) acts.push(`<button class="btn" onclick="editUrl('${nm}')">${svg(IC.link)} Ссылка</button>`);
-  acts.push(`<button class="btn" onclick="rename('${nm}')">${svg(IC.pencil)} Имя</button>`);
-  acts.push(`<button class="btn danger" onclick="del('${nm}')">${svg(IC.trash)} Убрать</button>`);
-  return `<div class="row"><div class="rtop"><span class="dot ${st}"></span><div><div class="nm">${esc(s.name)}</div><div class="meta">${esc(s.host||DEVICE)}</div></div>
-    <span class="st ${st}"${st==='unk'?' title="Удалённый — с этого Mac не проверить"':''}>${stLbl(st)}</span></div>
-    ${link}${tun}${s.note?`<div class="note">${esc(s.note)}</div>`:''}<div class="acts">${acts.join('')}</div></div>`;
+  const tun=s.tunnel?`<div class="rlink">${svg(IC.link,12)} <a href="${safeUrl(s.tunnel)}" target="_blank" rel="noopener">${esc(s.tunnel)}</a></div>`:'';
+  const a=[`<button class="btn ${s.up?'':'primary'}" style="--cc:${ccx}" onclick="power('${nm}')">${svg(s.up?IC.stop:IC.play)} ${s.up?'Выключить':'Включить'}</button>`];
+  if(port) a.push(`<button class="btn" onclick="act('${nm}','restart')">${svg(IC.restart)} Рестарт</button>`);
+  if(port&&!ctrl) a.push(`<button class="btn ${s.keepAlive?'primary':''}" style="--cc:${ccx}" onclick="ka('${nm}',${!s.keepAlive})">${svg(IC.ka)} ${s.keepAlive?'Держится':'Держать'}</button>`);
+  if(port) a.push(`<button class="btn" onclick="tunnel(${port},${s.tunnelManaged?1:0})">${svg(IC.link)} ${s.tunnelManaged?'Убрать ссылку':'Ссылка для телефона'}</button>`);
+  if(port&&!ctrl) a.push(`<button class="btn" onclick="killp(${port})">${svg(IC.zap)} Освободить :${port}</button>`);
+  if(!ctrl) a.push(`<button class="btn" onclick="editUrl('${nm}')">${svg(IC.pencil)} Ссылка</button>`);
+  a.push(`<button class="btn" onclick="rename('${nm}')">${svg(IC.pencil)} Имя</button>`,`<button class="btn danger" onclick="del('${nm}')">${svg(IC.trash)} Убрать</button>`);
+  return `<div class="row"><div class="rtop"><span class="d ${st}"></span><div><div class="nm">${esc(s.name)}</div><div class="meta">${esc(s.host||DEVICE)}</div></div><span class="st ${st}"${st==='unk'?' title="Удалённый — не проверить с этого Mac"':''}>${stLbl(st)}</span></div>${link}${tun}${s.note?`<div class="note">${esc(s.note)}</div>`:''}<div class="acts">${a.join('')}</div></div>`;
 }
-/* — приложение — */
-function renderApp(s){ const st=s.up?'up':'unk', nm=jsq(s.name), ai=s.app||{};
-  const acts=[`<button class="btn ${s.up?'':'primary'}" style="--cc:#fe7f2d" onclick="appAct('${nm}','${s.up?'stop':'start'}')">${svg(s.up?IC.stop:IC.play)} ${s.up?'Выключить':'Включить'}</button>`,
-    `<button class="btn" onclick="appAct('${nm}','restart')">${svg(IC.restart)} Рестарт</button>`,
-    `<button class="btn ${s.keepAlive?'primary':''}" style="--cc:#fe7f2d" onclick="ka('${nm}',${!s.keepAlive})">${svg(IC.ka)} ${s.keepAlive?'Держится':'Держать вкл'}</button>`,
-    `<button class="btn" onclick="appAct('${nm}','reveal')">${svg(IC.finder)} В Finder</button>`,
-    `<button class="btn danger" onclick="del('${nm}')">${svg(IC.trash)} Убрать</button>`];
-  const meta=[ai.version?'v'+ai.version:'', ai.menuBarOnly?'в строке меню':''].filter(Boolean).join(' · ');
-  return `<div class="row"><div class="rtop"><span class="dot ${st}"></span><div><div class="nm">${esc(s.name)}</div><div class="meta">${esc(meta||'приложение')}</div></div>
-    <span class="st ${s.up?'up':'down'}">${ai.installed===false?'не найдено':(s.up?'работает':'не запущено')}</span></div><div class="acts">${acts.join('')}</div></div>`;
+function renderApp(s){ const st=s.up?'up':'unk', nm=jsq(s.name), ai=s.app||{}; const meta=[ai.version?'v'+ai.version:'', ai.menuBarOnly?'в строке меню':''].filter(Boolean).join(' · ');
+  const a=[`<button class="btn ${s.up?'':'primary'}" style="--cc:#fe7f2d" onclick="appAct('${nm}','${s.up?'stop':'start'}')">${svg(s.up?IC.stop:IC.play)} ${s.up?'Выключить':'Включить'}</button>`,`<button class="btn" onclick="appAct('${nm}','restart')">${svg(IC.restart)} Рестарт</button>`,`<button class="btn ${s.keepAlive?'primary':''}" style="--cc:#fe7f2d" onclick="ka('${nm}',${!s.keepAlive})">${svg(IC.ka)} ${s.keepAlive?'Держится':'Держать'}</button>`,`<button class="btn" onclick="appAct('${nm}','reveal')">${svg(IC.finder)} В Finder</button>`,`<button class="btn danger" onclick="del('${nm}')">${svg(IC.trash)} Убрать</button>`];
+  return `<div class="row"><div class="rtop"><span class="d ${st}"></span><div><div class="nm">${esc(s.name)}</div><div class="meta">${esc(meta||'приложение')}</div></div><span class="st ${s.up?'up':'down'}">${ai.installed===false?'не найдено':(s.up?'работает':'не запущено')}</span></div><div class="acts">${a.join('')}</div></div>`;
 }
-/* — бот — */
-function botChip(s,b){ const o=(b&&typeof b==='object')?b:{user:b}; const u=String(o.user||'').replace(/^@/,'');
-  const stt=s.health?((s.health.ok&&o.status!=='off')?'on':'off'):(!isVps(s)&&s.port?(s.up?'on':'off'):'unk');
-  return `<a class="chip" href="https://t.me/${encodeURIComponent(u)}" target="_blank" rel="noopener" title="${esc(o.name||'')}"><span class="bd ${stt}"></span>@${esc(u)}${o.tier==='advanced'?' ⚡':''}</a>`; }
-function renderBot(s){ const authFail=!!(s.health&&s.health.claude&&s.health.claude.auth_failed);
-  const st= s.health?((authFail||!s.health.ok)?'down':'up'):(s.up?'up':'unk');
-  const chips=(Array.isArray(s.bots)&&s.bots.length)?`<div class="chips">${s.bots.map(b=>botChip(s,b)).join('')}</div>`:'';
-  const acts=[]; const nm=jsq(s.name);
-  if(authFail) acts.push(`<button class="btn primary" style="--cc:#3aa0ff" onclick="claudeRelogin()">${svg(IC.restart)} Перелогинить Claude</button>`);
-  if(s.canPing) acts.push(`<button class="btn" onclick="botPing('${nm}')">${svg(IC.tg)} Пинг-тест</button>`);
-  if(s.hasControls) acts.push(`<button class="btn" onclick="act('${nm}','restart')">${svg(IC.restart)} Рестарт</button>`);
-  acts.push(`<button class="btn" onclick="rename('${nm}')">${svg(IC.pencil)} Имя</button>`);
-  acts.push(`<button class="btn danger" onclick="del('${nm}')">${svg(IC.trash)} Убрать</button>`);
-  const health=s.health?(s.health.ok?'работает':'не отвечает')+(s.health.uptime?' · '+fmtUp(s.health.uptime):''):(st==='unk'?'неизвестно':'');
-  return `<div class="row"><div class="rtop"><span class="dot ${st}"></span><div><div class="nm">${esc(s.name)}</div><div class="meta">${esc(s.agent||'бот')}${health?' · '+esc(health):''}</div></div>
-    ${authFail?'<span class="st down">Claude разлогинен</span>':`<span class="st ${st}">${stLbl(st)}</span>`}</div>${chips}<div class="acts">${acts.join('')}</div></div>`;
-}
+function botChip(s,b){ const o=(b&&typeof b==='object')?b:{user:b}; const u=String(o.user||'').replace(/^@/,''); const stt=s.health?((s.health.ok&&o.status!=='off')?'on':'off'):(!isVps(s)&&s.port?(s.up?'on':'off'):'unk'); return `<a class="chip" href="https://t.me/${encodeURIComponent(u)}" target="_blank" rel="noopener" title="${esc(o.name||'')}"><span class="bd ${stt}"></span>@${esc(u)}${o.tier==='advanced'?' ⚡':''}</a>`; }
 const fmtUp=s=>{ s=Math.round(s); const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60); return d?`${d}д ${h}ч`:h?`${h}ч ${m}м`:`${m}м`; };
-/* — агент (аватар) — */
-function renderAgent(a){ return `<div class="row"><div class="rtop">
-    <img class="av" src="/logos/${esc(a.id)}.png" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'dot up'}))">
-    <div><div class="nm">${esc(a.label)}</div><div class="meta">${(a.count||0)} MCP${a.configPath?' · '+esc(a.configPath):''}</div></div>
-    <span class="st up">подключён</span></div>
-    <div class="acts"><button class="btn primary" style="--cc:#a06bff" onclick="openConn()">${svg(IC.link)} Доступы</button></div></div>`; }
-/* — секрет — */
-function renderSecret(s){ const nm=jsq(s.name); return `<div class="row"><div class="rtop"><span class="dot up"></span>
-    <div><div class="nm">${esc(s.name)}</div>${s.note?`<div class="meta">${esc(s.note)}</div>`:'<div class="meta">в Keychain</div>'}</div></div>
-    <div class="acts"><button class="btn" onclick="secretCopy('${nm}')">${svg(IC.copy)} Копировать</button>
-      <button class="btn" onclick="secretReveal('${nm}',this)">${svg(IC.eye)} Показать</button>
-      <button class="btn danger" onclick="secretDel('${nm}')">${svg(IC.trash)} Удалить</button></div>
-    <div class="secval" style="display:none;font-family:ui-monospace,monospace;font-size:12px;margin-top:8px;word-break:break-all;color:var(--mut)"></div></div>`; }
-/* — подключения (сводка + кнопка в полный экран) — */
-function renderConn(d){ const c=d.counts||{}; return `<div class="row"><div class="rtop"><span class="dot up"></span>
-    <div><div class="nm">Карта доступов</div><div class="meta">${c.services||d.raw.length} сервисов · ${c.clients||'—'} программ</div></div></div>
-    <div class="note">Ключи, доступы агентов и composio — в полном окне с фильтрами и управлением.</div>
-    <div class="acts"><button class="btn primary" style="--cc:#ff5db1" onclick="openConn()">${svg(IC.link)} Открыть подключения</button></div></div>`; }
+function renderBot(s){ const af=!!(s.health&&s.health.claude&&s.health.claude.auth_failed); const st=s.health?((af||!s.health.ok)?'down':'up'):(s.up?'up':'unk'); const nm=jsq(s.name);
+  const chips=(Array.isArray(s.bots)&&s.bots.length)?`<div class="chips">${s.bots.map(b=>botChip(s,b)).join('')}</div>`:'';
+  const a=[]; if(af)a.push(`<button class="btn primary" style="--cc:#3aa0ff" onclick="claudeRelogin()">${svg(IC.restart)} Перелогинить Claude</button>`); if(s.canPing)a.push(`<button class="btn" onclick="botPing('${nm}')">${svg(IC.tg)} Пинг-тест</button>`); if(s.hasControls)a.push(`<button class="btn" onclick="act('${nm}','restart')">${svg(IC.restart)} Рестарт</button>`); a.push(`<button class="btn" onclick="rename('${nm}')">${svg(IC.pencil)} Имя</button>`,`<button class="btn danger" onclick="del('${nm}')">${svg(IC.trash)} Убрать</button>`);
+  const h=s.health?(s.health.ok?'работает':'не отвечает')+(s.health.uptime?' · '+fmtUp(s.health.uptime):''):(st==='unk'?'неизвестно':'');
+  return `<div class="row"><div class="rtop"><span class="d ${st}"></span><div><div class="nm">${esc(s.name)}</div><div class="meta">${esc(s.agent||'бот')}${h?' · '+esc(h):''}</div></div>${af?'<span class="st down">Claude разлогинен</span>':`<span class="st ${st}">${stLbl(st)}</span>`}</div>${chips}<div class="acts">${a.join('')}</div></div>`;
+}
+function renderAgent(a){ return `<div class="row"><div class="rtop"><img class="av" src="/logos/${esc(a.id)}.png" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'d up'}))"><div><div class="nm">${esc(a.label)}</div><div class="meta">${(a.count||0)} MCP${a.configPath?' · '+esc(a.configPath):''}</div></div><span class="st up">подключён</span></div><div class="acts"><button class="btn primary" style="--cc:#a06bff" onclick="openConn()">${svg(IC.link)} Доступы</button></div></div>`; }
+function renderSecret(s){ const nm=jsq(s.name); return `<div class="row"><div class="rtop"><span class="d up"></span><div><div class="nm">${esc(s.name)}</div><div class="meta">${s.note?esc(s.note):'в Keychain'}</div></div></div><div class="acts"><button class="btn" onclick="secretCopy('${nm}')">${svg(IC.copy)} Копировать</button><button class="btn" onclick="secretReveal('${nm}',this)">${svg(IC.eye)} Показать</button><button class="btn danger" onclick="secretDel('${nm}')">${svg(IC.trash)} Удалить</button></div><div class="secval" style="display:none;font-family:ui-monospace,monospace;font-size:12px;margin-top:8px;word-break:break-all;color:var(--mut)"></div></div>`; }
+function renderConn(d){ const c=d.counts||{}; return `<div class="row"><div class="rtop"><span class="d up"></span><div><div class="nm">Карта доступов</div><div class="meta">${c.services||d.raw.length} сервисов · ${c.clients||'—'} программ</div></div></div><div class="note">Ключи, доступы агентов и composio — в полном окне с фильтрами.</div><div class="acts"><button class="btn primary" style="--cc:#ff5db1" onclick="openConn()">${svg(IC.link)} Открыть подключения</button></div></div>`; }
 
-/* ── действия (через api(), с пост-refetch) ── */
+/* ── действия ── */
 window.copyStr=v=>navigator.clipboard.writeText(v).then(()=>toast('Скопировано')).catch(()=>{});
-async function done(j,ok){ toast(j&&j.ok?('✅ '+(j.note||ok||'готово')):('⛔️ '+((j&&j.error)||'не вышло'))); }
+function done(j,ok){ toast(j&&j.ok?('✅ '+(j.note||ok||'готово')):('⛔️ '+((j&&j.error)||'не вышло'))); }
+function findSvc(nm){ for(const k of ['services','vps','apps','bots']){ const s=(DATA[k]?.raw||[]).find(x=>x.name===nm); if(s)return s; } return null; }
 window.power=async nm=>{ const s=findSvc(nm); if(!s)return; toast('…');
-  if(s.up){ if(s.keepAlive) await api('/api/keepalive',{name:nm,enable:false}); const j= s.stopCmd?await api('/api/stop',{name:nm}):(s.port?await api('/api/kill-port',{port:s.port}):{ok:false,error:'нет команды'}); done(j,'выключено'); }
+  if(s.up){ if(s.keepAlive) await api('/api/keepalive',{name:nm,enable:false}); const j=s.stopCmd?await api('/api/stop',{name:nm}):(s.port?await api('/api/kill-port',{port:s.port}):{ok:false,error:'нет команды'}); done(j,'выключено'); }
   else { let j; if(s.hasControls) j=await api('/api/start',{name:nm}); else if(s.port){ const g=await fetch('/api/guess-cmd?port='+s.port).then(r=>r.json()).catch(()=>null); if(g&&g.start){ await api('/api/service-setcmd',{name:nm,startCmd:g.start,stopCmd:g.stop||''}); j=await api('/api/start',{name:nm}); } else j={ok:false,error:'не знаю команду запуска'}; } else j={ok:false,error:'нет порта'}; if(j&&j.ok) await api('/api/keepalive',{name:nm,enable:true}); done(j,'включено'); }
-  refresh(curKey()); };
-window.appAct=async (nm,action)=>{ toast('…'); if(action==='stop'){ const s=findSvc(nm); if(s&&s.keepAlive) await api('/api/keepalive',{name:nm,enable:false}); }
-  const j=await api('/api/app-action',{name:nm,action}); if(action!=='reveal') done(j); refresh(curKey()); };
-window.act=async (nm,what)=>{ toast('…'); const j=await api('/api/'+what,{name:nm}); done(j); refresh(curKey()); };
-window.ka=async (nm,en)=>{ toast('…'); const j=await api('/api/keepalive',{name:nm,enable:en}); done(j,en?'держится':'снято'); refresh(curKey()); };
-window.tunnel=async (port,on)=>{ toast('…'); const j= on?await api('/api/tunnel-stop',{port}):await api('/api/tunnel-start',{port,provider:'cloudflared'}); done(j); refresh(curKey()); };
-window.killp=async port=>{ const danger=port<1024; if(!await uiConfirm(danger?`Порт ${port} — системный/базы. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.`:`Освободить порт ${port}? Процесс будет остановлен.`))return; toast('…'); const j=await api('/api/kill-port',{port}); done(j,'порт освобождён'); refresh(curKey()); };
-window.editUrl=async nm=>{ const s=findSvc(nm); const v=await uiPrompt('Ссылка карточки (можно дописать путь, напр. /board):', s?(s.url||''):''); if(v==null)return; const j=await api('/api/service-seturl',{name:nm,url:v}); done(j); refresh(curKey()); };
-window.rename=async nm=>{ const v=await uiPrompt('Новое имя:',nm); if(v==null||!v.trim())return; const j=await api('/api/service-rename',{name:nm,newName:v.trim()}); done(j); refresh(curKey()); };
-window.del=async nm=>{ if(!await uiConfirm(`Убрать «${nm}» из списка?`))return; const j=await api('/api/service-remove',{name:nm}); done(j); refresh(curKey()); };
+  refresh(); };
+window.appAct=async (nm,action)=>{ toast('…'); if(action==='stop'){ const s=findSvc(nm); if(s&&s.keepAlive) await api('/api/keepalive',{name:nm,enable:false}); } const j=await api('/api/app-action',{name:nm,action}); if(action!=='reveal')done(j); refresh(); };
+window.act=async (nm,what)=>{ toast('…'); const j=await api('/api/'+what,{name:nm}); done(j); refresh(); };
+window.ka=async (nm,en)=>{ toast('…'); const j=await api('/api/keepalive',{name:nm,enable:en}); done(j,en?'держится':'снято'); refresh(); };
+window.tunnel=async (port,on)=>{ toast('…'); const j=on?await api('/api/tunnel-stop',{port}):await api('/api/tunnel-start',{port,provider:'cloudflared'}); done(j); refresh(); };
+window.killp=async port=>{ if(!await uiConfirm(port<1024?`Порт ${port} — системный/базы. Убить процесс? Возможна ПОТЕРЯ ДАННЫХ.`:`Освободить порт ${port}?`))return; toast('…'); const j=await api('/api/kill-port',{port}); done(j,'порт освобождён'); refresh(); };
+window.editUrl=async nm=>{ const s=findSvc(nm); const v=await uiPrompt('Ссылка карточки (можно дописать путь, напр. /board):',s?(s.url||''):''); if(v==null)return; const j=await api('/api/service-seturl',{name:nm,url:v}); done(j); refresh(); };
+window.rename=async nm=>{ const v=await uiPrompt('Новое имя:',nm); if(v==null||!v.trim())return; const j=await api('/api/service-rename',{name:nm,newName:v.trim()}); done(j); refresh(); };
+window.del=async nm=>{ if(!await uiConfirm(`Убрать «${nm}» из списка?`))return; const j=await api('/api/service-remove',{name:nm}); done(j); refresh(); };
 window.botPing=async nm=>{ toast('Пингую…'); const j=await api('/api/bot-ping',{name:nm}); toast(j&&j.ok?'✅ Бот ответил':'⛔️ Нет ответа'); };
 window.claudeRelogin=async ()=>{ toast('…'); const j=await api('/api/claude-relogin',{}); done(j,'открыл вход'); };
-window.secretAdd=async ()=>{ const name=await uiPrompt('Имя секрета (напр. OPENAI_API_KEY):'); if(name==null||!name.trim())return; const val=await uiPrompt('Значение (ляжет в Keychain, не в файлы):'); if(val==null||!val.trim()){ toast('⛔️ пусто'); return; } const note=await uiPrompt('Заметка (необязательно):',''); const j=await api('/api/secrets-set',{name:name.trim(),value:val,note:(note||'').trim()}); done(j,'добавлено'); refresh('secrets'); };
+window.secretAdd=async ()=>{ const name=await uiPrompt('Имя секрета (напр. OPENAI_API_KEY):'); if(name==null||!name.trim())return; const val=await uiPrompt('Значение (ляжет в Keychain, не в файлы):'); if(val==null||!val.trim()){ toast('⛔️ пусто'); return; } const note=await uiPrompt('Заметка (необязательно):',''); const j=await api('/api/secrets-set',{name:name.trim(),value:val,note:(note||'').trim()}); done(j,'добавлено'); refresh(); };
 window.secretCopy=async nm=>{ const j=await api('/api/secrets-get',{name:nm}); if(j&&j.ok){ navigator.clipboard.writeText(j.value).then(()=>toast('✅ Скопировано')).catch(()=>toast('⛔️')); } else toast('⛔️ '+((j&&j.error)||'')); };
 window.secretReveal=async (nm,btn)=>{ const box=btn.closest('.row').querySelector('.secval'); if(box.style.display!=='none'){ box.style.display='none'; box.textContent=''; return; } const j=await api('/api/secrets-get',{name:nm}); if(j&&j.ok){ box.textContent=j.value; box.style.display='block'; setTimeout(()=>{ if(box){ box.style.display='none'; box.textContent=''; } },15000); } else toast('⛔️ '+((j&&j.error)||'')); };
-window.secretDel=async nm=>{ if(!await uiConfirm('Удалить этот секрет из Keychain?'))return; const j=await api('/api/secrets-del',{name:nm}); done(j,'удалено'); refresh('secrets'); };
-
-/* подключения/агенты — полное окно (iframe той же панели) */
+window.secretDel=async nm=>{ if(!await uiConfirm('Удалить этот секрет из Keychain?'))return; const j=await api('/api/secrets-del',{name:nm}); done(j,'удалено'); refresh(); };
 window.openConn=()=>{ const fr=$('connIframe'); if(!fr.src) fr.src='/connections.html?embed=1'; $('connFrame').classList.add('show'); };
-window.closeConn=()=>{ $('connFrame').classList.remove('show'); refresh(curKey()); };
+window.closeConn=()=>{ $('connFrame').classList.remove('show'); refresh(); };
+window.openDrawer=openDrawer;
 
-function findSvc(nm){ for(const k of ['services','vps','apps','bots']){ const s=(DATA[k]?.raw||[]).find(x=>x.name===nm); if(s)return s; } return null; }
-let _curKey=null; function curKey(){ return _curKey; }
-const _open=openDetail; openDetail=function(k){ _curKey=k; _open(k); }; window.openDetail=openDetail;
-
-/* старт */
-loadData().then(()=>{ $('loading').style.display='none'; }); setInterval(()=>loadData(),15000); animate();
+loadData().then(()=>{ $('loading').style.display='none'; }).catch(()=>{ $('loading').style.display='none'; }); setInterval(loadData,15000); animate();
 </script>
 </body>
 </html>
