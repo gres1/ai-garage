@@ -57,20 +57,22 @@
   .legend div{ font-size:13px; color:var(--mut); display:flex; align-items:center; gap:6px; }
   .ld{ width:9px; height:9px; border-radius:50%; }
   .spacer{ flex:1; }
-  .ctl{ display:flex; align-items:center; gap:8px; }
+  .ctl{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  /* единая высота + скругление всех контролов шапки (не овал) */
+  .field,.btn-add,.pausebtn{ box-sizing:border-box; height:38px; border-radius:11px; }
   .field{ border:1px solid var(--line); background:rgba(255,255,255,.75); backdrop-filter:blur(8px);
-    border-radius:980px; padding:9px 14px; font-size:14px; color:var(--txt); outline:none; transition:.2s; font-family:inherit; }
+    padding:0 14px; font-size:13.5px; color:var(--txt); outline:none; transition:border-color .2s, box-shadow .2s, width .2s; font-family:inherit; }
   .field:focus{ border-color:var(--accent); box-shadow:0 0 0 4px rgba(254,127,45,.14); }
-  .search{ position:relative; }
-  .search input{ padding-left:36px; width:210px; }
-  .search input:focus{ width:240px; }
+  .search{ position:relative; display:inline-flex; }
+  .search input{ padding-left:36px; width:200px; }
+  .search input:focus{ width:230px; }
   .search svg{ position:absolute; left:13px; top:50%; transform:translateY(-50%); opacity:.4; }
   select.field{ cursor:pointer; padding-right:30px; }
-  .btn-add{ background:var(--accent); color:#fff; border:none; border-radius:980px; padding:10px 16px;
-    font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 2px 10px rgba(254,127,45,.32); font-family:inherit; transition:.15s; }
+  .btn-add{ display:inline-flex; align-items:center; background:var(--accent); color:#fff; border:none; padding:0 15px;
+    font-size:13.5px; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(254,127,45,.28); font-family:inherit; transition:background .15s, transform .15s; }
   .btn-add:hover{ background:var(--accent-d); transform:translateY(-1px); }
-  .pausebtn{ border:1px solid var(--line); background:rgba(255,255,255,.6); border-radius:980px;
-    padding:9px 14px; font-size:13px; cursor:pointer; color:var(--mut); font-family:inherit; }
+  .pausebtn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; border:1px solid var(--line); background:rgba(255,255,255,.6);
+    padding:0 13px; font-size:13px; cursor:pointer; color:var(--mut); font-family:inherit; transition:border-color .2s, color .2s, background .2s; }
   .pausebtn:hover{ border-color:var(--accent); color:var(--accent); }
 
   .grid{ max-width:1180px; margin:0 auto; display:grid; gap:20px; align-items:start;   /* авто-высота */
@@ -371,18 +373,18 @@
     <div class="spacer"></div>
     <div class="ctl">
       <button class="pausebtn" id="modebtn" onclick="setMode(MODE==='live'?'list':'live')" title="Список ⇄ Live view"></button>
-      <button class="btn-add" onclick="addBtnClick()" data-i="addService">+ Сервис</button>
-      <button class="pausebtn" id="appsbtn" onclick="openApps()" title="Локальные приложения (.app): статус и авто-подъём"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg> <span data-i="addApp">+ Приложение</span></button>
+      <button class="pausebtn" id="connbtn" onclick="toggleConn()" aria-label="connections" title="Подключения: ключи, доступы агентов, composio"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M9 12h6"/><path d="M8 7a5 5 0 0 0 0 10h2"/><path d="M16 7a5 5 0 0 1 0 10h-2"/></svg> <span data-i="connBtn">Подключения</span></button>
+      <button class="pausebtn" id="phonebtn" onclick="openPhone()" aria-label="phone" title="Открыть панель с телефона по защищённой ссылке (Pro)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="7" y="2" width="10" height="20" rx="2.5"/><line x1="11" y1="18" x2="13" y2="18"/></svg> <span data-i="phoneBtn">Телефон</span> <span style="font-size:9px;font-weight:800;letter-spacing:.03em;color:#fff;background:var(--accent);border-radius:5px;padding:1px 5px;vertical-align:1px">PRO</span></button>
+      <select class="field" id="lang" onchange="setLang(this.value)" title="Язык интерфейса"></select>
+      <button class="pausebtn" id="appsbtn" onclick="openApps()" aria-label="apps" title="+ Приложение — держать Mac-приложение живым (статус и авто-подъём)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg></button>
+      <button class="pausebtn" id="notifybtn" onclick="openNotify()" aria-label="notifications" title="Уведомления когда что-то упало"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      <button class="pausebtn" id="probtn" onclick="openPro()" title="Pro / лицензия"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg> <span id="prolbl">Pro</span></button>
+      <button class="pausebtn" id="pause" aria-label="пауза" onclick="togglePause()" title="Пауза авто-подъёма и проверок"></button>
+      <button class="btn-add" onclick="addBtnClick()" data-i="addService" title="Добавить свой сервис или локальный сайт под присмотр">+ Сервис</button>
       <div class="search">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
         <input class="field" id="q" oninput="onSearch()"/>
       </div>
-      <button class="pausebtn" id="connbtn" onclick="toggleConn()" aria-label="connections" title="Подключения: ключи, доступы агентов, composio"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M9 12h6"/><path d="M8 7a5 5 0 0 0 0 10h2"/><path d="M16 7a5 5 0 0 1 0 10h-2"/></svg> <span data-i="connBtn">Подключения</span></button>
-      <button class="pausebtn" id="phonebtn" onclick="openPhone()" aria-label="phone"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="7" y="2" width="10" height="20" rx="2.5"/><line x1="11" y1="18" x2="13" y2="18"/></svg> <span data-i="phoneBtn">Телефон</span> <span style="font-size:9px;font-weight:800;letter-spacing:.03em;color:#fff;background:var(--accent);border-radius:5px;padding:1px 5px;vertical-align:1px">PRO</span></button>
-      <select class="field" id="lang" onchange="setLang(this.value)"></select>
-      <button class="pausebtn" id="notifybtn" onclick="openNotify()" aria-label="notifications" title="Уведомления когда что-то упало"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
-      <button class="pausebtn" id="probtn" onclick="openPro()" title="Pro / лицензия"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg> <span id="prolbl">Pro</span></button>
-      <button class="pausebtn" id="pause" aria-label="пауза" onclick="togglePause()"></button>
     </div>
   </header>
 

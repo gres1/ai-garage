@@ -394,9 +394,13 @@ async function superviseDowns() {
     const rows = [];
     for (const s of services) {
       let up;
+      const localPortLive = !!s.port && listening.has(toPort(s.port));
       if (s.kind === "app") up = !!(await appState(s)).running;
-      else up = !!s.port && listening.has(toPort(s.port));
-      rows.push({ name: s.name, up, kind: s.kind || null });
+      else up = localPortLive;
+      // «нельзя проверить» = удалённое/VPS или бот без локального порта → это НЕ «упало», уведомление не шлём
+      const cant = s.kind !== "app" && (/vps|впс|server|серв|cloud/i.test(s.host || "")
+        || ((s.kind === "bot" || (Array.isArray(s.bots) && s.bots.length)) && !localPortLive));
+      rows.push({ name: s.name, up, kind: s.kind || null, cant });
     }
     if (process.env.AIGARAGE_DEBUG) console.log("[superviseDowns]", JSON.stringify(rows));
     await detectDowns(rows, cfg);
@@ -630,16 +634,25 @@ async function detectDowns(rows, cfg) {
   for (const r of rows) {
     const prev = _upState.get(r.name);
     _upState.set(r.name, r.up);
-    if (_upSeeded && prev === true && r.up === false) fresh.push(r);
+    // «упало» = только то, что реально проверяемо локально (не VPS/удалённое) — иначе ложный спам
+    if (_upSeeded && prev === true && r.up === false && !r.cant) fresh.push(r);
   }
   if (!_upSeeded) { _upSeeded = true; return; }
   if (!fresh.length || notify.enabled === false) return;
-  for (const r of fresh) {
+  for (const r of fresh) console.log(`[notify] упало: ${r.name}`);
+  // ОДНО уведомление на тик, даже если упало несколько сразу (иначе поток всплывашек)
+  let msg;
+  if (fresh.length === 1) {
+    const r = fresh[0];
     const kind = r.kind === "app" ? "приложение" : r.kind === "bot" ? "бот" : "сервис";
-    console.log(`[notify] упало ${kind}: ${r.name}`);
-    notifyMac("AI Garage", `Упало ${kind}: ${r.name}`);
-    if (pro && notify.telegram !== false) await notifyTelegram(cfg, `🔴 AI Garage: упало ${kind} «${r.name}»`);
+    msg = `Упало ${kind}: ${r.name}`;
+  } else {
+    const names = fresh.map((r) => r.name);
+    const shown = names.slice(0, 4).join(", ");
+    msg = `Упало ${fresh.length}: ${shown}${names.length > 4 ? ` и ещё ${names.length - 4}` : ""}`;
   }
+  notifyMac("AI Garage", msg);
+  if (pro && notify.telegram !== false) await notifyTelegram(cfg, `🔴 AI Garage: ${msg}`);
 }
 
 // Прочитать одно значение KEY=... из .env-файла (для ping-теста бота). Без зависимостей.
