@@ -74,6 +74,13 @@
   .pausebtn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; border:1px solid var(--line); background:rgba(255,255,255,.6);
     padding:0 13px; font-size:13px; cursor:pointer; color:var(--mut); font-family:inherit; transition:border-color .2s, color .2s, background .2s; }
   .pausebtn:hover{ border-color:var(--accent); color:var(--accent); }
+  /* мгновенная подсказка при наведении на кнопки шапки (вместо медленного нативного title) */
+  .ctl [data-tip]{ position:relative; }
+  .ctl [data-tip]:hover::after{ content:attr(data-tip); position:absolute; top:calc(100% + 7px); left:50%; transform:translateX(-50%);
+    background:#1d1d1f; color:#fff; font-size:12px; font-weight:500; line-height:1.35; padding:6px 9px; border-radius:8px;
+    width:max-content; max-width:220px; white-space:normal; text-align:center; z-index:60; box-shadow:0 6px 18px rgba(0,0,0,.24); pointer-events:none; }
+  .ctl [data-tip].tipR:hover::after{ left:auto; right:0; transform:none; }
+  .ctl [data-tip].tipL:hover::after{ left:0; transform:none; }
 
   .grid{ max-width:1180px; margin:0 auto; display:grid; gap:20px; align-items:start;   /* авто-высота */
          grid-template-columns:repeat(auto-fill,minmax(335px,1fr)); perspective:1400px; }
@@ -1745,6 +1752,18 @@ document.addEventListener('click',e=>{ const p=$('lvpick'); if(p&&!p.contains(e.
 document.addEventListener('fullscreenchange',()=>{ const l=$('lvfslbl'); if(l) l.textContent=document.fullscreenElement?t('lvExit'):t('lvFull'); });
 lvApplyZoom();
 $('pause').innerHTML=icon('pause'); fillLangs(); applyI18n(); toggleCmd(); setMode(MODE); load(); setInterval(load,3000);
+</script>
+<script>
+// Быстрые подсказки шапки: title → data-tip (мгновенный CSS-тултип), у краёв — прижать чтобы не обрезалось
+window.addEventListener('load', () => {
+  const ctl = document.querySelector('.ctl'); if (!ctl) return;
+  const box = ctl.getBoundingClientRect();
+  ctl.querySelectorAll('[title]').forEach((el) => {
+    el.dataset.tip = el.getAttribute('title'); el.removeAttribute('title');
+    const r = el.getBoundingClientRect(); const frac = ((r.left + r.right) / 2 - box.left) / box.width;
+    if (frac > 0.7) el.classList.add('tipR'); else if (frac < 0.3) el.classList.add('tipL');
+  });
+});
 </script>
 </body>
 </html>
