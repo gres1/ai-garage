@@ -615,8 +615,17 @@ function notifyAuthFailIfNeeded(name, health) {
 // (не для «Обнаружено» — там шум). macOS-уведомление бесплатно (локально); Telegram — Pro (дистанционно).
 const _upState = new Map();        // name → был ли up на прошлом тике
 let _upSeeded = false;             // первый тик только запоминает, не шлёт (иначе спам при старте)
+// terminal-notifier (если установлен) → кликабельное уведомление с нашей иконкой и группировкой; иначе обычное системное.
+function tnPath() { for (const p of ["/opt/homebrew/bin/terminal-notifier", "/usr/local/bin/terminal-notifier"]) if (existsSync(p)) return p; return null; }
 function notifyMac(title, msg) {
   if (process.platform !== "darwin") return;
+  const tn = tnPath();
+  if (tn) {
+    // клик открывает панель на упавших (#downed); своя иконка; -group заменяет прошлое уведомление, а не копит стопку
+    execFile(tn, ["-title", title, "-message", msg, "-open", `http://127.0.0.1:${PORT}/#downed`,
+      "-appIcon", join(PUBLIC_DIR, "logo.png"), "-group", "aigarage-down", "-sound", "Basso"], () => {});
+    return;
+  }
   exec(`osascript -e 'display notification ${JSON.stringify(msg)} with title ${JSON.stringify(title)} sound name "Basso"'`, () => {});
 }
 async function notifyTelegram(cfg, text) {
