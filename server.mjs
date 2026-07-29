@@ -4,7 +4,7 @@
 import http from "node:http";
 import https from "node:https";
 import { exec, execFile, spawn } from "node:child_process";
-import { readFile, writeFile, mkdir, unlink, stat, rename, readdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, unlink, stat, rename, readdir, chmod } from "node:fs/promises";
 import { openSync, readFileSync, existsSync } from "node:fs";
 import { createHash, timingSafeEqual, randomBytes, verify as cryptoVerify, createPublicKey } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -69,7 +69,7 @@ async function saveServices(list) {
   // Атомарно: пишем во временный файл и переименовываем (+ .bak), чтобы обрыв не потерял сервисы
   try { await rename(SERVICES_PATH, SERVICES_PATH + ".bak"); } catch {}
   const tmp = SERVICES_PATH + ".tmp";
-  await writeFile(tmp, JSON.stringify(list, null, 2));
+  await writeFile(tmp, JSON.stringify(list, null, 2), { mode: 0o600 });
   await rename(tmp, SERVICES_PATH);
 }
 // Сериализация мутаций реестра (анти-гонка add/remove)
@@ -84,10 +84,10 @@ async function loadConfig() {
 }
 const genToken = () => randomBytes(24).toString("base64url");
 async function persistConfig(patch) {
-  await mkdir(CFG_DIR, { recursive: true });
+  await mkdir(CFG_DIR, { recursive: true, mode: 0o700 });
   const next = { ...(await loadConfig()), ...patch };
   const tmp = CONFIG_PATH + ".tmp";
-  await writeFile(tmp, JSON.stringify(next, null, 2));
+  await writeFile(tmp, JSON.stringify(next, null, 2), { mode: 0o600 });   // config.json хранит токен/лицензию/telegram-токен → только владелец
   await rename(tmp, CONFIG_PATH);                            // атомарно, как saveServices
   return next;
 }
@@ -303,7 +303,7 @@ async function saveKA(set) { await mkdir(CFG_DIR, { recursive: true }); await wr
 // сама и keep-alive поднимает сервис после ребута — без ручной настройки (для пользователя и клиента).
 const CMDS_PATH = join(CFG_DIR, "commands.json");
 async function loadCmds() { try { return JSON.parse(await readFile(CMDS_PATH, "utf8")); } catch { return {}; } }
-async function saveCmds(m) { await mkdir(CFG_DIR, { recursive: true }); const tmp = CMDS_PATH + ".tmp"; await writeFile(tmp, JSON.stringify(m, null, 2)); await rename(tmp, CMDS_PATH); }
+async function saveCmds(m) { await mkdir(CFG_DIR, { recursive: true, mode: 0o700 }); const tmp = CMDS_PATH + ".tmp"; await writeFile(tmp, JSON.stringify(m, null, 2), { mode: 0o600 }); await rename(tmp, CMDS_PATH); }
 // Из сырой команды процесса собрать фоновую start + stop (та же логика, что и в guessCmd).
 function guessCmdFromRaw(raw, port) {
   let start = (raw || "").trim();
@@ -1452,7 +1452,8 @@ const handler = async (req, res) => {
 
   res.writeHead(404); res.end("not found");
  } catch (e) {
-   if (!res.headersSent) { try { sendJson(res, 500, { ok: false, error: String((e && e.message) || e) }); } catch {} }
+   if (process.env.AIGARAGE_DEBUG) console.log("[500]", (e && e.stack) || e);
+   if (!res.headersSent) { try { sendJson(res, 500, { ok: false, error: "internal error" }); } catch {} }
    else { try { res.end(); } catch {} }
  }
 };
@@ -1463,13 +1464,14 @@ const server = http.createServer(handler);
 // Выход за loopback ИЛИ public-режим требуют токена — генерируем и сохраняем, если его нет.
 (async () => {
   const cfg = await loadConfig();
+  for (const p of [CONFIG_PATH, CMDS_PATH, SERVICES_PATH]) { try { await chmod(p, 0o600); } catch {} }   // подтянуть права уже созданных файлов (токен/команды — только владелец)
   TS_IP = await tailscaleIp().catch(() => null);
   if (cfg.access === "tailscale") {
     if (TS_IP) BIND_HOST = TS_IP;
     else console.warn("AI Garage: Tailscale IP не найден — остаюсь на 127.0.0.1 (запущен ли Tailscale и залогинен?)");
   }
   if (BIND_HOST !== "127.0.0.1" || (cfg.access && cfg.access !== "off")) {
-    if (!cfg.token) { const tk = genToken(); await persistConfig({ token: tk }); console.log(`AI Garage: сгенерирован токен доступа → ${tk}`); }
+    if (!cfg.token) { await persistConfig({ token: genToken() }); console.log("AI Garage: сгенерирован токен доступа (открой панель или config.json, чтобы посмотреть)"); }
   }
   const shown = BIND_HOST === "127.0.0.1" ? "localhost" : BIND_HOST;
   server.on("error", (e) => {
