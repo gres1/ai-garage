@@ -22,7 +22,14 @@
       "icons/icon.ico"
     ],
     "externalBin": ["binaries/ai-garage-server"],
-    "resources": { "../../public": "public" },
+    "resources": {
+      "../../public/index.html": "public/index.html",
+      "../../public/connections.html": "public/connections.html",
+      "../../public/logo.png": "public/logo.png",
+      "../../public/favicon.png": "public/favicon.png",
+      "../../public/qrcode.min.js": "public/qrcode.min.js",
+      "../../public/logos": "public/logos"
+    },
     "macOS": {
       "minimumSystemVersion": "10.15",
       "signingIdentity": "-"
