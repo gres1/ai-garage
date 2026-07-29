@@ -1705,19 +1705,26 @@ function updateHeader(){
   const C=214; $('arc').style.strokeDashoffset=tot?C-(C*up/tot):C; }
 // Баннер упавших: что реально можно проверить и что упало — сразу сверху, «Включить» одним кликом.
 // Боты и VPS не считаем (их не проверить локально — иначе ложная тревога).
+const canStart = s => s.kind==='app' || s.hasControls;   // есть чем запустить (команда задана/поймана или это .app)
 function updateDownBanner(){
   const el=$('downbanner'); if(!el) return;
   const down = connOn() ? [] : DATA.filter(s=>!s.up && !cantVerify(s) && !isBot(s));
   if(!down.length){ el.style.display='none'; return; }
   const bell=`<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>`;
-  const chips=down.map(s=>`<span class="downchip">${esc(s.name)}<button class="btn btn-primary" onclick="act('${jsq(s.name)}','start')">${icon('play')} ${t('start')}</button></span>`).join('');
+  const chips=down.map(s=>{
+    const btn = canStart(s)
+      ? `<button class="btn btn-primary" onclick="act('${jsq(s.name)}','start')">${icon('play')} ${t('start')}</button>`
+      : `<button class="btn btn-soft" onclick="openManage('${jsq(s.name)}')">${icon('wrench')} ${t('configureRun')}</button>`;
+    return `<span class="downchip">${esc(s.name)}${btn}</span>`;
+  }).join('');
+  const startable = down.filter(canStart);
   el.innerHTML = bell + `<b style="flex:0 0 auto">${t('downTitle')} ${down.length}</b>`
     + `<span class="downlist">${chips}</span>`
-    + (down.length>1?`<button class="btn btn-primary downall" onclick="restartAllDown()">${icon('play')} ${t('startAll')}</button>`:'');
+    + (startable.length>1?`<button class="btn btn-primary downall" onclick="restartAllDown()">${icon('play')} ${t('startAll')}</button>`:'');
   el.style.display='flex';
   if(location.hash==='#downed' && !el._scrolled){ el._scrolled=true; el.scrollIntoView({behavior:'smooth',block:'center'}); }
 }
-function restartAllDown(){ DATA.filter(s=>!s.up && !cantVerify(s) && !isBot(s)).forEach(s=>act(s.name,'start')); }
+function restartAllDown(){ DATA.filter(s=>!s.up && !cantVerify(s) && !isBot(s) && canStart(s)).forEach(s=>act(s.name,'start')); }
 
 /* Сервер мог перезапуститься (launchd, ребут, сон) — страница не должна оставаться мёртвой.
    3 промаха подряд → честный оверлей, а как только сервер ответил — перезагружаем страницу (код мог обновиться). */
